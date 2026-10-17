@@ -1,0 +1,80 @@
+.modern-saas {
+    background: #f7f8fc !important;
+    color: #172033;
+}
+
+.modern-saas .bg-slate-950,
+.modern-saas .bg-slate-900,
+.modern-saas .bg-slate-800 {
+    background-color: #ffffff !important;
+}
+
+.modern-saas .border-slate-800,
+.modern-saas .border-slate-700 {
+    border-color: #e5e7ef !important;
+}
+
+.modern-saas .text-white {
+    color: #172033 !important;
+}
+
+.modern-saas .text-slate-300,
+.modern-saas .text-slate-400,
+.modern-saas .text-slate-500 {
+    color: #667085 !important;
+}
+
+.modern-saas input,
+.modern-saas textarea,
+.modern-saas select {
+    border-color: #d9deea !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+}
+
+.modern-saas input:focus,
+.modern-saas textarea:focus,
+.modern-saas select:focus {
+    border-color: #7c5cff !important;
+    box-shadow: 0 0 0 3px rgb(124 92 255 / 12%);
+}
+
+.modern-saas button,
+.modern-saas a {
+    transition: 160ms ease;
+}
+
+.modern-saas .bg-indigo-600 {
+    background-color: #6956e8 !important;
+}
+
+.modern-saas .bg-indigo-600:hover {
+    background-color: #5946d5 !important;
+}
+
+.modern-saas .bg-emerald-600 {
+    background-color: #18a878 !important;
+}
+
+.modern-saas .bg-amber-500 {
+    background-color: #f4b740 !important;
+}
+
+.modern-saas > div > aside,
+.modern-saas aside {
+    background: linear-gradient(180deg, #332477 0%, #21184d 100%) !important;
+}
+
+.modern-saas main > header {
+    box-shadow: 0 1px 0 #e7e9f2;
+}
+
+.modern-saas .rounded-2xl,
+.modern-saas .rounded-3xl {
+    border-radius: 18px;
+}
+
+.modern-saas .shadow-sm,
+.modern-saas .shadow-2xl {
+    box-shadow: 0 12px 32px rgb(36 42 70 / 7%);
+}
