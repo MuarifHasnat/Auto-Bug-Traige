@@ -389,7 +389,7 @@ def run_agent():
 
     # ডেভেলপার অ্যাসাইনমেন্ট
     assigned_to = "Unassigned"
-    if not is_duplicate and len(developers) > 0:
+    if len(developers) > 0:
         best_dev_name = developers[0]['name']
         highest_score = -999
 
@@ -407,9 +407,10 @@ def run_agent():
                 best_dev_name = dev['name']
 
         assigned_to = best_dev_name
-        code_help["assignment_reason"] = (
-            f"{assigned_to} was selected for {feature} work based on skill match and workload."
-        )
+        reason = f"{assigned_to} was selected for {feature} work based on skill match and workload."
+        if is_duplicate:
+            reason += " The report is marked as a duplicate, so no new active task was added."
+        code_help["assignment_reason"] = reason
 
     result = {
         "is_duplicate": is_duplicate,
