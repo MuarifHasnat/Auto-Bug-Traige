@@ -12,7 +12,7 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_CIPHER
-        value: AES-128-CBC
+        value: AES-256-CBC
       - key: APP_KEY
         generateValue: true
       - key: APP_URL
