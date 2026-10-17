@@ -20,11 +20,11 @@ services:
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        value: "5432"
+        value: "6543"
       - key: DB_DATABASE
         value: postgres
       - key: DB_USERNAME
-        value: postgres
+        value: postgres.ojklezltaxgujnwhkcef
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSLMODE
