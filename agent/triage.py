@@ -2,8 +2,26 @@ import sys
 import json
 import re
 import difflib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import math
+from collections import Counter
+
+
+def _cosine_similarity(text, candidates):
+    def vectorize(value):
+        tokens = re.findall(r"[a-z0-9]+", value.lower())
+        counts = Counter(tokens)
+        total = sum(counts.values()) or 1
+        return {token: count / total for token, count in counts.items()}
+
+    source = vectorize(text)
+    source_norm = math.sqrt(sum(value * value for value in source.values()))
+    scores = []
+    for candidate in candidates:
+        target = vectorize(candidate)
+        target_norm = math.sqrt(sum(value * value for value in target.values()))
+        dot = sum(source.get(token, 0) * value for token, value in target.items())
+        scores.append(dot / (source_norm * target_norm) if source_norm and target_norm else 0.0)
+    return scores
 
 def _check_code_error(code, description):
     full_text = (code + " " + description).lower()
@@ -351,7 +369,7 @@ def run_agent():
             priority = "High"
             break
 
-    # ডুপ্লিকেট ডিটেকশন (TF-IDF + Cosine Similarity)
+    # ডুপ্লিকেট ডিটেকশন (token cosine similarity)
     is_duplicate = False
     duplicate_of = None
     similarity_percent = 0.0
@@ -360,20 +378,14 @@ def run_agent():
         all_texts = [b['title'] + " " + b['description'] for b in past_bugs]
         all_texts.append(title + " " + description)
 
-        try:
-            vectorizer = TfidfVectorizer(stop_words='english')
-            vectors = vectorizer.fit_transform(all_texts)
-            scores = cosine_similarity(vectors[-1], vectors[:-1])[0]
+        scores = _cosine_similarity(all_texts[-1], all_texts[:-1])
+        max_index = scores.index(max(scores))
+        best_score = scores[max_index]
+        similarity_percent = round(best_score * 100, 1)
 
-            max_index = scores.argmax()
-            best_score = float(scores[max_index])
-            similarity_percent = round(best_score * 100, 1)
-
-            if best_score >= 0.50:
-                is_duplicate = True
-                duplicate_of = past_bugs[max_index]['id']
-        except Exception:
-            pass
+        if best_score >= 0.50:
+            is_duplicate = True
+            duplicate_of = past_bugs[max_index]['id']
 
     # ডেভেলপার অ্যাসাইনমেন্ট
     assigned_to = "Unassigned"

@@ -334,7 +334,8 @@ class BugController extends Controller
             'developers' => $developers,
         ], JSON_THROW_ON_ERROR));
 
-        $result = Process::run(['python', base_path('agent/triage.py'), $payloadPath]);
+        $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+        $result = Process::run([$python, base_path('agent/triage.py'), $payloadPath]);
         if (!$result->successful()) {
             return back()->withErrors(['bug' => 'AI triage failed: '.$result->errorOutput()]);
         }
