@@ -18,6 +18,9 @@ if ! php -r '
     ')"
 fi
 
+mkdir -p storage/framework/sessions storage/framework/cache storage/framework/views
+chown -R www-data:www-data storage bootstrap/cache
+
 php artisan storage:link || true
 php artisan migrate --force
 php artisan config:cache
