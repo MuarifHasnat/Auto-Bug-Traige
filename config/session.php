@@ -19,7 +19,7 @@ return [
     */
 
     'driver' => env('APP_ENV') === 'production'
-        ? 'cookie'
+        ? 'file'
         : env('SESSION_DRIVER', 'database'),
 
     /*
