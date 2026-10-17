@@ -55,6 +55,36 @@
                     @endif
                 </section>
             </div>
+            @if($mode === 'developer')
+                <section class="mt-6 rounded bg-white p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold">Assigned AI suggestions</h2>
+                    <p class="mt-1 text-sm text-[#6b778c]">Implementation guidance for issues assigned to you.</p>
+                    <div class="mt-5 space-y-4">
+                        @forelse($assignedBugs as $assignedBug)
+                            @php($suggestion = $assignedBug->triage['code_help'] ?? [])
+                            <article class="rounded border border-[#dfe1e6] p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-2">
+                                    <div><p class="text-xs font-semibold text-[#5e6c84]">ABT-{{ $assignedBug->id }}</p><h3 class="mt-1 font-semibold">{{ $assignedBug->title }}</h3></div>
+                                    <span class="rounded bg-[#e6fcff] px-2 py-1 text-xs font-bold text-[#0052cc]">{{ $assignedBug->priority }}</span>
+                                </div>
+                                <p class="mt-2 text-sm text-[#5e6c84]">{{ $suggestion['error_name'] ?? 'Analysis complete' }}</p>
+                                @if(!empty($suggestion['steps']))
+                                    <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-[#5e6c84]">@foreach($suggestion['steps'] as $step)<li>{{ $step }}</li>@endforeach</ol>
+                                @endif
+                                @if(!empty($suggestion['fixed_code']))
+                                    <h4 class="mt-4 text-sm font-semibold">Complete suggested fix</h4>
+                                    <textarea readonly spellcheck="false" class="mt-2 min-h-[180px] w-full rounded bg-[#172b4d] p-4 font-mono text-xs leading-5 text-[#b3d4ff]">{{ $suggestion['fixed_code'] }}</textarea>
+                                @endif
+                                @if(!empty($suggestion['diff']))
+                                    <details class="mt-3"><summary class="cursor-pointer text-sm font-semibold text-[#0052cc]">View code diff</summary><textarea readonly spellcheck="false" class="mt-2 min-h-[120px] w-full rounded bg-[#172b4d] p-4 font-mono text-xs leading-5 text-[#b3d4ff]">{{ $suggestion['diff'] }}</textarea></details>
+                                @endif
+                            </article>
+                        @empty
+                            <p class="rounded border border-dashed border-[#c1c7d0] p-4 text-sm text-[#6b778c]">No AI suggestions are assigned to you yet.</p>
+                        @endforelse
+                    </div>
+                </section>
+            @endif
         </div>
     </main>
 </div>

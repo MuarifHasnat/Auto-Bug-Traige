@@ -275,9 +275,22 @@ class BugController extends Controller
 
         $projectId = $this->currentProjectId();
         $bugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(10)->get();
+        $assignedBugs = collect();
+        if (Auth::user()->role === 'developer') {
+            $assignedBugs = DB::table('bugs')
+                ->where('project_id', $projectId)
+                ->where('assigned_to', Auth::user()->name)
+                ->whereNotNull('triage_result')
+                ->orderByDesc('id')
+                ->get()
+                ->map(function ($bug) {
+                    $bug->triage = json_decode($bug->triage_result, true) ?: [];
+                    return $bug;
+                });
+        }
         $mode = Auth::user()->role === 'developer' ? 'developer' : 'tester';
 
-        return view('ai_agent', compact('bugs', 'mode'));
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'mode'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -360,6 +373,7 @@ class BugController extends Controller
             'source_file_path' => $sourceFilePath,
             'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
             'detected_feature' => $aiResult['feature'] ?? null,
+            'triage_result' => json_encode($aiResult, JSON_THROW_ON_ERROR),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
