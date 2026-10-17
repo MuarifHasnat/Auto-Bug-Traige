@@ -11,7 +11,11 @@ if ! php -r '
     $decoded = base64_decode(substr($key, 7), true);
     exit($decoded !== false && strlen($decoded) === $expectedLength ? 0 : 1);
 '; then
-    export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+    export APP_KEY="base64:$(php -r '
+        $cipher = strtolower(getenv("APP_CIPHER") ?: "aes-256-cbc");
+        $length = str_contains($cipher, "128") ? 16 : 32;
+        echo base64_encode(random_bytes($length));
+    ')"
 fi
 
 php artisan storage:link || true
