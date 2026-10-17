@@ -312,7 +312,7 @@ class BugController extends Controller
         $projectId = $this->currentProjectId();
         $pastBugs = DB::table('bugs')
             ->where('project_id', $projectId)
-            ->where('is_duplicate', false)
+            ->whereRaw('is_duplicate = false')
             ->select('id', 'title', 'description')
             ->get()
             ->map(fn ($bug) => (array) $bug)
@@ -354,7 +354,7 @@ class BugController extends Controller
             'priority' => $aiResult['priority'] ?? 'Medium',
             'status' => $aiResult['status'] ?? ($isDuplicate ? 'Duplicate' : 'Open'),
             'assigned_to' => $assignedTo,
-            'is_duplicate' => $isDuplicate,
+            'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
             'duplicate_of' => $aiResult['duplicate_of'] ?? null,
             'screenshot_path' => $screenshotPath,
             'source_file_path' => $sourceFilePath,
