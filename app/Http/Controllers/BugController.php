@@ -249,7 +249,23 @@ class BugController extends Controller
             'high' => DB::table('bugs')->where('project_id', $projectId)->where('priority', 'High')->count(),
         ];
 
-        return view('workspace', compact('developers', 'bugs', 'stats'));
+        $assignedBugsQuery = DB::table('bugs')
+            ->where('project_id', $projectId)
+            ->whereNotNull('triage_result');
+
+        if (Auth::user()?->role === 'developer') {
+            $assignedBugsQuery->where('assigned_to', Auth::user()->name);
+        }
+
+        $assignedBugs = $assignedBugsQuery
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($bug) {
+                $bug->triage = json_decode($bug->triage_result, true) ?: [];
+                return $bug;
+            });
+
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs'));
     }
 
     public function dashboardPage(): View
