@@ -291,7 +291,7 @@
                                 <div class="flex items-center justify-between mb-1">
                                     <div class="flex items-center gap-2 text-rose-800 font-bold">
                                         <span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse"></span>
-                                        <span>Root Cause & Error Classification</span>
+                                        <span>Code Validation Result</span>
                                     </div>
                                     <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">
                                         {{ $ai['priority'] ?? 'Medium' }} Priority
@@ -303,6 +303,12 @@
                                 <p class="text-[11px] text-rose-700 mt-1">
                                     Context: {{ $ai['code_help']['attachment_note'] ?? 'No external files provided.' }}
                                 </p>
+                                <p class="text-[11px] text-rose-700 mt-1">
+                                    {{ $ai['code_help']['analysis_scope'] ?? 'This result is a limited static check; it does not prove the code is correct.' }}
+                                </p>
+                                @if(!empty($ai['code_help']['description_note']))
+                                    <p class="text-[11px] text-rose-700 mt-1">{{ $ai['code_help']['description_note'] }}</p>
+                                @endif
                             </div>
 
                             <!-- Section C: Smart Assignment Routing Card with Human-in-the-Loop Override -->
@@ -352,20 +358,23 @@
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="flex items-center gap-2 text-xs font-bold">
                                             <button type="button" onclick="switchStudioCode('final')" id="btnStudioFinal" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                                [ Final Fixed Code Only ]
+                                                [ Submitted Code ]
                                             </button>
-                                            <button type="button" onclick="switchStudioCode('diff')" id="btnStudioDiff" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50">
-                                                [ Before vs After (Diff) ]
-                                            </button>
+                                            @if(!empty($ai['code_help']['diff']))
+                                                <button type="button" onclick="switchStudioCode('diff')" id="btnStudioDiff" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50">
+                                                    [ Before vs After (Diff) ]
+                                                </button>
+                                            @endif
                                         </div>
 
                                         <button type="button" onclick="copyStudioFix()" id="copyStudioBtn" 
                                                 class="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-[#F1F5F9] transition">
-                                            📋 Copy Fixed Code
+                                            📋 Copy Code
                                         </button>
                                     </div>
 
                                     <div id="studioFinalView">
+                                        <p class="mb-2 text-[11px] text-slate-600">No automatic fix was generated. The submitted snippet is shown unchanged for reference.</p>
                                         <textarea id="studioFixedCode" readonly spellcheck="false" class="w-full min-h-[160px] rounded-xl bg-slate-950 p-3.5 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 outline-none">{{ $ai['code_help']['fixed_code'] ?? '// No fixed code snippet generated.' }}</textarea>
                                     </div>
 

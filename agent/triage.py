@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -32,9 +31,7 @@ def run_agent():
     attachment = data.get("attachment")
 
     # 1. Code Diagnosis & Fix suggestion
-    code_help = check_code_error(code_snippet, description)
-    if selected_language and selected_language != "auto":
-        code_help["language"] = selected_language
+    code_help = check_code_error(code_snippet, description, selected_language)
 
     # 2. Feature Categorization
     combined_text = f"{title} {description} {code_snippet}".lower()

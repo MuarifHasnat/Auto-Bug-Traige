@@ -372,6 +372,7 @@
                                              data-assignee="{{ $bug->assigned_to ?: 'Unassigned' }}"
                                              data-feat="{{ $feat }}"
                                              data-error="{{ $triage['code_help']['error_name'] ?? 'Analysis complete' }}"
+                                             data-scope="{{ $triage['code_help']['analysis_scope'] ?? 'This limited static check does not prove the code is correct.' }}"
                                              data-steps="{{ json_encode($triage['code_help']['steps'] ?? []) }}"
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
@@ -418,7 +419,7 @@
                 2. AI Triage Report
             </button>
             <button type="button" onclick="switchDrawerTab('tabPatch')" id="btnTabPatch" class="flex-1 py-3 border-b-2 border-transparent hover:text-[#0F172A] transition text-center">
-                3. Suggested Code Patch
+                3. Code Reference
             </button>
         </div>
 
@@ -439,8 +440,9 @@
             <!-- Tab 2: AI Triage Report with Interactive Checkbox Checklist -->
             <div id="tabTriage" class="hidden space-y-4">
                 <div class="rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-800">
-                    <p class="font-bold">Diagnostic Classification:</p>
+                    <p class="font-bold">Code Validation Result:</p>
                     <p id="drawerError" class="mt-1 font-mono-code"></p>
+                    <p id="drawerScope" class="mt-2"></p>
                 </div>
                 <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-900">
                     <p class="font-bold">Smart Assignment Rationale:</p>
@@ -452,25 +454,23 @@
                 </div>
             </div>
 
-            <!-- Tab 3: Suggested Code Patch with Split View & Copy Button -->
+            <!-- Tab 3: Submitted code reference -->
             <div id="tabPatch" class="hidden space-y-4">
                 <div class="flex items-center gap-2 border-b border-[#E2E8F0] pb-2 text-xs font-bold">
                     <button type="button" onclick="togglePatchView('final')" id="btnViewFinal" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        Final Fixed Code Only
-                    </button>
-                    <button type="button" onclick="togglePatchView('diff')" id="btnViewDiff" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50">
-                        Code Diff (Unified)
+                        Submitted Code
                     </button>
                 </div>
 
                 <div id="viewFinalContainer">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-[#0F172A]">Clean Code Patch</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-[#0F172A]">Submitted code (unchanged)</span>
                         <button type="button" onclick="copyPatchCode()" id="copyPatchBtn" 
                                 class="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-[#F1F5F9] transition">
-                            📋 Copy Fixed Code
+                            📋 Copy Code
                         </button>
                     </div>
+                    <p class="mb-2 text-[11px] text-slate-600">No automatic fix was generated. Review the validation notes and make code changes manually.</p>
                     <textarea id="drawerFixedCode" readonly spellcheck="false" 
                               class="w-full min-h-[220px] rounded-xl bg-slate-950 p-4 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 focus:outline-none"></textarea>
                 </div>
@@ -496,6 +496,7 @@
             document.getElementById('drawerFeature').innerText = data.getAttribute('data-feat');
             document.getElementById('drawerAssignee').innerText = data.getAttribute('data-assignee');
             document.getElementById('drawerError').innerText = data.getAttribute('data-error');
+            document.getElementById('drawerScope').innerText = data.getAttribute('data-scope');
             document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No fixed code provided.';
             document.getElementById('drawerDiff').value = data.getAttribute('data-diff') || '// No diff available.';

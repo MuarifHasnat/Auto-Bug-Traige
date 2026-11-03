@@ -1,308 +1,167 @@
-import difflib
+"""Language-aware, non-executing syntax checks for submitted snippets.
+
+Only parsers/compilers in explicit check-only mode are called. The submitted
+program is never run. Unsupported languages receive a clear scope message.
+"""
+
+import ast
+import os
 import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 
 
-def _check_code_error(code, description):
-    full_text = (code + " " + description).lower()
-    source_code = code.strip()
+LANGUAGES = {
+    "php": "PHP",
+    "c++": "C++",
+    "cpp": "C++",
+    "c": "C",
+    "python": "Python",
+    "javascript": "JavaScript",
+    "js": "JavaScript",
+    "typescript": "TypeScript",
+    "ts": "TypeScript",
+    "java": "Java",
+    "sql": "SQL",
+}
 
-    if not full_text.strip():
-        return {
-            "error_name": "No code or error provided",
-            "steps": ["Please provide code snippet or error logs for analysis."],
-            "fixed_code": "// No code provided",
-        }
 
-    # Python syntax / name error checks
-    if re.search(r"^\s*(print|len|input)\s*\(", source_code, re.MULTILINE) or re.search(
-        r"^\s*(def|import|from)\s+", source_code, re.MULTILINE
-    ):
-        lines = source_code.splitlines()
-        findings = []
-        fixed_code = source_code
+def detect_language(code):
+    source = code.strip()
+    lower = source.lower()
+    if "<?php" in lower or re.search(r"\$[a-z_]\w*", source):
+        return "PHP"
+    if re.search(r"^\s*#include\s*[<\"]", source, re.MULTILINE) or "std::" in source or "cout" in source:
+        return "C++"
+    if re.search(r"\bprintf\s*\(", source):
+        return "C"
+    if re.search(r"\b(interface|type)\s+\w+|:\s*(string|number|boolean)\b", source):
+        return "TypeScript"
+    if re.search(r"\b(def|class|from|import)\s+\w+|\bprint\s*\(", source):
+        return "Python"
+    if re.search(r"\b(select|insert|update|delete|create table)\b", source, re.IGNORECASE):
+        return "SQL"
+    if re.search(r"\b(public|private|protected)\s+(static\s+)?(void|class|int|string)\b", source):
+        return "Java"
+    if re.search(r"\b(const|let|var|function)\b|console\.log", source):
+        return "JavaScript"
+    return "Unknown"
 
-        for line_number, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            print_match = re.fullmatch(r"print\(\s*([A-Za-z_]\w*)\s*\)", stripped)
-            if print_match:
-                value = print_match.group(1)
-                declared = re.search(
-                    rf"(^|\n)\s*(?:{re.escape(value)}\s*=|def\s+\w+\([^)]*\b{re.escape(value)}\b|import\s+{re.escape(value)}\b)",
-                    source_code,
-                )
-                if not declared:
-                    findings.append(
-                        f"Line {line_number}: '{value}' is treated as a variable, but it is not defined. "
-                        f'Use print("{value}") for text or define {value} before printing.'
-                    )
-                    fixed_code = fixed_code.replace(
-                        stripped,
-                        f'print("{value}")',
-                        1,
-                    )
 
-            if re.match(r"^(if|for|while|def|class|try|except|else|elif|with)\b", stripped):
-                if not stripped.endswith(":"):
-                    findings.append(
-                        f"Line {line_number}: Python block statement is missing a colon (:)."
-                    )
-                    fixed_code = fixed_code.replace(line, line + ":", 1)
-
-        if findings:
-            return {
-                "error_name": "Python syntax or name error",
-                "steps": findings
-                + [
-                    "The suggested fix preserves the complete Python source and changes only the reported issue."
-                ],
-                "fixed_code": fixed_code,
-            }
-
-        return {
-            "error_name": "No critical Python errors detected",
-            "steps": [
-                f"Line {line_number}: the Python statement structure is valid."
-                for line_number, line in enumerate(lines, start=1)
-                if line.strip()
-            ]
-            or ["The Python source is empty."],
-            "fixed_code": source_code,
-        }
-
-    # C/C++ printf checks
-    if re.search(r"\bprintf\s*\(", source_code):
-        lines = source_code.splitlines()
-        findings = []
-        fixed_line = '    printf("hello");'
-
-        for line_number, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            if re.match(r"printf\s*\(\s*[A-Za-z_]\w*\s*\)", stripped):
-                value = re.search(r"printf\s*\(\s*([A-Za-z_]\w*)\s*\)", stripped).group(1)
-                findings.append(
-                    f"Line {line_number}: printf receives `{value}` as an identifier. "
-                    f'Use printf("{value}") when printing text.'
-                )
-                fixed_line = f'    printf("{value}");'
-            elif stripped.startswith("printf") and not stripped.endswith(";"):
-                findings.append(f"Line {line_number}: the printf statement is missing a semicolon (;).")
-
-        if not findings:
-            findings.append("The printf statement uses valid string syntax.")
-
-        return {
-            "error_name": "C/C++ printf syntax error" if len(findings) else "No critical printf errors detected",
-            "steps": findings
-            + [
-                "Include <stdio.h> for printf and return 0 from main.",
-                "The complete corrected C/C++ source is shown in Suggested fix.",
-            ],
-            "fixed_code": f"""#include <stdio.h>
-
-int main(void) {{
-{fixed_line}
-    return 0;
-}}""",
-        }
-
-    # C++ compilation and structure checks
-    if "#include" in code or "cout" in code or "std::" in code:
-        lines = source_code.splitlines()
-
-        def line_number(predicate, fallback=1):
-            for number, line in enumerate(lines, start=1):
-                if predicate(line.strip()):
-                    return number
-            return fallback
-
-        include_line = line_number(lambda line: line.startswith("#include"))
-        string_line = line_number(lambda line: "string x" in line)
-        main_line = line_number(lambda line: line.startswith("int main"))
-        loop_line = line_number(lambda line: line.startswith("for "))
-        if_line = line_number(lambda line: line.startswith("if "))
-        return_line = line_number(lambda line: line.startswith("return "))
-        looks_correct = all([
-            "#include <iostream>" in code,
-            "using namespace std;" in code,
-            "int main()" in code,
-            "return 0;" in code,
-            code.count("{") == code.count("}"),
-            'int x = "' not in code,
-            not ("if (x = " in code and "if (x == " not in code),
-        ])
-
-        if looks_correct:
-            return {
-                "error_name": "No critical C++ compilation errors detected",
-                "steps": [
-                    f"Line {include_line}: the include statements are valid; <string> is included for the string variable.",
-                    f"Line {main_line}: main() has a valid int return type and returns 0 on line {return_line}.",
-                    f"Line {string_line}: x is correctly declared as a string, so comparing it with \"hello\" using == on line {if_line} is valid.",
-                    f"Line {loop_line}: the for loop initializes i, checks i < 5, increments i, and prints five loop values.",
-                    f"Lines {main_line}-{return_line}: the braces, semicolons and if/else structure are balanced and valid.",
-                    f"Line {line_number(lambda line: line.startswith('int undeclaredVar'))}: undeclaredVar is declared but not used later; remove it if it is not needed.",
-                ],
-                "fixed_code": source_code,
-            }
-
-        findings = []
-        lines = source_code.splitlines()
-        for line_number_idx, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("//"):
-                continue
-
-            if stripped.startswith("#include") and not stripped.endswith(">"):
-                findings.append(f"Line {line_number_idx}: the #include directive is missing its closing '>'.")
-            elif stripped.startswith("using namespace") and not stripped.endswith(";"):
-                findings.append(f"Line {line_number_idx}: 'using namespace std' is missing a semicolon (;).")
-            elif re.match(r"^(int|float|double|string|std::string)\s+\w+\s*=", stripped):
-                if not stripped.endswith(";"):
-                    findings.append(f"Line {line_number_idx}: variable declaration '{stripped}' is missing a semicolon (;).")
-                if re.match(r"^int\s+\w+\s*=\s*[\"']", stripped):
-                    findings.append(f"Line {line_number_idx}: an integer variable cannot receive a string value; use string or std::string.")
-            elif re.match(r"^(if|for|while)\s*\(", stripped) and re.search(r"(?<![=!])=(?!=)", stripped):
-                findings.append(f"Line {line_number_idx}: assignment '=' is used in the condition; use comparison '==' instead.")
-            elif "=" in stripped and not stripped.endswith(("{", "}", ";", ":")):
-                findings.append(f"Line {line_number_idx}: statement '{stripped}' is missing a semicolon (;).")
-            elif ("cout <<" in stripped or "return " in stripped) and not stripped.endswith(";"):
-                findings.append(f"Line {line_number_idx}: statement is missing a semicolon (;).")
-
-        if source_code.count("{") != source_code.count("}"):
-            findings.append("Braces: opening and closing '{ }' braces are not balanced.")
-        if not findings:
-            findings.append("The C++ source has structural or syntax errors; check the complete corrected code below.")
-
-        return {
-            "error_name": "Multiple C++ compilation errors",
-            "steps": findings
-            + [
-                "The input has multiple errors, so it cannot be fixed safely with a single line change.",
-                "The complete compilable replacement is shown in Suggested fix below.",
-            ],
-            "fixed_code": """#include <iostream>
-#include <string>
-
-using namespace std;
-
-int main() {
-    string x = "hello";
-    cout << x << endl;
-
-    for (int i = 0; i < 5; i++) {
-        cout << "Loop value: " << i << endl;
+def _diagnostic_result(language, source, status, message, steps=None):
+    return {
+        "language": language,
+        "error_name": message,
+        "syntax_status": status,
+        "steps": steps or [message],
+        "analysis_scope": (
+            "Syntax-only check. This does not prove the program is logically correct, safe, or free of runtime errors."
+        ),
+        "fixed_code": source,
+        "suggested_fix_available": False,
     }
 
-    int undeclaredVar = 10;
 
-    if (x == "hello") {
-        cout << "x is hello" << endl;
-    } else {
-        cout << "x is not hello" << endl;
+def _external_syntax_check(language, source):
+    """Run an installed parser in syntax-only mode; return None if unavailable."""
+    commands = {
+        "PHP": ("php", ".php", lambda exe, path: [exe, "-l", path]),
+        "JavaScript": ("node", ".js", lambda exe, path: [exe, "--check", path]),
+        "TypeScript": ("tsc", ".ts", lambda exe, path: [exe, "--noEmit", "--pretty", "false", path]),
     }
+    spec = commands.get(language)
+    if not spec:
+        return None
 
-    return 0;
-}""",
-        }
+    executable = shutil.which(spec[0])
+    if not executable:
+        return None
 
-    # Type Mismatch Error
-    if "int " in code and ('"' in code or "'" in code):
-        return {
-            "error_name": "Type Mismatch Error (Assigning String to Integer)",
-            "steps": [
-                "Step 1: You declared variable `x` as an integer (`int x`), but assigned a string literal (`\"hello\"`) to it.",
-                "Step 2: Change the data type to `std::string x = \"hello\";` or assign a numeric integer value.",
-            ],
-            "fixed_code": source_code.replace("int ", "std::string ", 1),
-        }
-
-    # Division by Zero Error
-    elif "/ 0" in code or "/0" in code:
-        if "$" in source_code:
-            fixed_code = (
-                "<?php\n"
-                "$denominator = $price; // Replace with the actual denominator.\n\n"
-                "if ($denominator != 0) {\n"
-                "    $discount = $price / $denominator;\n"
-                "} else {\n"
-                "    $discount = 0;\n"
-                "}\n"
-                "?>"
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=spec[1], delete=False
+        ) as temp_file:
+            temp_file.write(source)
+            temp_path = temp_file.name
+        try:
+            completed = subprocess.run(
+                spec[2](executable, temp_path),
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+                env={**os.environ, "NO_COLOR": "1"},
             )
-        else:
-            safe_code = source_code.replace("/ 0", " / denominator").replace("/0", " / denominator")
-            fixed_code = (
-                "// Corrected code: validate the denominator before division.\n"
-                "const denominator = getDenominator();\n"
-                "if (denominator !== 0) {\n"
-                "    " + safe_code + "\n"
-                "} else {\n"
-                "    throw new Error('Cannot divide by zero');\n"
-                "}"
-            )
-        return {
-            "error_name": "Mathematical Error: Division by Zero",
-            "steps": [
-                "Step 1: The code is dividing a number by zero, which causes a runtime crash.",
-                "Step 2: Add a safeguard condition to check if the denominator is not zero.",
-            ],
-            "fixed_code": fixed_code,
-        }
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+    except subprocess.TimeoutExpired:
+        return "timeout", f"{language} syntax check timed out after 5 seconds."
+    except OSError:
+        return "unavailable", f"Could not start the {language} syntax checker."
 
-    # Undeclared Variable Error
-    elif "=" in code and not any(
-        t in code for t in ["int ", "float ", "double ", "char ", "string ", "auto ", "std::string"]
-    ):
-        return {
-            "error_name": "Undeclared Variable Usage",
-            "steps": [
-                "Step 1: The variable is being assigned a value without declaring its data type first.",
-                "Step 2: Declare the variable with its proper type (e.g., `int undeclaredVar = 10;`) before using it.",
-            ],
-            "fixed_code": "// Declare each variable before use.\n" + source_code,
-        }
-
-    # General Code Syntax / Logic Error
-    else:
-        return {
-            "error_name": "General Syntax or Logic Warning",
-            "steps": [
-                "Step 1: Inspect the compiler warning or stack trace for exact line numbers.",
-                "Step 2: Ensure all brackets, parentheses, and semicolons (;) are closed properly.",
-            ],
-            "fixed_code": source_code,
-        }
+    output = (completed.stdout + "\n" + completed.stderr).strip()
+    if completed.returncode == 0:
+        return "passed", output or f"The {language} parser accepted the snippet."
+    return "failed", output[:1200] or f"The {language} parser rejected the snippet."
 
 
-def check_code_error(code, description):
-    """Return diagnosis details in one stable shape for the web application."""
-    result = _check_code_error(code, description)
-    source_code = code.strip()
-    fixed_code = result.get("fixed_code", "")
-    lowered = source_code.lower()
+def check_code_error(code, description, selected_language="auto"):
+    source = (code or "").strip()
+    reported_language = (selected_language or "auto").strip()
+    language = detect_language(source) if reported_language.lower() == "auto" else LANGUAGES.get(reported_language.lower(), reported_language)
 
-    if "#include" in source_code or "cout" in source_code or "std::" in source_code:
-        language = "C++"
-    elif "<?php" in lowered or "$" in source_code:
-        language = "PHP"
-    elif "def " in source_code or "import " in source_code or re.search(r"\bprint\s*\(", source_code):
-        language = "Python"
-    elif "console.log" in lowered or "const " in source_code or "let " in source_code:
-        language = "JavaScript"
-    elif re.search(r"\bprintf\s*\(", source_code):
-        language = "C/C++"
-    else:
-        language = "Unknown"
-
-    result["language"] = language
-    result["confidence"] = 0.96 if result["error_name"].startswith("No critical") else 0.88
-    result["diff"] = "".join(
-        difflib.unified_diff(
-            source_code.splitlines(keepends=True),
-            fixed_code.splitlines(keepends=True),
-            fromfile="original",
-            tofile="suggested-fix",
+    if not source:
+        result = _diagnostic_result(
+            language if language != "Unknown" else "Unknown",
+            source,
+            "not_run",
+            "No code snippet to validate",
+            ["Add a code snippet to run a syntax check. Error descriptions and screenshots are not parsed as source code."],
         )
-    )
+    elif language == "Python":
+        try:
+            ast.parse(source)
+            result = _diagnostic_result("Python", source, "passed", "Python syntax check passed")
+            result["steps"] = ["Python's built-in parser accepted the snippet."]
+        except SyntaxError as error:
+            location = f"line {error.lineno}" if error.lineno else "unknown line"
+            detail = error.msg or "Invalid syntax"
+            result = _diagnostic_result(
+                "Python", source, "failed", "Python syntax error",
+                [f"{location}: {detail}", "No automatic code change was made; review the reported location and rerun the check."],
+            )
+    else:
+        checked = _external_syntax_check(language, source)
+        if checked:
+            status, details = checked
+            if status == "passed":
+                result = _diagnostic_result(language, source, status, f"{language} syntax check passed", [details])
+            else:
+                result = _diagnostic_result(
+                    language,
+                    source,
+                    status,
+                    f"{language} syntax check {status}",
+                    [details, "No automatic code change was made; fix the parser errors and rerun the check."],
+                )
+        else:
+            result = _diagnostic_result(
+                language,
+                source,
+                "not_available",
+                f"Syntax validation unavailable for {language}",
+                [
+                    f"No supported syntax checker is available for {language} in this runtime, or the language is not supported by this checker.",
+                    "The snippet is shown unchanged. This agent does not infer a fix for this language or for logic/runtime errors.",
+                ],
+            )
 
+    result["diff"] = ""
+    result["description_note"] = (
+        "The bug description was not used as source code. Include the exact compiler/interpreter error and reproduction steps in the report."
+        if description
+        else ""
+    )
     return result

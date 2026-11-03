@@ -10,7 +10,7 @@ Auto Bug Triage is a Laravel web app for collecting software bug reports and org
 4. The Python agent runs local heuristics: code-pattern checks, keyword-based feature and priority classification, word-frequency cosine similarity for duplicate detection, and a skills/language/workload score for assignment.
 5. Laravel saves the report and its complete triage result. Non-duplicate assignments increment the developer's active-task count. Managers and developers can update report status from the workspace.
 
-The triage agent currently uses local rules and text matching; it does not call an external AI/LLM service. Code checks cover selected patterns and are suggestions, not a compiler or guaranteed fix. Duplicate similarity is a lexical estimate and should be reviewed by a person. A selected language is accepted for analysis context; `auto` does not perform reliable language detection.
+The triage agent uses local checks and text matching; it does not call an external AI/LLM service. Code diagnosis parses Python with Python's AST, checks PHP with `php -l`, JavaScript with `node --check`, and TypeScript with `tsc --noEmit` when those tools are installed. Auto mode uses simple source-pattern detection. C, C++, Java and SQL are identified when possible, but do not currently receive syntax validation. No submitted program is executed, and no automatic fix is generated. A syntax pass does not establish logical correctness, runtime behavior or security. Duplicate similarity is a lexical estimate and should be reviewed by a person.
 
 ## Requirements
 
