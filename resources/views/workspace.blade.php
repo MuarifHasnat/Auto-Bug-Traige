@@ -274,7 +274,7 @@
                                         $prioritySymbol = $bug->priority === 'High' ? '🔥 ▲ High' : ($bug->priority === 'Low' ? '▼ Low' : '● Medium');
                                     @endphp
                                     <!-- 4-Layer Card Anatomy with 4px Left Accent Strip & Tooltips -->
-                                    <article class="bug-card rounded-2xl border border-[#E2E8F0] {{ $priorityClass }} bg-white p-4 shadow-xs card-hover-lift cursor-pointer transition"
+                                    <article id="bug-{{ $bug->id }}" class="bug-card rounded-2xl border border-[#E2E8F0] {{ $priorityClass }} bg-white p-4 shadow-xs card-hover-lift cursor-pointer transition"
                                              data-assignee="{{ $bug->assigned_to }}"
                                              data-duplicate="{{ $bug->is_duplicate ? 'true' : 'false' }}"
                                              onclick="openDrawer({{ $bug->id }})">

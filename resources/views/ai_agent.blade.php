@@ -253,27 +253,37 @@
                         <!-- State 2: Result State (4 Human-in-the-Loop Sections) -->
                         <div class="space-y-4 animate-fade-in flex-1">
                             
-                            <!-- Section A: AI Triage Pipeline Bar with Confidence Gauge -->
+                            <!-- Section A: Triage summary -->
                             <div class="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/60 to-purple-50/60 p-4">
-                                <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-                                    <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
                                         <span class="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-bold text-[#0052cc] font-mono-code">
-                                            {{ $ai['code_help']['language'] ?? 'Auto' }}
+                                            Language: {{ $ai['code_help']['language'] ?? 'Auto (not detected)' }}
                                         </span>
                                         <span class="rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-xs font-bold text-purple-700">
-                                            Module: {{ $ai['code_help']['feature'] ?? 'General' }}
+                                            Feature: {{ $ai['code_help']['feature'] ?? 'General' }}
+                                        </span>
+                                        <span class="rounded-lg border px-2.5 py-1 text-xs font-bold {{ ($ai['status'] ?? 'Open') === 'Duplicate' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' }}">
+                                            Status: {{ $ai['status'] ?? 'Open' }}
                                         </span>
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs font-bold text-indigo-950 font-mono-code">
-                                            {{ number_format(($ai['code_help']['confidence'] ?? 0.94) * 100) }}% Confidence
-                                        </span>
+                                    <span class="text-[10px] font-semibold text-indigo-800">Rule-based estimate · review before acting</span>
+                                </div>
+                                @if(!empty($ai['is_duplicate']))
+                                    <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                                        <p class="font-bold">Possible duplicate · {{ $ai['similarity_score'] ?? 0 }}% text similarity</p>
+                                        <p class="mt-1">Matched existing report
+                                            @if(!empty($ai['duplicate_of']))
+                                                <a class="font-bold underline" href="/workspace#bug-{{ $ai['duplicate_of'] }}">#ABT-{{ $ai['duplicate_of'] }}</a>.
+                                            @else
+                                                in this project.
+                                            @endif
+                                            Please compare the reports before closing either one.
+                                        </p>
                                     </div>
-                                </div>
-                                <!-- Confidence Gauge Bar -->
-                                <div class="h-2 w-full rounded-full bg-indigo-200/60 overflow-hidden">
-                                    <div class="h-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600" style="width: {{ max(10, ($ai['code_help']['confidence'] ?? 0.94) * 100) }}%"></div>
-                                </div>
+                                @else
+                                    <p class="mt-3 text-xs text-indigo-900">No duplicate found in the current project reports ({{ $ai['similarity_score'] ?? 0 }}% best text match).</p>
+                                @endif
                             </div>
 
                             <!-- Section B: Root Cause & Error Diagnosis Box -->
