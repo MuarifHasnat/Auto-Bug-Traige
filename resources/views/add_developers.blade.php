@@ -22,6 +22,7 @@
                     <span class="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-mono-code font-bold text-slate-600">
                         Step 2 / 3: Skill Matrix
                     </span>
+                    @include('components.project-switcher', ['variant' => 'light'])
                 </div>
             </div>
 

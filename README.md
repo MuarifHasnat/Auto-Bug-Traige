@@ -56,6 +56,8 @@ Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run
 - **Tester:** submits bug reports and reviews the triage output.
 - **Developer:** reviews assigned reports in the workspace and updates their status.
 
+Managers can switch among projects they own. Testers and developers can switch among projects where they are listed as members. The selected project is saved in the session and checked against that user's current access on every project-scoped request.
+
 ## Main code locations
 
 - `routes/web.php` — web routes and authentication-protected pages.

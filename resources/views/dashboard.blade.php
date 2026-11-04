@@ -29,6 +29,7 @@
             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Workspace</p>
             <p class="mt-1 truncate font-bold text-white text-xs">{{ session('project_name', 'Software Project') }}</p>
             <p class="mt-0.5 truncate text-[10px] text-indigo-300 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
+            @include('components.project-switcher', ['variant' => 'dark'])
         </div>
 
         <!-- Navigation with Active Indicator Pill -->
@@ -100,6 +101,7 @@
 
             <!-- Right Live Status Pill -->
             <div class="flex items-center gap-3">
+                @include('components.project-switcher', ['variant' => 'mobile'])
                 <div class="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
                     <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="font-mono-code">Python Triage Agent: Ready</span>

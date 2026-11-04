@@ -97,7 +97,11 @@ class BugController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $request->session()->put([...$data, 'project_id' => $project]);
+        $request->session()->put([
+            'project_name' => $data['project_name'],
+            'project_stack' => $data['project_stack'],
+            'project_id' => $project,
+        ]);
 
         return redirect('/add-developers');
     }
@@ -107,6 +111,7 @@ class BugController extends Controller
         abort_unless(Auth::user()?->role === 'manager', 403);
 
         $projectId = $this->currentProjectId();
+        $projects = $this->accessibleProjects();
         $developers = DB::table('developers')->where('project_id', $projectId)->orderBy('name')->get();
         $teamMembers = \App\Models\User::query()
             ->whereIn('role', ['tester', 'developer'])
@@ -114,7 +119,26 @@ class BugController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'role']);
 
-        return view('add_developers', compact('developers', 'teamMembers'));
+        return view('add_developers', [
+            'developers' => $developers,
+            'teamMembers' => $teamMembers,
+            'projects' => $projects,
+            'currentProjectId' => $projectId,
+        ]);
+    }
+
+    public function switchProject(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'project_id' => ['required', 'integer'],
+        ]);
+
+        $project = $this->accessibleProjects()->firstWhere('id', (int) $data['project_id']);
+        abort_unless($project, 403, 'You are not assigned to that project.');
+
+        $this->setCurrentProject($request, $project);
+
+        return back()->with('success', 'Switched to '.$project->name.'.');
     }
 
     public function storeDeveloper(Request $request): RedirectResponse
@@ -265,7 +289,11 @@ class BugController extends Controller
                 return $bug;
             });
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs'));
+        $projects = $this->accessibleProjects();
+
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects') + [
+            'currentProjectId' => $projectId,
+        ]);
     }
 
     public function dashboardPage(): View
@@ -282,7 +310,11 @@ class BugController extends Controller
         $recentBugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(8)->get();
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->limit(6)->get();
 
-        return view('dashboard', compact('stats', 'recentBugs', 'developers'));
+        $projects = $this->accessibleProjects();
+
+        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects') + [
+            'currentProjectId' => $projectId,
+        ]);
     }
 
     public function aiAgentPage(Request $request): View
@@ -306,7 +338,11 @@ class BugController extends Controller
         }
         $mode = Auth::user()->role === 'developer' ? 'developer' : 'tester';
 
-        return view('ai_agent', compact('bugs', 'assignedBugs', 'mode'));
+        $projects = $this->accessibleProjects();
+
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'mode', 'projects') + [
+            'currentProjectId' => $projectId,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -432,23 +468,36 @@ class BugController extends Controller
 
     private function currentProjectId(): int
     {
-        $projectId = session('project_id');
-        if ($projectId && DB::table('projects')->where('id', $projectId)->where('manager_id', Auth::id())->exists()) {
-            return (int) $projectId;
-        }
+        $projects = $this->accessibleProjects();
+        abort_unless($projects->isNotEmpty(), 403, 'You are not assigned to a project.');
 
-        $project = Auth::user()->role === 'manager'
-            ? DB::table('projects')->where('manager_id', Auth::id())->oldest('id')->first()
-            : DB::table('projects')
-                ->join('project_members', 'projects.id', '=', 'project_members.project_id')
-                ->where('project_members.user_id', Auth::id())
-                ->oldest('projects.id')
-                ->select('projects.*')
-                ->first();
-
-        abort_unless($project, 403, 'You are not assigned to a project.');
-        session(['project_id' => $project->id, 'project_name' => $project->name, 'project_stack' => $project->stack]);
+        $project = $projects->firstWhere('id', (int) session('project_id')) ?? $projects->first();
+        $this->setCurrentProject(request(), $project);
 
         return (int) $project->id;
+    }
+
+    private function accessibleProjects()
+    {
+        $query = DB::table('projects')->select('projects.id', 'projects.name', 'projects.stack');
+
+        if (Auth::user()->role === 'manager') {
+            return $query->where('projects.manager_id', Auth::id())->orderBy('projects.name')->get();
+        }
+
+        return $query
+            ->join('project_members', 'projects.id', '=', 'project_members.project_id')
+            ->where('project_members.user_id', Auth::id())
+            ->orderBy('projects.name')
+            ->get();
+    }
+
+    private function setCurrentProject(Request $request, object $project): void
+    {
+        $request->session()->put([
+            'project_id' => $project->id,
+            'project_name' => $project->name,
+            'project_stack' => $project->stack,
+        ]);
     }
 }

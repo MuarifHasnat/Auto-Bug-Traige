@@ -11,6 +11,7 @@ Route::post('/login', [BugController::class, 'handleLogin']);
 Route::middleware('auth')->group(function () {
     Route::get('/create-project', [BugController::class, 'createProjectPage']);
     Route::post('/create-project', [BugController::class, 'handleCreateProject']);
+    Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);
     Route::post('/team-members', [BugController::class, 'addTeamMember']);
