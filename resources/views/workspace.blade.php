@@ -376,6 +376,8 @@
                                              data-feat="{{ $feat }}"
                                              data-error="{{ $triage['code_help']['error_name'] ?? 'Analysis complete' }}"
                                              data-scope="{{ $triage['code_help']['analysis_scope'] ?? 'This limited static check does not prove the code is correct.' }}"
+                                             data-syntax-status="{{ $triage['code_help']['syntax_status'] ?? 'unknown' }}"
+                                             data-syntax-checker="{{ $triage['code_help']['syntax_checker'] ?? '' }}"
                                              data-steps="{{ json_encode($triage['code_help']['steps'] ?? []) }}"
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
@@ -464,7 +466,9 @@
             <div id="tabTriage" class="hidden space-y-4">
                 <div class="rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-800">
                     <p class="font-bold">Code Validation Result:</p>
+                    <p id="drawerSyntaxStatus" class="mt-1 font-bold"></p>
                     <p id="drawerError" class="mt-1 font-mono-code"></p>
+                    <p id="drawerSyntaxChecker" class="mt-1"></p>
                     <p id="drawerScope" class="mt-2"></p>
                 </div>
                 <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-900">
@@ -536,6 +540,10 @@
                     : 'Unassigned';
             }
             document.getElementById('drawerError').innerText = data.getAttribute('data-error');
+            const syntaxStatus = data.getAttribute('data-syntax-status') || 'unknown';
+            const syntaxLabels = { passed: 'Syntax check passed', failed: 'Syntax errors found', timeout: 'Checker timed out', not_available: 'Checker unavailable', not_run: 'Check not run', unknown: 'Check status unknown' };
+            document.getElementById('drawerSyntaxStatus').innerText = syntaxLabels[syntaxStatus] || 'Check status unknown';
+            document.getElementById('drawerSyntaxChecker').innerText = data.getAttribute('data-syntax-checker') ? `Checker: ${data.getAttribute('data-syntax-checker')}` : '';
             document.getElementById('drawerScope').innerText = data.getAttribute('data-scope');
             document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No fixed code provided.';

@@ -7,6 +7,7 @@ program is never run. Unsupported languages receive a clear scope message.
 import ast
 import os
 import re
+import sqlite3
 import shutil
 import subprocess
 import tempfile
@@ -33,10 +34,14 @@ def detect_language(code):
     lower = source.lower()
     if "<?php" in lower or re.search(r"\$[a-z_]\w*", source):
         return "PHP"
-    if re.search(r"^\s*#include\s*[<\"]", source, re.MULTILINE) or "std::" in source or "cout" in source:
+    if "std::" in source or re.search(r"\b(cout|cin|vector|namespace)\b", source) or re.search(
+        r"^\s*#\s*include\s*[<\"](?:iostream|vector|string|map|memory|algorithm)", source, re.MULTILINE
+    ):
         return "C++"
-    if re.search(r"\bprintf\s*\(", source):
+    if re.search(r"^\s*#\s*include\s*[<\"](?:stdio\.h|stdlib\.h|string\.h|math\.h|stdbool\.h)", source, re.MULTILINE) or re.search(r"\bprintf\s*\(", source):
         return "C"
+    if re.search(r"^\s*#include\s*[<\"]", source, re.MULTILINE):
+        return "C++"
     if re.search(r"\b(interface|type)\s+\w+|:\s*(string|number|boolean)\b", source):
         return "TypeScript"
     if re.search(r"\b(def|class|from|import)\s+\w+|\bprint\s*\(", source):
@@ -51,8 +56,19 @@ def detect_language(code):
 
 
 def _diagnostic_result(language, source, status, message, steps=None):
+    checker_names = {
+        "Python": "Python AST",
+        "PHP": "php -l",
+        "JavaScript": "Node.js --check",
+        "TypeScript": "TypeScript tsc --noEmit",
+        "C": "GCC or Clang -fsyntax-only",
+        "C++": "G++ or Clang++ -fsyntax-only",
+        "Java": "javac (annotation processing disabled)",
+        "SQL": "Python sqlite3 parser (SQLite dialect)",
+    }
     return {
         "language": language,
+        "syntax_checker": checker_names.get(language),
         "error_name": message,
         "syntax_status": status,
         "steps": steps or [message],
@@ -70,12 +86,18 @@ def _external_syntax_check(language, source):
         "PHP": ("php", ".php", lambda exe, path: [exe, "-l", path]),
         "JavaScript": ("node", ".js", lambda exe, path: [exe, "--check", path]),
         "TypeScript": ("tsc", ".ts", lambda exe, path: [exe, "--noEmit", "--pretty", "false", path]),
+        "C": (("gcc", "clang"), ".c", lambda exe, path: [exe, "-std=c11", "-fsyntax-only", path]),
+        "C++": (("g++", "clang++"), ".cpp", lambda exe, path: [exe, "-std=c++17", "-fsyntax-only", path]),
     }
+    if language == "Java":
+        return _java_syntax_check(source)
+
     spec = commands.get(language)
     if not spec:
         return None
 
-    executable = shutil.which(spec[0])
+    candidates = spec[0] if isinstance(spec[0], tuple) else (spec[0],)
+    executable = next((shutil.which(candidate) for candidate in candidates if shutil.which(candidate)), None)
     if not executable:
         return None
 
@@ -102,9 +124,76 @@ def _external_syntax_check(language, source):
         return "unavailable", f"Could not start the {language} syntax checker."
 
     output = (completed.stdout + "\n" + completed.stderr).strip()
+    output = output.replace(temp_path, "<snippet>")
     if completed.returncode == 0:
-        return "passed", output or f"The {language} parser accepted the snippet."
+        return "passed", f"Checker: {Path(executable).name}. " + (output or f"The {language} parser accepted the snippet.")
     return "failed", output[:1200] or f"The {language} parser rejected the snippet."
+
+
+def _java_syntax_check(source):
+    executable = shutil.which("javac")
+    if not executable:
+        return None
+
+    # javac requires a public top-level class to match its source filename.
+    class_match = re.search(
+        r"\bpublic\s+(?:(?:abstract|final|sealed)\s+)*(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)",
+        source,
+    )
+    source_name = f"{class_match.group(1)}.java" if class_match else "Snippet.java"
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_path = Path(temp_dir) / source_name
+            source_path.write_text(source, encoding="utf-8")
+            completed = subprocess.run(
+                [executable, "-proc:none", "-Xlint:none", "-d", temp_dir, str(source_path)],
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+                env={**os.environ, "NO_COLOR": "1"},
+            )
+            output = (completed.stdout + "\n" + completed.stderr).strip().replace(str(source_path), "<snippet>")
+    except subprocess.TimeoutExpired:
+        return "timeout", "Java compilation check timed out after 8 seconds."
+    except OSError:
+        return "unavailable", "Could not start javac."
+
+    if completed.returncode == 0:
+        return "passed", "Checker: javac. Java compilation check passed; annotation processing was disabled and the program was not run."
+    return "failed", output[:1200] or "javac rejected the snippet."
+
+
+def _sqlite_sql_syntax_check(source):
+    """Ask SQLite's parser to compile each statement without executing it."""
+    statements = []
+    pending = ""
+    for line in source.splitlines(keepends=True):
+        pending += line
+        if sqlite3.complete_statement(pending):
+            if pending.strip():
+                statements.append(pending.strip())
+            pending = ""
+    if pending.strip():
+        statements.append(pending.strip())
+    if not statements:
+        return "failed", "SQL syntax check failed: no complete SQL statement was found."
+
+    schema_only_errors = ("no such table:", "no such column:", "ambiguous column name:", "no such function:")
+    try:
+        with sqlite3.connect(":memory:") as connection:
+            for statement in statements:
+                try:
+                    connection.execute("EXPLAIN " + statement)
+                except sqlite3.Error as error:
+                    detail = str(error)
+                    if any(detail.lower().startswith(prefix) for prefix in schema_only_errors):
+                        continue
+                    return "failed", f"SQLite SQL parser rejected the statement: {detail}"
+    except sqlite3.Error as error:
+        return "failed", f"SQLite SQL parser rejected the statement: {error}"
+
+    return "passed", "Checker: Python sqlite3 (SQLite dialect). SQL statements parsed without execution; schema-dependent name resolution is not checked."
 
 
 def check_code_error(code, description, selected_language="auto"):
@@ -133,7 +222,7 @@ def check_code_error(code, description, selected_language="auto"):
                 [f"{location}: {detail}", "No automatic code change was made; review the reported location and rerun the check."],
             )
     else:
-        checked = _external_syntax_check(language, source)
+        checked = _sqlite_sql_syntax_check(source) if language == "SQL" else _external_syntax_check(language, source)
         if checked:
             status, details = checked
             if status == "passed":
@@ -153,7 +242,11 @@ def check_code_error(code, description, selected_language="auto"):
                 "not_available",
                 f"Syntax validation unavailable for {language}",
                 [
-                    f"No supported syntax checker is available for {language} in this runtime, or the language is not supported by this checker.",
+                    {
+                        "C": "No C compiler was found. Install GCC or Clang to enable -fsyntax-only checks.",
+                        "C++": "No C++ compiler was found. Install G++ or Clang++ to enable -fsyntax-only checks.",
+                        "Java": "javac was not found. Install a JDK to enable Java compilation checks.",
+                    }.get(language, f"No supported syntax checker is available for {language} in this runtime."),
                     "The snippet is shown unchanged. This agent does not infer a fix for this language or for logic/runtime errors.",
                 ],
             )

@@ -243,7 +243,7 @@
                     <div class="border-b border-[#E2E8F0] pb-4 mb-4 flex items-center justify-between">
                         <div>
                             <h2 class="text-base font-bold text-[#0F172A]">AI Diagnostic & Auto-Fix Studio</h2>
-                            <p class="text-xs text-[#64748B]">Real-time pipeline diagnostics, AST parser output, and code patch generator.</p>
+                            <p class="text-xs text-[#64748B]">Language-specific syntax checks, triage results, and suggested code references.</p>
                         </div>
                         <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold text-indigo-700 font-mono-code">
                             Diagnostics Engine
@@ -289,15 +289,19 @@
                             </div>
 
                             <!-- Section B: Root Cause & Error Diagnosis Box -->
+                            @php($syntaxStatus = $ai['code_help']['syntax_status'] ?? 'unknown')
+                            @php($syntaxStatusLabel = ['passed' => 'Check passed', 'failed' => 'Syntax errors', 'timeout' => 'Check timed out', 'not_available' => 'Checker unavailable', 'not_run' => 'Check not run'][$syntaxStatus] ?? 'Check status unknown')
+                            @php($syntaxStatusClass = ['passed' => 'bg-emerald-100 text-emerald-800', 'failed' => 'bg-red-100 text-red-800', 'timeout' => 'bg-amber-100 text-amber-800', 'not_available' => 'bg-amber-100 text-amber-800', 'not_run' => 'bg-slate-100 text-slate-700'][$syntaxStatus] ?? 'bg-slate-100 text-slate-700')
                             <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-4 text-xs">
                                 <div class="flex items-center justify-between mb-1">
                                     <div class="flex items-center gap-2 text-rose-800 font-bold">
                                         <span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse"></span>
                                         <span>Code Validation Result</span>
                                     </div>
-                                    <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">
-                                        {{ $ai['priority'] ?? 'Medium' }} Priority
-                                    </span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold {{ $syntaxStatusClass }}">{{ $syntaxStatusLabel }}</span>
+                                        <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">{{ $ai['priority'] ?? 'Medium' }} Priority</span>
+                                    </div>
                                 </div>
                                 <p class="font-mono-code text-xs font-bold text-rose-900 mt-1">
                                     ● {{ $ai['code_help']['error_name'] ?? 'Analysis complete' }}
@@ -308,6 +312,9 @@
                                 <p class="text-[11px] text-rose-700 mt-1">
                                     {{ $ai['code_help']['analysis_scope'] ?? 'This result is a limited static check; it does not prove the code is correct.' }}
                                 </p>
+                                @if(!empty($ai['code_help']['syntax_checker']))
+                                    <p class="text-[11px] text-rose-700 mt-1">Checker: {{ $ai['code_help']['syntax_checker'] }}</p>
+                                @endif
                                 @if(!empty($ai['code_help']['description_note']))
                                     <p class="text-[11px] text-rose-700 mt-1">{{ $ai['code_help']['description_note'] }}</p>
                                 @endif
@@ -407,7 +414,7 @@
                             <div class="grid grid-cols-2 gap-3 mt-6 w-full max-w-md text-left">
                                 <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
                                     <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-[10px] font-bold mb-1.5">1</span>
-                                    <p class="text-xs font-bold text-[#0F172A]">AST Syntax Parsing</p>
+                                    <p class="text-xs font-bold text-[#0F172A]">Language Syntax Check</p>
                                     <p class="text-[10px] text-[#64748B] mt-0.5">Scans code tokens & exception signatures</p>
                                 </div>
                                 <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
