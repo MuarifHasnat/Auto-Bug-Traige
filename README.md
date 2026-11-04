@@ -10,6 +10,8 @@ Auto Bug Triage is a Laravel web app for collecting software bug reports and org
 4. The Python agent runs local heuristics: code-pattern checks, keyword-based feature and priority classification, word-frequency cosine similarity for duplicate detection, and a skills/language/workload score for assignment.
 5. Laravel saves the report and its complete triage result. Non-duplicate assignments increment the developer's active-task count. Managers and developers can update report status from the workspace.
 
+The workspace bug details drawer includes an Activity tab with the bug's creation, status changes and assignment changes, including who made each change and when. Managers can reassign a bug from the Details tab; status and assignment history is recorded with the old and new values.
+
 The triage agent uses local checks and text matching; it does not call an external AI/LLM service. Code diagnosis parses Python with Python's AST, checks PHP with `php -l`, JavaScript with `node --check`, and TypeScript with `tsc --noEmit` when those tools are installed. Auto mode uses simple source-pattern detection. C, C++, Java and SQL are identified when possible, but do not currently receive syntax validation. No submitted program is executed, and no automatic fix is generated. A syntax pass does not establish logical correctness, runtime behavior or security. Duplicate similarity is a lexical estimate and should be reviewed by a person.
 
 ## Requirements
@@ -52,7 +54,7 @@ Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run
 
 ## Roles
 
-- **Manager:** creates projects, manages team profiles, views project dashboard and updates bug status.
+- **Manager:** creates projects, manages team profiles, views project dashboard, updates bug status and reassigns bugs.
 - **Tester:** submits bug reports and reviews the triage output.
 - **Developer:** reviews assigned reports in the workspace and updates their status.
 
@@ -64,7 +66,7 @@ Managers can switch among projects they own. Testers and developers can switch a
 - `app/Http/Controllers/BugController.php` — project/team flows and bug persistence/triage invocation.
 - `agent/triage.py` — Python triage pipeline; supporting rules are in the other `agent/*.py` modules.
 - `resources/views/` — Blade user interface.
-- `database/migrations/` — users, projects, members, developers, bugs and triage schema.
+- `database/migrations/` — users, projects, members, developers, bugs, triage and bug activity history schema.
 
 ## Deployment
 

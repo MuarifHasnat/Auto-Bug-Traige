@@ -270,6 +270,7 @@
                                         $triage = json_decode($bug->triage_result ?? '', true);
                                         $hasAi = !empty($triage['code_help']);
                                         $feat = $triage['code_help']['feature'] ?? ($bug->detected_feature ?? 'Module');
+                                        $activity = $bugActivity->get($bug->id, collect())->values()->all();
                                         
                                         // Priority Strip Class
                                         $priorityClass = $bug->priority === 'High' ? 'priority-strip-high' : ($bug->priority === 'Low' ? 'priority-strip-low' : 'priority-strip-medium');
@@ -378,6 +379,7 @@
                                              data-steps="{{ json_encode($triage['code_help']['steps'] ?? []) }}"
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
+                                             data-history="{{ json_encode($activity) }}"
                                              data-reason="{{ $triage['code_help']['assignment_reason'] ?? 'Matched developer tech stack keywords.' }}">
                                         </div>
                                     </div>
@@ -412,7 +414,7 @@
             </button>
         </div>
 
-        <!-- 3 Drawer Tabs -->
+        <!-- Bug detail tabs -->
         <div class="flex border-b border-[#E2E8F0] bg-white text-xs font-bold text-[#64748B]">
             <button type="button" onclick="switchDrawerTab('tabDetails')" id="btnTabDetails" class="flex-1 py-3 border-b-2 border-indigo-600 text-indigo-600 transition text-center">
                 1. Details
@@ -422,6 +424,9 @@
             </button>
             <button type="button" onclick="switchDrawerTab('tabPatch')" id="btnTabPatch" class="flex-1 py-3 border-b-2 border-transparent hover:text-[#0F172A] transition text-center">
                 3. Code Reference
+            </button>
+            <button type="button" onclick="switchDrawerTab('tabActivity')" id="btnTabActivity" class="flex-1 py-3 border-b-2 border-transparent hover:text-[#0F172A] transition text-center">
+                4. Activity
             </button>
         </div>
 
@@ -437,6 +442,22 @@
                     <p><b>Feature Module:</b> <span id="drawerFeature" class="font-bold text-purple-700"></span></p>
                     <p><b>Assigned Developer:</b> <span id="drawerAssignee" class="font-bold text-indigo-600"></span></p>
                 </div>
+                @if(auth()->user()->role === 'manager')
+                    <form id="reassignBugForm" action="{{ route('bugs.reassign') }}" method="POST" class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-2" onclick="event.stopPropagation()">
+                        @csrf
+                        <input type="hidden" name="id" id="reassignBugId">
+                        <label for="reassignDeveloper" class="block text-xs font-bold text-indigo-950">Reassign bug</label>
+                        <div class="flex gap-2">
+                            <select id="reassignDeveloper" name="assigned_to" class="min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs text-slate-800">
+                                <option value="Unassigned">Unassigned</option>
+                                @foreach($developers as $developer)
+                                    <option value="{{ $developer->name }}">{{ $developer->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500">Save</button>
+                        </div>
+                    </form>
+                @endif
             </div>
 
             <!-- Tab 2: AI Triage Report with Interactive Checkbox Checklist -->
@@ -483,6 +504,14 @@
                               class="w-full min-h-[180px] rounded-xl bg-slate-950 p-4 font-mono-code text-xs leading-5 text-indigo-300 border border-slate-800 focus:outline-none"></textarea>
                 </div>
             </div>
+
+            <div id="tabActivity" class="hidden space-y-3">
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-[#64748B]">Status & assignment history</h4>
+                    <p class="mt-1 text-[11px] text-slate-500">New changes are recorded with the acting user's name and time.</p>
+                </div>
+                <ol id="drawerActivityList" class="space-y-3"></ol>
+            </div>
         </div>
     </div>
 
@@ -497,11 +526,55 @@
             document.getElementById('drawerDesc').innerText = data.getAttribute('data-desc');
             document.getElementById('drawerFeature').innerText = data.getAttribute('data-feat');
             document.getElementById('drawerAssignee').innerText = data.getAttribute('data-assignee');
+            const reassignBugId = document.getElementById('reassignBugId');
+            const reassignDeveloper = document.getElementById('reassignDeveloper');
+            if (reassignBugId && reassignDeveloper) {
+                reassignBugId.value = data.getAttribute('data-id');
+                const currentAssignee = data.getAttribute('data-assignee') || 'Unassigned';
+                reassignDeveloper.value = Array.from(reassignDeveloper.options).some(option => option.value === currentAssignee)
+                    ? currentAssignee
+                    : 'Unassigned';
+            }
             document.getElementById('drawerError').innerText = data.getAttribute('data-error');
             document.getElementById('drawerScope').innerText = data.getAttribute('data-scope');
             document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No fixed code provided.';
             document.getElementById('drawerDiff').value = data.getAttribute('data-diff') || '// No diff available.';
+
+            const activityList = document.getElementById('drawerActivityList');
+            activityList.innerHTML = '';
+            try {
+                const activity = JSON.parse(data.getAttribute('data-history') || '[]');
+                activity.forEach((event) => {
+                    const item = document.createElement('li');
+                    item.className = 'rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs';
+                    const label = event.event_type === 'created' ? 'Bug created' : (event.event_type === 'status_changed' ? 'Status changed' : 'Assignment changed');
+                    const detail = event.event_type === 'created'
+                        ? (event.to_value || '')
+                        : `${event.from_value || '—'} → ${event.to_value || '—'}`;
+                    const heading = document.createElement('p');
+                    heading.className = 'font-bold text-slate-900';
+                    heading.textContent = label;
+                    const change = document.createElement('p');
+                    change.className = 'mt-1 text-slate-700';
+                    change.textContent = detail;
+                    const meta = document.createElement('p');
+                    meta.className = 'mt-2 text-[10px] text-slate-500';
+                    const timestamp = new Date((event.created_at || '').replace(' ', 'T'));
+                    const timeLabel = Number.isNaN(timestamp.getTime()) ? event.created_at : timestamp.toLocaleString();
+                    meta.textContent = `${event.actor_name} · ${timeLabel}`;
+                    item.append(heading, change, meta);
+                    activityList.appendChild(item);
+                });
+                if (activity.length === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'rounded-xl border border-dashed border-slate-300 p-4 text-xs text-slate-500';
+                    empty.textContent = 'No activity was recorded for this bug.';
+                    activityList.appendChild(empty);
+                }
+            } catch (error) {
+                activityList.textContent = 'Activity history could not be loaded.';
+            }
 
             // Priority pill
             const priority = data.getAttribute('data-priority');
@@ -540,16 +613,16 @@
         }
 
         function switchDrawerTab(tabId) {
-            ['tabDetails', 'tabTriage', 'tabPatch'].forEach(id => {
+            ['tabDetails', 'tabTriage', 'tabPatch', 'tabActivity'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
-            ['btnTabDetails', 'btnTabTriage', 'btnTabPatch'].forEach(id => {
+            ['btnTabDetails', 'btnTabTriage', 'btnTabPatch', 'btnTabActivity'].forEach(id => {
                 document.getElementById(id).classList.remove('border-indigo-600', 'text-indigo-600');
                 document.getElementById(id).classList.add('border-transparent');
             });
 
             document.getElementById(tabId).classList.remove('hidden');
-            const activeBtn = tabId === 'tabDetails' ? 'btnTabDetails' : (tabId === 'tabTriage' ? 'btnTabTriage' : 'btnTabPatch');
+            const activeBtn = ({ tabDetails: 'btnTabDetails', tabTriage: 'btnTabTriage', tabPatch: 'btnTabPatch', tabActivity: 'btnTabActivity' })[tabId];
             document.getElementById(activeBtn).classList.add('border-indigo-600', 'text-indigo-600');
             document.getElementById(activeBtn).classList.remove('border-transparent');
         }

@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
     Route::post('/api/bugs/store', [BugController::class, 'store']);
     Route::post('/api/bugs/override', [BugController::class, 'override']);
+    Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
     Route::get('/logout', [BugController::class, 'logout']);
     Route::post('/logout', [BugController::class, 'logout']);
 });

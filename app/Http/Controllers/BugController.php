@@ -289,9 +289,16 @@ class BugController extends Controller
                 return $bug;
             });
 
+        $bugActivity = DB::table('bug_activities')
+            ->where('project_id', $projectId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['id', 'bug_id', 'event_type', 'from_value', 'to_value', 'actor_name', 'created_at'])
+            ->groupBy('bug_id');
+
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -412,27 +419,49 @@ class BugController extends Controller
 
         $isDuplicate = (bool) ($aiResult['is_duplicate'] ?? false);
         $assignedTo = $aiResult['assigned_to'] ?? 'Unassigned';
-        $bugId = DB::table('bugs')->insertGetId([
-            'project_id' => $projectId,
-            'title' => $data['title'],
-            'description' => $data['description'],
-            'priority' => $aiResult['priority'] ?? 'Medium',
-            'status' => $aiResult['status'] ?? ($isDuplicate ? 'Duplicate' : 'Open'),
-            'assigned_to' => $assignedTo,
-            'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
-            'duplicate_of' => $aiResult['duplicate_of'] ?? null,
-            'screenshot_path' => $screenshotPath,
-            'source_file_path' => $sourceFilePath,
-            'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
-            'detected_feature' => $aiResult['feature'] ?? null,
-            'triage_result' => json_encode($aiResult, JSON_THROW_ON_ERROR),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $priority = $aiResult['priority'] ?? 'Medium';
+        $status = $aiResult['status'] ?? ($isDuplicate ? 'Duplicate' : 'Open');
+        $bugId = DB::transaction(function () use (
+            $projectId,
+            $data,
+            $aiResult,
+            $isDuplicate,
+            $assignedTo,
+            $priority,
+            $status,
+            $screenshotPath,
+            $sourceFilePath,
+            $request
+        ) {
+            $bugId = DB::table('bugs')->insertGetId([
+                'project_id' => $projectId,
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'priority' => $priority,
+                'status' => $status,
+                'assigned_to' => $assignedTo,
+                'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
+                'duplicate_of' => $aiResult['duplicate_of'] ?? null,
+                'screenshot_path' => $screenshotPath,
+                'source_file_path' => $sourceFilePath,
+                'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
+                'detected_feature' => $aiResult['feature'] ?? null,
+                'triage_result' => json_encode($aiResult, JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        if (!$isDuplicate && $assignedTo !== 'Unassigned') {
-            DB::table('developers')->where('project_id', $projectId)->where('name', $assignedTo)->increment('active_tasks');
-        }
+            $this->recordBugActivity($projectId, $bugId, 'created', null, "Status: {$status}; Priority: {$priority}");
+            if ($assignedTo !== 'Unassigned') {
+                $this->recordBugActivity($projectId, $bugId, 'assignment_changed', 'Unassigned', $assignedTo);
+            }
+
+            if ($this->isActiveAssignment($isDuplicate, $status, $assignedTo)) {
+                DB::table('developers')->where('project_id', $projectId)->where('name', $assignedTo)->increment('active_tasks');
+            }
+
+            return $bugId;
+        });
 
         return redirect('/ai-agent')
             ->with('ai_result', $aiResult)
@@ -449,21 +478,111 @@ class BugController extends Controller
             'status' => ['required', 'in:Open,Duplicate,In Progress,Resolved,Closed'],
         ]);
         $projectId = $this->currentProjectId();
-        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->firstOrFail();
+        DB::transaction(function () use ($data, $projectId) {
+            $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->lockForUpdate()->firstOrFail();
+            if ($bug->status === $data['status']) {
+                return;
+            }
 
-        if (in_array($data['status'], ['Resolved', 'Closed'], true)
-            && !in_array($bug->status, ['Resolved', 'Closed'], true)
-            && $bug->assigned_to) {
-            DB::table('developers')->where('project_id', $projectId)->where('name', $bug->assigned_to)
-                ->where('active_tasks', '>', 0)->decrement('active_tasks');
-        }
+            $wasActive = $this->isActiveAssignment((bool) $bug->is_duplicate, $bug->status, $bug->assigned_to);
+            $willBeActive = $this->isActiveAssignment((bool) $bug->is_duplicate, $data['status'], $bug->assigned_to);
 
-        DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->update([
-            'status' => $data['status'],
-            'updated_at' => now(),
-        ]);
+            DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->update([
+                'status' => $data['status'],
+                'updated_at' => now(),
+            ]);
+
+            if ($wasActive && !$willBeActive) {
+                $this->changeDeveloperWorkload($projectId, $bug->assigned_to, -1);
+            } elseif (!$wasActive && $willBeActive) {
+                $this->changeDeveloperWorkload($projectId, $bug->assigned_to, 1);
+            }
+
+            $this->recordBugActivity($projectId, $bug->id, 'status_changed', $bug->status, $data['status']);
+        });
 
         return back()->with('success', 'Bug status updated.');
+    }
+
+    public function reassign(Request $request): RedirectResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+
+        $data = $request->validate([
+            'id' => ['required', 'integer'],
+            'assigned_to' => ['required', 'string', 'max:100'],
+        ]);
+        $projectId = $this->currentProjectId();
+
+        if ($data['assigned_to'] !== 'Unassigned'
+            && !DB::table('developers')->where('project_id', $projectId)->where('name', $data['assigned_to'])->exists()) {
+            return back()->withErrors(['assigned_to' => 'Choose a developer from the current project.']);
+        }
+
+        DB::transaction(function () use ($data, $projectId) {
+            $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->lockForUpdate()->firstOrFail();
+            $oldAssignee = $bug->assigned_to ?: 'Unassigned';
+            $newAssignee = $data['assigned_to'];
+            if ($oldAssignee === $newAssignee) {
+                return;
+            }
+
+            $isDuplicate = (bool) $bug->is_duplicate;
+            $wasActive = $this->isActiveAssignment($isDuplicate, $bug->status, $oldAssignee);
+            $willBeActive = $this->isActiveAssignment($isDuplicate, $bug->status, $newAssignee);
+
+            DB::table('bugs')->where('project_id', $projectId)->where('id', $bug->id)->update([
+                'assigned_to' => $newAssignee,
+                'updated_at' => now(),
+            ]);
+
+            if ($wasActive) {
+                $this->changeDeveloperWorkload($projectId, $oldAssignee, -1);
+            }
+            if ($willBeActive) {
+                $this->changeDeveloperWorkload($projectId, $newAssignee, 1);
+            }
+
+            $this->recordBugActivity($projectId, $bug->id, 'assignment_changed', $oldAssignee, $newAssignee);
+        });
+
+        return back()->with('success', 'Bug assignment updated.');
+    }
+
+    private function isActiveAssignment(bool $isDuplicate, string $status, ?string $assignee): bool
+    {
+        return !$isDuplicate
+            && !in_array($status, ['Duplicate', 'Resolved', 'Closed'], true)
+            && $assignee !== null
+            && $assignee !== ''
+            && $assignee !== 'Unassigned';
+    }
+
+    private function changeDeveloperWorkload(int $projectId, string $developerName, int $amount): void
+    {
+        $query = DB::table('developers')
+            ->where('project_id', $projectId)
+            ->where('name', $developerName);
+
+        if ($amount < 0) {
+            $query->where('active_tasks', '>', 0)->decrement('active_tasks');
+        } else {
+            $query->increment('active_tasks');
+        }
+    }
+
+    private function recordBugActivity(int $projectId, int $bugId, string $eventType, ?string $from, ?string $to): void
+    {
+        DB::table('bug_activities')->insert([
+            'project_id' => $projectId,
+            'bug_id' => $bugId,
+            'actor_id' => Auth::id(),
+            'actor_name' => Auth::user()->name,
+            'event_type' => $eventType,
+            'from_value' => $from,
+            'to_value' => $to,
+            'created_at' => now(),
+        ]);
     }
 
     private function currentProjectId(): int
