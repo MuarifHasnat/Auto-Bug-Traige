@@ -52,6 +52,31 @@ php artisan serve
 
 Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run dev` in a second terminal. Python triage is launched by Laravel when a tester submits a report; the `python3` executable must be available on `PATH`.
 
+### Demo data
+
+After configuring the local database, run `php artisan migrate --seed`. This creates a demo project, manager, tester, two developers, sample triaged bugs and activity history. Seeding is safe to repeat and does not clear existing tables; it is disabled when `APP_ENV=production`.
+
+All demo accounts use the password `demo-password`:
+
+| Role | Email |
+| --- | --- |
+| Manager | `demo-manager@example.test` |
+| Tester | `demo-tester@example.test` |
+| Developer | `demo.alice@example.test` or `demo.bob@example.test` |
+
+The tester can submit a report, developers can review and update assigned bugs, and the manager can manage the project and reassign bugs.
+
+### Automated checks
+
+Run the Laravel feature tests and Python triage checks with:
+
+```sh
+composer test
+python3 -m unittest discover -s tests/python -v
+```
+
+The feature suite uses an in-memory SQLite database and fakes the triage process, so it does not modify the local demo database or require syntax compilers to be installed.
+
 ## Roles
 
 - **Manager:** creates projects, manages team profiles, views project dashboard, updates bug status and reassigns bugs.

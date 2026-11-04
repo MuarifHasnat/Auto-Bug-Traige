@@ -396,18 +396,27 @@ class BugController extends Controller
             ->map(fn ($developer) => (array) $developer)
             ->all();
 
-        $payloadPath = storage_path('app/triage_payload.json');
-        file_put_contents($payloadPath, json_encode([
-            ...$data,
-            'code_snippet' => $analysisCode,
-            'selected_language' => $data['language'] ?? 'auto',
-            'attachment' => $attachment,
-            'past_bugs' => $pastBugs,
-            'developers' => $developers,
-        ], JSON_THROW_ON_ERROR));
+        $payloadPath = tempnam(storage_path('app'), 'triage_payload_');
+        if ($payloadPath === false) {
+            return back()->withErrors(['bug' => 'Could not prepare the report for triage.']);
+        }
 
-        $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-        $result = Process::run([$python, base_path('agent/triage.py'), $payloadPath]);
+        try {
+            file_put_contents($payloadPath, json_encode([
+                ...$data,
+                'code_snippet' => $analysisCode,
+                'selected_language' => $data['language'] ?? 'auto',
+                'attachment' => $attachment,
+                'past_bugs' => $pastBugs,
+                'developers' => $developers,
+            ], JSON_THROW_ON_ERROR));
+
+            $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            $result = Process::run([$python, base_path('agent/triage.py'), $payloadPath]);
+        } finally {
+            @unlink($payloadPath);
+        }
+
         if (!$result->successful()) {
             return back()->withErrors(['bug' => 'AI triage failed: '.$result->errorOutput()]);
         }
