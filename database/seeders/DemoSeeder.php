@@ -30,6 +30,23 @@ class DemoSeeder extends Seeder
             ->where('name', 'Demo Bug Tracker')
             ->value('id');
 
+        $workflowStatuses = [['To Do', false], ['In Progress', false], ['Review', false], ['Done', true], ['Duplicate', false]];
+        foreach ($workflowStatuses as $position => [$name, $isDone]) {
+            DB::table('project_workflow_statuses')->insertOrIgnore([
+                'project_id' => $projectId, 'name' => $name, 'position' => $position,
+                'is_done' => $isDone, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+        foreach ([
+            ['To Do', 'In Progress'], ['In Progress', 'To Do'], ['In Progress', 'Review'],
+            ['Review', 'In Progress'], ['Review', 'Done'], ['Done', 'To Do'],
+        ] as [$from, $to]) {
+            DB::table('project_workflow_transitions')->insertOrIgnore([
+                'project_id' => $projectId, 'from_status' => $from, 'to_status' => $to,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+
         foreach ([$tester, $alice, $bob] as $member) {
             DB::table('project_members')->updateOrInsert(
                 ['project_id' => $projectId, 'user_id' => $member->id],
@@ -61,7 +78,7 @@ class DemoSeeder extends Seeder
                 'title' => 'Dashboard cards overflow on mobile',
                 'description' => 'The summary cards extend beyond the viewport on small screens.',
                 'priority' => 'Medium',
-                'status' => 'Open',
+                'status' => 'To Do',
                 'assigned_to' => $bob->name,
                 'language' => 'JavaScript',
                 'code' => 'const cards = document.querySelectorAll(".summary-card");',
@@ -118,7 +135,7 @@ class DemoSeeder extends Seeder
                     'actor_name' => $tester->name,
                     'event_type' => 'created',
                     'from_value' => null,
-                    'to_value' => 'Status: Open; Priority: '.$bugData['priority'],
+                    'to_value' => 'Status: '.$bugData['status'].'; Priority: '.$bugData['priority'],
                     'created_at' => $now->copy()->subHours(3),
                 ], [
                     'project_id' => $projectId,
@@ -131,14 +148,14 @@ class DemoSeeder extends Seeder
                     'created_at' => $now->copy()->subHours(2),
                 ]];
 
-                if ($bugData['status'] !== 'Open') {
+                if ($bugData['status'] !== 'To Do') {
                     $activities[] = [
                         'project_id' => $projectId,
                         'bug_id' => $bugId,
                         'actor_id' => $alice->id,
                         'actor_name' => $alice->name,
                         'event_type' => 'status_changed',
-                        'from_value' => 'Open',
+                        'from_value' => 'To Do',
                         'to_value' => $bugData['status'],
                         'created_at' => $now->copy()->subHour(),
                     ];

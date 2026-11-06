@@ -22,6 +22,8 @@ class DemoSeederTest extends TestCase
         $this->assertSame(4, DB::table('users')->count());
         $this->assertSame(1, DB::table('projects')->where('name', 'Demo Bug Tracker')->count());
         $this->assertSame(2, DB::table('bugs')->where('project_id', $projectId)->count());
+        $this->assertSame(2, DB::table('bugs')->where('project_id', $projectId)->whereIn('status', ['To Do', 'In Progress'])->count());
+        $this->assertDatabaseHas('project_workflow_statuses', ['project_id' => $projectId, 'name' => 'To Do', 'position' => 0]);
         $this->assertSame(5, DB::table('bug_activities')->where('project_id', $projectId)->count());
         $this->assertDatabaseHas('users', ['email' => 'demo-manager@example.test', 'role' => 'manager']);
         $this->assertDatabaseHas('project_members', [

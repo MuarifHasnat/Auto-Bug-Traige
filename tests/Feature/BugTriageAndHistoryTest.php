@@ -43,6 +43,8 @@ class BugTriageAndHistoryTest extends TestCase
             ->post('/api/bugs/store', [
                 'title' => 'Checkout fails',
                 'description' => 'Checkout returns an error for valid cards.',
+                'issue_type' => 'Bug',
+                'labels' => 'api, checkout',
                 'language' => 'PHP',
                 'code_snippet' => '<?php echo "sample";',
             ])
@@ -53,6 +55,9 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertNotNull($bug);
         $this->assertSame('Dev One', $bug->assigned_to);
         $this->assertSame('High', $bug->priority);
+        $this->assertSame('To Do', $bug->status);
+        $this->assertSame('Bug', $bug->issue_type);
+        $this->assertSame(['api', 'checkout'], json_decode($bug->labels, true));
         $this->assertSame(1, (int) DB::table('developers')->where('project_id', $projectId)->where('name', 'Dev One')->value('active_tasks'));
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'created', 'actor_id' => $tester->id]);
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'assignment_changed', 'to_value' => 'Dev One']);
@@ -69,7 +74,7 @@ class BugTriageAndHistoryTest extends TestCase
             'title' => 'Old assignment',
             'description' => 'A bug that needs a new owner.',
             'priority' => 'Medium',
-            'status' => 'Open',
+            'status' => 'To Do',
             'assigned_to' => 'Dev One',
             'is_duplicate' => false,
             'created_at' => now(),
@@ -91,14 +96,27 @@ class BugTriageAndHistoryTest extends TestCase
             'to_value' => 'Dev Two',
         ]);
 
-        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Resolved'])->assertRedirect();
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'In Progress'])->assertRedirect();
 
         $this->assertDatabaseHas('bug_activities', [
             'bug_id' => $bugId,
             'actor_id' => $manager->id,
             'event_type' => 'status_changed',
-            'from_value' => 'Open',
-            'to_value' => 'Resolved',
+            'from_value' => 'To Do',
+            'to_value' => 'In Progress',
+        ]);
+        $this->assertDatabaseHas('developers', ['project_id' => $projectId, 'name' => 'Dev Two', 'active_tasks' => 1]);
+
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Review'])->assertRedirect();
+
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Done'])->assertRedirect();
+
+        $this->assertDatabaseHas('bug_activities', [
+            'bug_id' => $bugId,
+            'actor_id' => $manager->id,
+            'event_type' => 'status_changed',
+            'from_value' => 'Review',
+            'to_value' => 'Done',
         ]);
         $this->assertDatabaseHas('developers', ['project_id' => $projectId, 'name' => 'Dev Two', 'active_tasks' => 0]);
     }
@@ -113,6 +131,32 @@ class BugTriageAndHistoryTest extends TestCase
         $this->actingAs($developer)->withSession(['project_id' => $projectId])
             ->post('/api/bugs/store', [])->assertForbidden();
         $this->post('/api/bugs/reassign', [])->assertForbidden();
+    }
+
+    public function test_manager_can_configure_workflow_and_unlisted_moves_are_rejected(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $projectId = $this->createProject($manager, 'Workflow project');
+        $bugId = (int) DB::table('bugs')->insertGetId([
+            'project_id' => $projectId, 'title' => 'Workflow ticket', 'description' => 'Move through configured states.',
+            'priority' => 'Medium', 'status' => 'To Do', 'issue_type' => 'Task', 'assigned_to' => 'Unassigned',
+            'is_duplicate' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->withSession(['project_id' => $projectId])->post('/workflow', [
+            'statuses' => "To Do\nBuild\nReview\nDone\nDuplicate",
+            'done_statuses' => 'Done',
+            'transitions' => "To Do -> Build\nBuild -> Review\nReview -> Done\nDone -> To Do",
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Done'])->assertStatus(422);
+        $this->assertDatabaseHas('bugs', ['id' => $bugId, 'status' => 'To Do']);
+
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Build'])->assertRedirect();
+        $this->assertDatabaseHas('bugs', ['id' => $bugId, 'status' => 'Build']);
+        $this->assertDatabaseHas('project_workflow_transitions', [
+            'project_id' => $projectId, 'from_status' => 'Review', 'to_status' => 'Done',
+        ]);
     }
 
     private function createProject(User $manager, string $name): int
