@@ -47,6 +47,7 @@ class ProjectAndAccountFlowTest extends TestCase
         $this->assertDatabaseHas('project_members', ['project_id' => $projectId, 'user_id' => $testerId]);
         $this->assertDatabaseHas('project_members', ['project_id' => $projectId, 'user_id' => $developerId]);
         $this->assertDatabaseHas('developers', ['project_id' => $projectId, 'name' => 'Dev One', 'skills' => 'php laravel api']);
+        $this->assertDatabaseHas('developers', ['project_id' => $projectId, 'name' => 'Dev One', 'capacity' => 5]);
 
         $tester = User::findOrFail($testerId);
         $developer = User::findOrFail($developerId);

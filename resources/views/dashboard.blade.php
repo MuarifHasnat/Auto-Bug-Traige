@@ -222,27 +222,18 @@
                 </div>
             </div>
 
-            <!-- Middle Row: AI Efficiency Banner Card -->
-            <div class="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-blue-50/80 p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3.5">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white text-xl shadow-md shadow-indigo-600/30">
-                        🤖
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-indigo-950">AI Triage Efficiency Summary</h3>
-                        <p class="text-xs text-indigo-800/80 mt-0.5">Automated AST parsing and developer skill routing operating with zero human bottleneck.</p>
-                    </div>
+            <section class="rounded-2xl border border-indigo-100 bg-white p-5 shadow-xs">
+                <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+                    <div><h3 class="text-sm font-bold text-slate-900">Measured Triage Evaluation</h3><p class="mt-1 text-xs text-slate-500">Uses recorded runs and manager feedback for this project.</p></div>
+                    <span class="text-[10px] text-slate-400">{{ $triageEvaluation['sample_size'] }} measured reports</span>
                 </div>
-
-                <div class="flex items-center gap-3 text-xs font-mono-code font-bold">
-                    <span class="rounded-xl bg-white/80 border border-indigo-200/80 px-3 py-1.5 text-indigo-700">
-                        ⚡ 100% Skill Matching
-                    </span>
-                    <span class="rounded-xl bg-white/80 border border-indigo-200/80 px-3 py-1.5 text-emerald-700">
-                        ✓ Zero Triage Latency
-                    </span>
+                <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <div class="rounded-xl bg-indigo-50 p-3"><p class="text-[10px] font-bold uppercase text-indigo-700">Average latency</p><p class="mt-1 text-lg font-extrabold text-indigo-950">{{ $triageEvaluation['average_latency_ms'] !== null ? number_format($triageEvaluation['average_latency_ms']).' ms' : '—' }}</p><p class="text-[10px] text-indigo-700">{{ $triageEvaluation['under_five_seconds_percent'] !== null ? $triageEvaluation['under_five_seconds_percent'].'% under 5 seconds' : 'No measurements yet' }}</p></div>
+                    <div class="rounded-xl bg-emerald-50 p-3"><p class="text-[10px] font-bold uppercase text-emerald-700">Recommendation acceptance</p><p class="mt-1 text-lg font-extrabold text-emerald-950">{{ $triageEvaluation['assignment_acceptance_percent'] !== null ? $triageEvaluation['assignment_acceptance_percent'].'%' : '—' }}</p><p class="text-[10px] text-emerald-700">{{ $triageEvaluation['assignment_review_count'] }} manager reviews</p></div>
+                    <div class="rounded-xl bg-amber-50 p-3"><p class="text-[10px] font-bold uppercase text-amber-700">Duplicate precision</p><p class="mt-1 text-lg font-extrabold text-amber-950">{{ $triageEvaluation['duplicate_precision_percent'] !== null ? $triageEvaluation['duplicate_precision_percent'].'%' : '—' }}</p><p class="text-[10px] text-amber-700">{{ $triageEvaluation['duplicate_review_count'] }} reviewed classifications</p></div>
+                    <div class="rounded-xl bg-sky-50 p-3"><p class="text-[10px] font-bold uppercase text-sky-700">Duplicate recall</p><p class="mt-1 text-lg font-extrabold text-sky-950">{{ $triageEvaluation['duplicate_recall_percent'] !== null ? $triageEvaluation['duplicate_recall_percent'].'%' : '—' }}</p><p class="text-[10px] text-sky-700">Recorded from manager corrections</p></div>
                 </div>
-            </div>
+            </section>
 
             <!-- Bottom Row: 60% / 40% Split View -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -332,8 +323,9 @@
                         @forelse($developers as $developer)
                             @php
                                 $tasks = (int) $developer->active_tasks;
-                                $color = $tasks <= 2 ? 'bg-emerald-500' : ($tasks <= 4 ? 'bg-amber-500' : 'bg-rose-500');
-                                $pill = $tasks <= 2 ? 'Available' : ($tasks <= 4 ? 'Moderate' : 'Heavy Load');
+                                $capacity = (int) ($developer->capacity ?? 5);
+                                $color = $tasks >= $capacity ? 'bg-rose-500' : ($tasks <= 2 ? 'bg-emerald-500' : 'bg-amber-500');
+                                $pill = $tasks >= $capacity ? 'At Capacity' : ($tasks <= 2 ? 'Available' : 'Moderate');
                             @endphp
                             <div class="rounded-2xl border border-[#E2E8F0] p-3.5 bg-[#F8FAFC]">
                                 <div class="flex items-center justify-between text-xs mb-2">
@@ -344,12 +336,12 @@
                                         <span class="font-bold text-[#0F172A]">{{ $developer->name }}</span>
                                     </div>
                                     <span class="font-mono-code text-[11px] font-bold text-[#64748B]">
-                                        {{ $tasks }} Active ({{ $pill }})
+                                        {{ $tasks }} / {{ $capacity }} Active ({{ $pill }})
                                     </span>
                                 </div>
                                 <div class="h-2 w-full rounded-full bg-[#E2E8F0] overflow-hidden">
                                     <div class="h-2 rounded-full {{ $color }} transition-all duration-500" 
-                                         style="width: {{ min(100, max(8, $tasks * 20)) }}%"></div>
+                                         style="width: {{ min(100, max(8, (int) round($tasks / max(1, $capacity) * 100))) }}%"></div>
                                 </div>
                             </div>
                         @empty

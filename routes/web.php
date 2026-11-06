@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bugs/store', [BugController::class, 'store']);
     Route::post('/api/bugs/override', [BugController::class, 'override']);
     Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
+    Route::post('/api/bugs/recommendation/accept', [BugController::class, 'acceptRecommendation'])->name('bugs.recommendation.accept');
+    Route::post('/api/bugs/duplicate-review', [BugController::class, 'reviewDuplicatePrediction'])->name('bugs.duplicate-review');
     Route::post('/api/bugs/comments', [BugController::class, 'storeComment'])->name('bugs.comments');
     Route::post('/api/bugs/watch', [BugController::class, 'toggleWatch'])->name('bugs.watch');
     Route::post('/api/bug-filters', [BugController::class, 'saveBugFilter'])->name('bug-filters.store');

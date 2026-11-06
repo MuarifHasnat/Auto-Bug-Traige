@@ -128,6 +128,12 @@
                         </div>
                     </div>
 
+                    <div id="capacityFieldGroup" class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                        <label for="memberCapacity" class="block text-xs font-bold text-[#0F172A]">Maximum active issues</label>
+                        <input type="number" id="memberCapacity" name="capacity" min="1" max="100" value="5" class="mt-1.5 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs">
+                        <p class="mt-1 text-[10px] text-slate-500">Automatic assignment stops at this limit and leaves extra work unassigned.</p>
+                    </div>
+
                     <!-- Password with 1-Click Auto Generator -->
                     <div>
                         <div class="flex items-center justify-between mb-1">
@@ -172,12 +178,13 @@
                         @forelse($developers as $dev)
                             @php
                                 $taskCount = (int) $dev->active_tasks;
-                                if ($taskCount <= 2) {
+                                $capacity = (int) ($dev->capacity ?? 5);
+                                if ($taskCount < $capacity && $taskCount <= 2) {
                                     $barColor = 'bg-emerald-500';
                                     $textColor = 'text-emerald-700';
                                     $bgBadge = 'bg-emerald-50 border-emerald-200';
                                     $statusText = 'Available for Auto-Assign';
-                                } elseif ($taskCount <= 4) {
+                                } elseif ($taskCount < $capacity) {
                                     $barColor = 'bg-amber-500';
                                     $textColor = 'text-amber-700';
                                     $bgBadge = 'bg-amber-50 border-amber-200';
@@ -186,7 +193,7 @@
                                     $barColor = 'bg-rose-500';
                                     $textColor = 'text-rose-700';
                                     $bgBadge = 'bg-rose-50 border-rose-200';
-                                    $statusText = 'Overloaded — AI will deprioritize';
+                                    $statusText = 'At capacity — auto-assign paused';
                                 }
                                 $skillsArray = array_filter(array_map('trim', preg_split('/[\s,]+/', $dev->skills)));
                             @endphp
@@ -248,7 +255,7 @@
                                 <!-- AI Workload Bar (0-2 Green, 3-4 Yellow, 5+ Red) -->
                                 <div class="mt-5 pt-3 border-t border-[#E2E8F0]">
                                     <div class="flex items-center justify-between text-xs mb-1.5">
-                                        <span class="font-bold text-[#0F172A]">{{ $taskCount }} Active Bugs</span>
+                                        <span class="font-bold text-[#0F172A]">{{ $taskCount }} / {{ $capacity }} Active Bugs</span>
                                         <span class="rounded-full px-2 py-0.5 text-[10px] font-bold border {{ $bgBadge }} {{ $textColor }}">
                                             {{ $statusText }}
                                         </span>
@@ -264,6 +271,7 @@
                                         <input type="hidden" name="name" value="{{ $dev->name }}">
                                         <input type="text" name="skills" value="{{ $dev->skills }}" required placeholder="Edit skills..." 
                                                class="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1 text-[11px] font-mono-code text-[#0F172A] outline-none focus:border-indigo-600">
+                                        <input type="number" name="capacity" value="{{ $capacity }}" min="1" max="100" required aria-label="Maximum active issues" class="w-16 rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-[11px]">
                                         <button type="submit" class="rounded-lg bg-indigo-50 border border-indigo-200 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 transition">
                                             Save
                                         </button>
@@ -305,10 +313,16 @@
     <script>
         function handleRoleChange(role) {
             const group = document.getElementById('skillsFieldGroup');
+            const capacityGroup = document.getElementById('capacityFieldGroup');
+            const capacityInput = document.getElementById('memberCapacity');
             if (role === 'developer') {
                 group.style.display = 'block';
+                capacityGroup.style.display = 'block';
+                capacityInput.disabled = false;
             } else {
                 group.style.display = 'none';
+                capacityGroup.style.display = 'none';
+                capacityInput.disabled = true;
             }
         }
 

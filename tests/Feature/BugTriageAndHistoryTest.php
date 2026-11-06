@@ -58,9 +58,20 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertSame('To Do', $bug->status);
         $this->assertSame('Bug', $bug->issue_type);
         $this->assertSame(['api', 'checkout'], json_decode($bug->labels, true));
+        $this->assertDatabaseHas('bug_triage_metrics', [
+            'bug_id' => $bug->id,
+            'predicted_duplicate' => false,
+            'recommended_assignee' => 'Dev One',
+        ]);
+        $this->assertLessThan(5000, (int) DB::table('bug_triage_metrics')->where('bug_id', $bug->id)->value('triage_duration_ms'));
         $this->assertSame(1, (int) DB::table('developers')->where('project_id', $projectId)->where('name', 'Dev One')->value('active_tasks'));
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'created', 'actor_id' => $tester->id]);
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'assignment_changed', 'to_value' => 'Dev One']);
+
+        $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->post('/api/bugs/recommendation/accept', ['id' => $bug->id])->assertRedirect();
+        $this->assertDatabaseHas('bug_triage_metrics', ['bug_id' => $bug->id, 'assignment_feedback' => 'accepted']);
+        $this->get('/dashboard')->assertOk()->assertSee('Recommendation acceptance')->assertSee('100%');
     }
 
     public function test_manager_status_and_reassignment_changes_keep_history_and_workload_in_sync(): void
@@ -80,12 +91,18 @@ class BugTriageAndHistoryTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        DB::table('bug_triage_metrics')->insert([
+            'project_id' => $projectId, 'bug_id' => $bugId, 'triage_duration_ms' => 20,
+            'duplicate_similarity_score' => 12.5, 'predicted_duplicate' => false,
+            'recommended_assignee' => 'Dev One', 'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $this->actingAs($manager)->withSession(['project_id' => $projectId])
             ->post('/api/bugs/reassign', ['id' => $bugId, 'assigned_to' => 'Dev Two'])
             ->assertRedirect();
 
         $this->assertDatabaseHas('bugs', ['id' => $bugId, 'assigned_to' => 'Dev Two']);
+        $this->assertDatabaseHas('bug_triage_metrics', ['bug_id' => $bugId, 'assignment_feedback' => 'rejected']);
         $this->assertDatabaseHas('developers', ['id' => $firstDeveloper, 'active_tasks' => 0]);
         $this->assertDatabaseHas('developers', ['project_id' => $projectId, 'name' => 'Dev Two', 'active_tasks' => 1]);
         $this->assertDatabaseHas('bug_activities', [
@@ -157,6 +174,29 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertDatabaseHas('project_workflow_transitions', [
             'project_id' => $projectId, 'from_status' => 'Review', 'to_status' => 'Done',
         ]);
+    }
+
+    public function test_manager_duplicate_review_corrects_classification_and_tracks_the_original_prediction(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $projectId = $this->createProject($manager, 'Duplicate review project');
+        $developer = $this->addDeveloper($projectId, 'Dev One', 'php', 1);
+        $bugId = (int) DB::table('bugs')->insertGetId([
+            'project_id' => $projectId, 'title' => 'Potential duplicate', 'description' => 'Review the classification.',
+            'priority' => 'Medium', 'status' => 'To Do', 'assigned_to' => 'Dev One', 'is_duplicate' => false,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('bug_triage_metrics')->insert([
+            'project_id' => $projectId, 'bug_id' => $bugId, 'triage_duration_ms' => 100,
+            'duplicate_similarity_score' => 71.5, 'predicted_duplicate' => false,
+            'recommended_assignee' => 'Dev One', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->post('/api/bugs/duplicate-review', ['id' => $bugId, 'actual_duplicate' => '1'])->assertRedirect();
+        $this->assertDatabaseHas('bugs', ['id' => $bugId, 'is_duplicate' => true, 'status' => 'Duplicate']);
+        $this->assertDatabaseHas('bug_triage_metrics', ['bug_id' => $bugId, 'predicted_duplicate' => false, 'actual_duplicate' => true]);
+        $this->assertDatabaseHas('developers', ['id' => $developer, 'active_tasks' => 0]);
     }
 
     private function createProject(User $manager, string $name): int

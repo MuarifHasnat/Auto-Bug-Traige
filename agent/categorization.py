@@ -1,5 +1,7 @@
+import re
+
 FEATURE_MAP = {
-    "Authentication": ["login", "logout", "password", "auth", "session", "token"],
+    "Authentication": ["login", "logout", "password", "auth", "authentication", "authorization", "session", "token"],
     "Payments": ["payment", "invoice", "billing", "discount", "transaction"],
     "Database": ["sql", "database", "query", "migration", "postgres", "mysql"],
     "API": ["api", "http", "request", "response", "endpoint", "json"],
@@ -20,9 +22,9 @@ DANGER_WORDS = [
 
 
 def detect_feature(text: str) -> str:
-    combined_text = text.lower()
+    tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
     for name, keywords in FEATURE_MAP.items():
-        if any(keyword in combined_text for keyword in keywords):
+        if any(keyword in tokens for keyword in keywords):
             return name
     return "General"
 

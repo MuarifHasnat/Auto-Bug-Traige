@@ -151,6 +151,7 @@ class BugController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'skills' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         DB::table('developers')->insert([
@@ -158,6 +159,7 @@ class BugController extends Controller
             'name' => $data['name'],
             'skills' => strtolower($data['skills']),
             'active_tasks' => 0,
+            'capacity' => $data['capacity'] ?? 5,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -176,6 +178,7 @@ class BugController extends Controller
             'role' => ['required', 'in:tester,developer'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'skills' => ['nullable', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $member = DB::transaction(function () use ($data, $projectId) {
@@ -196,6 +199,7 @@ class BugController extends Controller
                     'name' => $member->name,
                     'skills' => strtolower($data['skills'] ?? ''),
                     'active_tasks' => 0,
+                    'capacity' => $data['capacity'] ?? 5,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -214,11 +218,13 @@ class BugController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'skills' => ['required', 'string', 'max:255'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
         DB::table('developers')->where('project_id', $this->currentProjectId())->where('id', $id)->update([
             'name' => $data['name'],
             'skills' => strtolower($data['skills']),
+            'capacity' => $data['capacity'],
             'updated_at' => now(),
         ]);
 
@@ -320,6 +326,7 @@ class BugController extends Controller
             ->groupBy('bug_id');
         $watchingBugIds = DB::table('bug_watchers')->where('user_id', Auth::id())->pluck('bug_id')->all();
         $projectMembers = $this->projectParticipants($projectId);
+        $bugMetrics = DB::table('bug_triage_metrics')->where('project_id', $projectId)->get()->keyBy('bug_id');
         $transitionsByStatus = DB::table('project_workflow_transitions')->where('project_id', $projectId)->orderBy('to_status')->get()->groupBy('from_status');
         $availableAssignees = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('assigned_to')->distinct()->orderBy('assigned_to')->pluck('assigned_to')->all();
         array_unshift($availableAssignees, 'Unassigned');
@@ -330,7 +337,7 @@ class BugController extends Controller
 
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -351,6 +358,22 @@ class BugController extends Controller
         ];
         $recentBugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(8)->get();
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->limit(6)->get();
+        $metricRows = DB::table('bug_triage_metrics')->where('project_id', $projectId)->get();
+        $reviewedAssignments = $metricRows->whereIn('assignment_feedback', ['accepted', 'rejected']);
+        $reviewedDuplicates = $metricRows->whereNotNull('actual_duplicate');
+        $truePositives = $reviewedDuplicates->filter(fn ($row) => (bool) $row->predicted_duplicate && (bool) $row->actual_duplicate)->count();
+        $falsePositives = $reviewedDuplicates->filter(fn ($row) => (bool) $row->predicted_duplicate && !(bool) $row->actual_duplicate)->count();
+        $falseNegatives = $reviewedDuplicates->filter(fn ($row) => !(bool) $row->predicted_duplicate && (bool) $row->actual_duplicate)->count();
+        $triageEvaluation = [
+            'sample_size' => $metricRows->count(),
+            'average_latency_ms' => $metricRows->count() ? (int) round($metricRows->avg('triage_duration_ms')) : null,
+            'under_five_seconds_percent' => $metricRows->count() ? (int) round($metricRows->where('triage_duration_ms', '<', 5000)->count() / $metricRows->count() * 100) : null,
+            'assignment_review_count' => $reviewedAssignments->count(),
+            'assignment_acceptance_percent' => $reviewedAssignments->count() ? (int) round($reviewedAssignments->where('assignment_feedback', 'accepted')->count() / $reviewedAssignments->count() * 100) : null,
+            'duplicate_review_count' => $reviewedDuplicates->count(),
+            'duplicate_precision_percent' => ($truePositives + $falsePositives) ? (int) round($truePositives / ($truePositives + $falsePositives) * 100) : null,
+            'duplicate_recall_percent' => ($truePositives + $falseNegatives) ? (int) round($truePositives / ($truePositives + $falseNegatives) * 100) : null,
+        ];
 
         $projects = $this->accessibleProjects();
         $filters = $request->validate([
@@ -371,7 +394,7 @@ class BugController extends Controller
         $accounts = $accountsQuery->paginate(20)->withQueryString();
         $totalAccounts = DB::table('users')->count();
 
-        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts') + [
+        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts', 'triageEvaluation') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -438,6 +461,7 @@ class BugController extends Controller
 
         $projectId = $this->currentProjectId();
         $projectWorkflow = $this->ensureProjectWorkflow($projectId);
+        $doneStatuses = $projectWorkflow->where('is_done', true)->pluck('name')->all();
         $pastBugs = DB::table('bugs')
             ->where('project_id', $projectId)
             ->whereRaw('is_duplicate = false')
@@ -445,11 +469,25 @@ class BugController extends Controller
             ->get()
             ->map(fn ($bug) => (array) $bug)
             ->all();
+        $fixHistory = [];
+        if ($doneStatuses) {
+            foreach (DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->where('is_duplicate', false)
+                ->whereNotNull('assigned_to')->get(['assigned_to', 'detected_feature', 'triage_result']) as $fixedBug) {
+                $history = $fixHistory[$fixedBug->assigned_to] ?? ['resolved_features' => [], 'resolved_languages' => []];
+                if ($fixedBug->detected_feature) $history['resolved_features'][] = strtolower($fixedBug->detected_feature);
+                $resolvedTriage = json_decode($fixedBug->triage_result ?: '', true) ?: [];
+                $resolvedLanguage = strtolower($resolvedTriage['code_help']['language'] ?? '');
+                if ($resolvedLanguage && $resolvedLanguage !== 'unknown') $history['resolved_languages'][] = $resolvedLanguage;
+                $fixHistory[$fixedBug->assigned_to] = $history;
+            }
+        }
         $developers = DB::table('developers')
             ->where('project_id', $projectId)
-            ->select('id', 'name', 'skills', 'active_tasks')
+            ->select('id', 'name', 'skills', 'active_tasks', 'capacity')
             ->get()
-            ->map(fn ($developer) => (array) $developer)
+            ->map(function ($developer) use ($fixHistory) {
+                return array_merge((array) $developer, $fixHistory[$developer->name] ?? ['resolved_features' => [], 'resolved_languages' => []]);
+            })
             ->all();
 
         $payloadPath = tempnam(storage_path('app'), 'triage_payload_');
@@ -457,6 +495,7 @@ class BugController extends Controller
             return back()->withErrors(['bug' => 'Could not prepare the report for triage.']);
         }
 
+        $triageStartedAt = microtime(true);
         try {
             file_put_contents($payloadPath, json_encode([
                 ...$data,
@@ -472,6 +511,7 @@ class BugController extends Controller
         } finally {
             @unlink($payloadPath);
         }
+        $triageDurationMs = (int) round((microtime(true) - $triageStartedAt) * 1000);
 
         if (!$result->successful()) {
             return back()->withErrors(['bug' => 'AI triage failed: '.$result->errorOutput()]);
@@ -497,6 +537,7 @@ class BugController extends Controller
             $priority,
             $status,
             $labels,
+            $triageDurationMs,
             $screenshotPath,
             $sourceFilePath,
             $request
@@ -511,6 +552,7 @@ class BugController extends Controller
                 'issue_type' => $data['issue_type'],
                 'labels' => json_encode($labels, JSON_THROW_ON_ERROR),
                 'assigned_to' => $assignedTo,
+                'recommended_assignee' => $assignedTo,
                 'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
                 'duplicate_of' => $aiResult['duplicate_of'] ?? null,
                 'screenshot_path' => $screenshotPath,
@@ -518,6 +560,17 @@ class BugController extends Controller
                 'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
                 'detected_feature' => $aiResult['feature'] ?? null,
                 'triage_result' => json_encode($aiResult, JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('bug_triage_metrics')->insert([
+                'project_id' => $projectId,
+                'bug_id' => $bugId,
+                'triage_duration_ms' => $triageDurationMs,
+                'duplicate_similarity_score' => $aiResult['similarity_score'] ?? 0,
+                'predicted_duplicate' => $isDuplicate,
+                'recommended_assignee' => $assignedTo,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -630,12 +683,100 @@ class BugController extends Controller
             }
 
             $this->recordBugActivity($projectId, $bug->id, 'assignment_changed', $oldAssignee, $newAssignee);
+            $recommendation = $bug->recommended_assignee
+                ?: DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $bug->id)->value('recommended_assignee')
+                ?: 'Unassigned';
+            DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $bug->id)->update([
+                'assignment_feedback' => $newAssignee === $recommendation ? 'accepted' : 'rejected',
+                'reviewed_by' => Auth::id(), 'reviewed_at' => now(), 'updated_at' => now(),
+            ]);
             $recipients = $this->bugRelevantUserIds($bug, $projectId);
             $recipients = array_merge($recipients, $this->developerUserIds($projectId, [$oldAssignee, $newAssignee]));
             $this->notifyUsers($recipients, $projectId, (int) $bug->id, 'reassigned', 'Bug assignment changed', "Assignment changed from {$oldAssignee} to {$newAssignee}.");
         });
 
         return back()->with('success', 'Bug assignment updated.');
+    }
+
+    public function acceptRecommendation(Request $request): RedirectResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $data = $request->validate(['id' => ['required', 'integer']]);
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->firstOrFail();
+        $existingMetric = DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $bug->id)->first();
+        $recommendation = $bug->recommended_assignee ?: ($existingMetric->recommended_assignee ?? ($bug->assigned_to ?: 'Unassigned'));
+        abort_if($recommendation === 'Unassigned' || $bug->assigned_to !== $recommendation, 422, 'The current assignment does not match an assignable recommendation.');
+        if (!$existingMetric) {
+            $triage = json_decode($bug->triage_result ?: '', true) ?: [];
+            DB::table('bug_triage_metrics')->insert([
+                'project_id' => $projectId, 'bug_id' => $bug->id, 'triage_duration_ms' => 0,
+                'duplicate_similarity_score' => $triage['similarity_score'] ?? 0,
+                'predicted_duplicate' => (bool) $bug->is_duplicate, 'recommended_assignee' => $recommendation,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $updated = DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $bug->id)
+            ->update(['assignment_feedback' => 'accepted', 'reviewed_by' => Auth::id(), 'reviewed_at' => now(), 'updated_at' => now()]);
+        abort_unless($updated, 404, 'No triage measurement exists for this issue.');
+        return back()->with('success', 'AI assignment recommendation marked as accepted.');
+    }
+
+    public function reviewDuplicatePrediction(Request $request): RedirectResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $data = $request->validate([
+            'id' => ['required', 'integer'],
+            'actual_duplicate' => ['required', 'boolean'],
+        ]);
+        $projectId = $this->currentProjectId();
+        $workflowStatuses = $this->ensureProjectWorkflow($projectId);
+
+        DB::transaction(function () use ($data, $projectId, $workflowStatuses) {
+            $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->lockForUpdate()->firstOrFail();
+            $metrics = DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $bug->id)->first();
+            if (!$metrics) {
+                $triage = json_decode($bug->triage_result ?: '', true) ?: [];
+                DB::table('bug_triage_metrics')->insert([
+                    'project_id' => $projectId, 'bug_id' => $bug->id, 'triage_duration_ms' => 0,
+                    'duplicate_similarity_score' => $triage['similarity_score'] ?? 0,
+                    'predicted_duplicate' => (bool) $bug->is_duplicate,
+                    'recommended_assignee' => $bug->recommended_assignee ?: ($bug->assigned_to ?: 'Unassigned'),
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $metrics = DB::table('bug_triage_metrics')->where('bug_id', $bug->id)->first();
+            }
+
+            $actualDuplicate = (bool) $data['actual_duplicate'];
+            $targetStatus = $actualDuplicate
+                ? 'Duplicate'
+                : ($bug->status === 'Duplicate'
+                    ? $workflowStatuses->first(fn ($status) => $status->name !== 'Duplicate')->name
+                    : $bug->status);
+            $wasActive = $this->isActiveAssignment($projectId, (bool) $bug->is_duplicate, $bug->status, $bug->assigned_to);
+            $willBeActive = $this->isActiveAssignment($projectId, $actualDuplicate, $targetStatus, $bug->assigned_to);
+
+            DB::table('bugs')->where('id', $bug->id)->update([
+                'is_duplicate' => $actualDuplicate,
+                'status' => $targetStatus,
+                'duplicate_of' => $actualDuplicate ? $bug->duplicate_of : null,
+                'updated_at' => now(),
+            ]);
+            if ($wasActive && !$willBeActive) $this->changeDeveloperWorkload($projectId, $bug->assigned_to, -1);
+            elseif (!$wasActive && $willBeActive) $this->changeDeveloperWorkload($projectId, $bug->assigned_to, 1);
+
+            DB::table('bug_triage_metrics')->where('id', $metrics->id)->update([
+                'actual_duplicate' => $actualDuplicate,
+                'reviewed_by' => Auth::id(), 'reviewed_at' => now(), 'updated_at' => now(),
+            ]);
+            $this->recordBugActivity($projectId, $bug->id, 'duplicate_reviewed', $bug->is_duplicate ? 'Duplicate' : 'Not duplicate', $actualDuplicate ? 'Duplicate' : 'Not duplicate');
+            if ($bug->status !== $targetStatus) {
+                $this->recordBugActivity($projectId, $bug->id, 'status_changed', $bug->status, $targetStatus);
+                $this->notifyUsers($this->bugRelevantUserIds($bug, $projectId), $projectId, (int) $bug->id, 'status_changed', 'Bug classification updated', "Duplicate review moved this issue from {$bug->status} to {$targetStatus}.");
+            }
+        });
+
+        return back()->with('success', 'Duplicate prediction reviewed and issue classification updated.');
     }
 
     public function storeComment(Request $request): RedirectResponse

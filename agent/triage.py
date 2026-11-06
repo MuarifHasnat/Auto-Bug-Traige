@@ -13,15 +13,7 @@ from diagnostics import check_code_error
 from similarity import detect_duplicates
 
 
-def run_agent():
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "Payload path argument missing."}))
-        sys.exit(1)
-
-    payload_file = sys.argv[1]
-    with open(payload_file, "r", encoding="utf-8-sig") as f:
-        data = json.load(f)
-
+def analyze_report(data):
     title = data.get("title", "")
     description = data.get("description", "")
     code_snippet = data.get("code_snippet", "")
@@ -76,7 +68,19 @@ def run_agent():
         "code_help": code_help,
     }
 
-    print(json.dumps(result))
+    return result
+
+
+def run_agent():
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "Payload path argument missing."}))
+        sys.exit(1)
+
+    payload_file = sys.argv[1]
+    with open(payload_file, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+
+    print(json.dumps(analyze_report(data)))
 
 
 if __name__ == "__main__":

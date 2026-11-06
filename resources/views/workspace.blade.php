@@ -302,6 +302,7 @@
                                         $hasAi = !empty($triage['code_help']);
                                         $feat = $triage['code_help']['feature'] ?? ($bug->detected_feature ?? 'Module');
                                         $activity = $bugActivity->get($bug->id, collect())->values()->all();
+                                        $triageMetric = $bugMetrics->get($bug->id);
                                         
                                         // Priority Strip Class
                                         $priorityClass = $bug->priority === 'High' ? 'priority-strip-high' : ($bug->priority === 'Low' ? 'priority-strip-low' : 'priority-strip-medium');
@@ -389,6 +390,10 @@
                                              data-priority="{{ $bug->priority }}"
                                              data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to ?: 'Unassigned' }}"
+                                             data-recommended-assignee="{{ $bug->recommended_assignee ?: ($bug->assigned_to ?: 'Unassigned') }}"
+                                             data-assignment-feedback="{{ $triageMetric->assignment_feedback ?? '' }}"
+                                             data-predicted-duplicate="{{ ($triageMetric->predicted_duplicate ?? $bug->is_duplicate) ? 'true' : 'false' }}"
+                                             data-actual-duplicate="{{ isset($triageMetric) && $triageMetric->actual_duplicate !== null ? ($triageMetric->actual_duplicate ? 'true' : 'false') : '' }}"
                                              data-feat="{{ $feat }}"
                                              data-error="{{ $triage['code_help']['error_name'] ?? 'Analysis complete' }}"
                                              data-scope="{{ $triage['code_help']['analysis_scope'] ?? 'This limited static check does not prove the code is correct.' }}"
@@ -482,6 +487,16 @@
                             <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500">Save</button>
                         </div>
                     </form>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 space-y-3" onclick="event.stopPropagation()">
+                        <div><p class="text-xs font-bold text-slate-900">Agent recommendation review</p><p class="mt-1 text-[11px] text-slate-500">Confirm whether the duplicate and assignment recommendations are correct to measure acceptance, precision and recall.</p></div>
+                        <p class="text-xs">Recommended assignee: <b id="drawerRecommendedAssignee"></b><span id="drawerAssignmentFeedback" class="ml-2 text-[10px] text-slate-500"></span></p>
+                        <form id="acceptRecommendationForm" action="{{ route('bugs.recommendation.accept') }}" method="POST" class="hidden">@csrf<input type="hidden" name="id" id="acceptRecommendationBugId"><button id="acceptRecommendationButton" class="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white">Accept recommendation</button></form>
+                        <form id="duplicateReviewForm" action="{{ route('bugs.duplicate-review') }}" method="POST" class="space-y-2">
+                            @csrf<input type="hidden" name="id" id="reviewDuplicateBugId">
+                            <p id="duplicateReviewState" class="text-[11px] text-slate-600"></p>
+                            <div class="flex flex-wrap gap-2"><button id="confirmDuplicateValue" name="actual_duplicate" value="1" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-[10px] font-semibold">Confirm prediction</button><button id="correctDuplicateValue" name="actual_duplicate" value="0" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-[10px] font-semibold">Correct prediction</button></div>
+                        </form>
+                    </div>
                 @endif
             </div>
 
@@ -598,6 +613,30 @@
                     ? currentAssignee
                     : 'Unassigned';
             }
+            const metricIds = ['acceptRecommendationBugId', 'reviewDuplicateBugId'];
+            metricIds.forEach(id => { const input = document.getElementById(id); if (input) input.value = bugIdValue; });
+            const recommendedAssignee = data.getAttribute('data-recommended-assignee') || 'Unassigned';
+            const assignmentFeedback = data.getAttribute('data-assignment-feedback') || '';
+            const recLabel = document.getElementById('drawerRecommendedAssignee');
+            if (recLabel) recLabel.textContent = recommendedAssignee;
+            const feedbackLabel = document.getElementById('drawerAssignmentFeedback');
+            if (feedbackLabel) feedbackLabel.textContent = assignmentFeedback ? `(${assignmentFeedback})` : '';
+            const acceptForm = document.getElementById('acceptRecommendationForm');
+            if (acceptForm) acceptForm.classList.toggle('hidden', assignmentFeedback !== '' || recommendedAssignee === 'Unassigned' || recommendedAssignee !== (data.getAttribute('data-assignee') || 'Unassigned'));
+            const predictedDuplicate = data.getAttribute('data-predicted-duplicate') === 'true';
+            const actualDuplicate = data.getAttribute('data-actual-duplicate');
+            const duplicateState = document.getElementById('duplicateReviewState');
+            const confirmDuplicateValue = document.getElementById('confirmDuplicateValue');
+            const correctDuplicateValue = document.getElementById('correctDuplicateValue');
+            if (duplicateState) duplicateState.textContent = actualDuplicate === '' ? `Agent predicted ${predictedDuplicate ? 'Duplicate' : 'Not duplicate'}; review its prediction:` : `Manager confirmed ${actualDuplicate === 'true' ? 'Duplicate' : 'Not duplicate'}.`;
+            if (confirmDuplicateValue && correctDuplicateValue) {
+                confirmDuplicateValue.value = predictedDuplicate ? '1' : '0';
+                confirmDuplicateValue.textContent = `Confirm ${predictedDuplicate ? 'Duplicate' : 'Not duplicate'}`;
+                correctDuplicateValue.value = predictedDuplicate ? '0' : '1';
+                correctDuplicateValue.textContent = `Correct to ${predictedDuplicate ? 'Not duplicate' : 'Duplicate'}`;
+                confirmDuplicateValue.disabled = actualDuplicate !== '';
+                correctDuplicateValue.disabled = actualDuplicate !== '';
+            }
             document.getElementById('drawerError').innerText = data.getAttribute('data-error');
             const syntaxStatus = data.getAttribute('data-syntax-status') || 'unknown';
             const syntaxLabels = { passed: 'Syntax check passed', failed: 'Syntax errors found', timeout: 'Checker timed out', not_available: 'Checker unavailable', not_run: 'Check not run', unknown: 'Check status unknown' };
@@ -653,7 +692,7 @@
                 activity.forEach((event) => {
                     const item = document.createElement('li');
                     item.className = 'rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs';
-                    const label = event.event_type === 'created' ? 'Bug created' : (event.event_type === 'status_changed' ? 'Status changed' : 'Assignment changed');
+                    const label = event.event_type === 'created' ? 'Bug created' : (event.event_type === 'status_changed' ? 'Status changed' : (event.event_type === 'duplicate_reviewed' ? 'Duplicate classification reviewed' : 'Assignment changed'));
                     const detail = event.event_type === 'created'
                         ? (event.to_value || '')
                         : `${event.from_value || '—'} → ${event.to_value || '—'}`;
