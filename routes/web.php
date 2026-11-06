@@ -34,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bugs/recommendation/accept', [BugController::class, 'acceptRecommendation'])->name('bugs.recommendation.accept');
     Route::post('/api/bugs/duplicate-review', [BugController::class, 'reviewDuplicatePrediction'])->name('bugs.duplicate-review');
     Route::post('/api/bugs/comments', [BugController::class, 'storeComment'])->name('bugs.comments');
+    Route::post('/api/bugs/clarifications', [BugController::class, 'requestClarification'])->name('bugs.clarifications.request');
+    Route::post('/api/bugs/clarifications/answer', [BugController::class, 'answerClarification'])->name('bugs.clarifications.answer');
     Route::post('/api/bugs/watch', [BugController::class, 'toggleWatch'])->name('bugs.watch');
     Route::post('/api/bug-filters', [BugController::class, 'saveBugFilter'])->name('bug-filters.store');
     Route::delete('/api/bug-filters/{id}', [BugController::class, 'deleteBugFilter'])->whereNumber('id')->name('bug-filters.destroy');

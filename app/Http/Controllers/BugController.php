@@ -324,6 +324,8 @@ class BugController extends Controller
             ->orderBy('created_at')
             ->get(['id', 'bug_id', 'user_id', 'author_name', 'body', 'created_at'])
             ->groupBy('bug_id');
+        $clarifications = DB::table('bug_clarification_requests')
+            ->where('project_id', $projectId)->orderBy('created_at')->get()->groupBy('bug_id');
         $watchingBugIds = DB::table('bug_watchers')->where('user_id', Auth::id())->pluck('bug_id')->all();
         $projectMembers = $this->projectParticipants($projectId);
         $bugMetrics = DB::table('bug_triage_metrics')->where('project_id', $projectId)->get()->keyBy('bug_id');
@@ -337,7 +339,7 @@ class BugController extends Controller
 
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'clarifications', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -553,6 +555,9 @@ class BugController extends Controller
                 'labels' => json_encode($labels, JSON_THROW_ON_ERROR),
                 'assigned_to' => $assignedTo,
                 'recommended_assignee' => $assignedTo,
+                'sentiment' => $aiResult['sentiment'] ?? 'neutral',
+                'sentiment_score' => $aiResult['sentiment_score'] ?? 0,
+                'blocker_signal' => (bool) ($aiResult['blocker_signal'] ?? false),
                 'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
                 'duplicate_of' => $aiResult['duplicate_of'] ?? null,
                 'screenshot_path' => $screenshotPath,
@@ -814,6 +819,46 @@ class BugController extends Controller
         $this->notifyUsers(array_diff($watchers, $mentioned), $projectId, (int) $bug->id, 'comment', 'New bug comment', Auth::user()->name.' commented: '.mb_substr(trim($data['body']), 0, 180));
 
         return back()->with('success', 'Comment posted.');
+    }
+
+    public function requestClarification(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'bug_id' => ['required', 'integer'],
+            'question' => ['required', 'string', 'max:2000'],
+        ]);
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['bug_id'])->firstOrFail();
+        abort_unless(Auth::user()->role === 'developer' && $bug->assigned_to === Auth::user()->name, 403, 'Only the assigned developer can request clarification.');
+        $question = trim($data['question']);
+        $requestId = DB::table('bug_clarification_requests')->insertGetId([
+            'project_id' => $projectId, 'bug_id' => $bug->id, 'requested_by' => Auth::id(),
+            'question' => $question, 'status' => 'open', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->recordBugActivity($projectId, (int) $bug->id, 'clarification_requested', null, $question);
+        $recipientIds = array_merge($this->bugRelevantUserIds($bug, $projectId), $bug->reporter_id ? [(int) $bug->reporter_id] : []);
+        $this->notifyUsers($recipientIds, $projectId, (int) $bug->id, 'clarification_requested', 'Clarification requested', Auth::user()->name.' asked: '.mb_substr($question, 0, 180));
+        return back()->with('success', 'Clarification request sent.');
+    }
+
+    public function answerClarification(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'request_id' => ['required', 'integer'],
+            'answer' => ['required', 'string', 'max:2000'],
+        ]);
+        $projectId = $this->currentProjectId();
+        $clarification = DB::table('bug_clarification_requests')->where('project_id', $projectId)->where('id', $data['request_id'])->firstOrFail();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $clarification->bug_id)->firstOrFail();
+        abort_unless(Auth::user()->role === 'manager' || (int) $bug->reporter_id === Auth::id(), 403, 'Only the reporter or manager can answer this request.');
+        abort_if($clarification->status !== 'open', 422, 'This clarification has already been answered.');
+        $answer = trim($data['answer']);
+        DB::table('bug_clarification_requests')->where('id', $clarification->id)->update([
+            'answer' => $answer, 'status' => 'answered', 'answered_by' => Auth::id(), 'answered_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->recordBugActivity($projectId, (int) $bug->id, 'clarification_answered', $clarification->question, $answer);
+        $this->notifyUsers([(int) $clarification->requested_by], $projectId, (int) $bug->id, 'clarification_answered', 'Clarification answered', Auth::user()->name.' answered: '.mb_substr($answer, 0, 180));
+        return back()->with('success', 'Clarification answered.');
     }
 
     public function toggleWatch(Request $request): RedirectResponse

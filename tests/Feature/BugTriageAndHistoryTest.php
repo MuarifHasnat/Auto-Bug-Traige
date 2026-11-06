@@ -199,6 +199,34 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertDatabaseHas('developers', ['id' => $developer, 'active_tasks' => 0]);
     }
 
+    public function test_assigned_developer_can_request_clarification_and_reporter_can_answer(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $tester = User::factory()->create(['name' => 'Report Owner', 'role' => 'tester']);
+        $developer = User::factory()->create(['name' => 'Assigned Dev', 'role' => 'developer']);
+        $projectId = $this->createProject($manager, 'Clarification project');
+        $this->addMember($projectId, $tester);
+        $this->addMember($projectId, $developer);
+        $bugId = (int) DB::table('bugs')->insertGetId([
+            'project_id' => $projectId, 'reporter_id' => $tester->id, 'title' => 'Unclear failure',
+            'description' => 'It does not work.', 'priority' => 'Medium', 'status' => 'To Do',
+            'assigned_to' => $developer->name, 'is_duplicate' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($developer)->withSession(['project_id' => $projectId])
+            ->post(route('bugs.clarifications.request'), ['bug_id' => $bugId, 'question' => 'Which steps reproduce this?'])
+            ->assertRedirect();
+        $requestId = (int) DB::table('bug_clarification_requests')->where('bug_id', $bugId)->value('id');
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $tester->id, 'type' => 'App\\Notifications\\BugUpdateNotification']);
+
+        $this->actingAs($tester)->withSession(['project_id' => $projectId])
+            ->post(route('bugs.clarifications.answer'), ['request_id' => $requestId, 'answer' => 'Open Settings and press Save.'])
+            ->assertRedirect();
+        $this->assertDatabaseHas('bug_clarification_requests', ['id' => $requestId, 'status' => 'answered', 'answered_by' => $tester->id]);
+        $this->assertDatabaseHas('bug_activities', ['bug_id' => $bugId, 'event_type' => 'clarification_requested']);
+        $this->assertDatabaseHas('bug_activities', ['bug_id' => $bugId, 'event_type' => 'clarification_answered']);
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

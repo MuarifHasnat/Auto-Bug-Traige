@@ -11,6 +11,7 @@ from assignment import assign_developer
 from categorization import calculate_priority, detect_feature
 from diagnostics import check_code_error
 from similarity import detect_duplicates
+from sentiment import analyze_sentiment
 
 
 def analyze_report(data):
@@ -39,6 +40,9 @@ def analyze_report(data):
 
     # 3. Priority Estimation
     priority = calculate_priority(full_text)
+    sentiment = analyze_sentiment(f"{title} {description}")
+    if sentiment["blocker_signal"]:
+        priority = "High"
 
     # 4. Duplicate Detection
     duplicate_info = detect_duplicates(title, description, past_bugs)
@@ -64,6 +68,7 @@ def analyze_report(data):
         "similarity_score": similarity_percent,
         "assigned_to": assigned_to,
         "priority": priority,
+        **sentiment,
         "status": "Duplicate" if is_duplicate else "Open",
         "code_help": code_help,
     }

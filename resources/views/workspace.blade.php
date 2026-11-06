@@ -388,6 +388,8 @@
                                              data-title="{{ $bug->title }}"
                                              data-desc="{{ $bug->description }}"
                                              data-priority="{{ $bug->priority }}"
+                                             data-sentiment="{{ $bug->sentiment ?? 'neutral' }}"
+                                             data-blocker="{{ ($bug->blocker_signal ?? false) ? 'true' : 'false' }}"
                                              data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to ?: 'Unassigned' }}"
                                              data-recommended-assignee="{{ $bug->recommended_assignee ?: ($bug->assigned_to ?: 'Unassigned') }}"
@@ -405,6 +407,7 @@
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
                                              data-history="{{ json_encode($activity) }}"
                                              data-comments="{{ json_encode($bugComments->get($bug->id, collect())->values()) }}"
+                                             data-clarifications="{{ json_encode($clarifications->get($bug->id, collect())->values()) }}"
                                              data-watching="{{ in_array($bug->id, $watchingBugIds, true) ? 'true' : 'false' }}"
                                              data-project-users="{{ json_encode($projectMembers) }}"
                                              data-reason="{{ $triage['code_help']['assignment_reason'] ?? 'Matched developer tech stack keywords.' }}">
@@ -568,6 +571,17 @@
                     </form>
                 </div>
                 <ol id="drawerCommentsList" class="space-y-3"></ol>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p id="drawerSentiment" class="text-xs font-bold text-amber-900">Report signal: Neutral</p>
+                    @if(auth()->user()->role === 'developer')
+                        <form action="{{ route('bugs.clarifications.request') }}" method="POST" class="mt-2 space-y-2" onclick="event.stopPropagation()">
+                            @csrf<input type="hidden" name="bug_id" id="clarificationBugId">
+                            <textarea name="question" required maxlength="2000" rows="2" placeholder="Ask the reporter for missing steps or expected behavior…" class="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs"></textarea>
+                            <button class="rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-bold text-amber-900">Request clarification</button>
+                        </form>
+                    @endif
+                </div>
+                <ol id="drawerClarificationsList" class="space-y-2"></ol>
                 <form action="{{ route('bugs.comments') }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
                     @csrf<input type="hidden" name="bug_id" id="commentBugId">
                     <div id="mentionInputs"></div>
@@ -587,6 +601,8 @@
             const bugIdValue = data.getAttribute('data-id');
             document.getElementById('watchBugId').value = bugIdValue;
             document.getElementById('commentBugId').value = bugIdValue;
+            const clarificationBugId = document.getElementById('clarificationBugId');
+            if (clarificationBugId) clarificationBugId.value = bugIdValue;
             const watchButton = document.getElementById('watchBugButton');
             watchButton.textContent = data.getAttribute('data-watching') === 'true' ? 'Unwatch' : 'Watch';
             const memberSelect = document.getElementById('mentionMember');
@@ -598,6 +614,12 @@
                 });
             } catch (error) {}
             renderComments(data.getAttribute('data-comments'));
+            const signal = document.getElementById('drawerSentiment');
+            const blocker = data.getAttribute('data-blocker') === 'true';
+            const sentiment = data.getAttribute('data-sentiment') || 'neutral';
+            signal.textContent = blocker ? `Blocker signal detected · ${sentiment} sentiment` : `Report signal: ${sentiment}`;
+            signal.className = `text-xs font-bold ${blocker ? 'text-rose-800' : 'text-amber-900'}`;
+            renderClarifications(data.getAttribute('data-clarifications'));
 
             document.getElementById('drawerBugId').innerText = '#ABT-' + data.getAttribute('data-id');
             document.getElementById('drawerTitle').innerText = data.getAttribute('data-title');
@@ -692,7 +714,8 @@
                 activity.forEach((event) => {
                     const item = document.createElement('li');
                     item.className = 'rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs';
-                    const label = event.event_type === 'created' ? 'Bug created' : (event.event_type === 'status_changed' ? 'Status changed' : (event.event_type === 'duplicate_reviewed' ? 'Duplicate classification reviewed' : 'Assignment changed'));
+                    const labels = { created: 'Bug created', status_changed: 'Status changed', duplicate_reviewed: 'Duplicate classification reviewed', clarification_requested: 'Clarification requested', clarification_answered: 'Clarification answered', assignment_changed: 'Assignment changed' };
+                    const label = labels[event.event_type] || 'Bug updated';
                     const detail = event.event_type === 'created'
                         ? (event.to_value || '')
                         : `${event.from_value || '—'} → ${event.to_value || '—'}`;
@@ -784,6 +807,30 @@
                 });
                 if (!comments.length) { const empty = document.createElement('li'); empty.className = 'rounded-xl border border-dashed border-slate-300 p-4 text-xs text-slate-500'; empty.textContent = 'No comments yet. Start the discussion.'; list.appendChild(empty); }
             } catch (error) { list.textContent = 'Comments could not be loaded.'; }
+        }
+
+        function renderClarifications(serialized) {
+            const list = document.getElementById('drawerClarificationsList'); list.innerHTML = '';
+            try {
+                const requests = JSON.parse(serialized || '[]');
+                requests.forEach((request) => {
+                    const item = document.createElement('li'); item.className = 'rounded-xl border border-slate-200 bg-white p-3 text-xs';
+                    const question = document.createElement('p'); question.className = 'font-semibold text-slate-800'; question.textContent = `Clarification · ${request.status}: ${request.question}`; item.appendChild(question);
+                    if (request.answer) { const answer = document.createElement('p'); answer.className = 'mt-2 whitespace-pre-wrap text-slate-600'; answer.textContent = `Answer: ${request.answer}`; item.appendChild(answer); }
+                    @if(auth()->user()->role === 'manager' || auth()->user()->role === 'tester')
+                    if (request.status === 'open') {
+                        const form = document.createElement('form'); form.method = 'POST'; form.action = @json(route('bugs.clarifications.answer')); form.className = 'mt-2 space-y-2';
+                        form.innerHTML = @json('<input type="hidden" name="_token" value="'.csrf_token().'"><input type="hidden" name="request_id" value="">');
+                        form.querySelector('[name=request_id]').value = request.id;
+                        const answerInput = document.createElement('textarea'); answerInput.name = 'answer'; answerInput.required = true; answerInput.maxLength = 2000; answerInput.placeholder = 'Answer the developer…'; answerInput.className = 'w-full rounded-lg border border-slate-300 p-2';
+                        const submit = document.createElement('button'); submit.type = 'submit'; submit.className = 'rounded-lg bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white'; submit.textContent = 'Send answer';
+                        form.append(answerInput, submit); form.onclick = (event) => event.stopPropagation(); item.appendChild(form);
+                    }
+                    @endif
+                    list.appendChild(item);
+                });
+                if (!requests.length) { const empty = document.createElement('li'); empty.className = 'text-[11px] text-slate-500'; empty.textContent = 'No clarification requests.'; list.appendChild(empty); }
+            } catch (error) { list.textContent = 'Clarification requests could not be loaded.'; }
         }
 
         function insertMention() {
