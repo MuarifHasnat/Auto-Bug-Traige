@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use App\Notifications\BugUpdateNotification;
 use Illuminate\View\View;
 
 class BugController extends Controller
@@ -243,7 +244,7 @@ class BugController extends Controller
 
     public function workspacePage(Request $request): View
     {
-        abort_unless(in_array(Auth::user()?->role, ['manager', 'developer'], true), 403);
+        abort_unless(in_array(Auth::user()?->role, ['manager', 'developer', 'tester'], true), 403);
 
         $projectId = $this->currentProjectId();
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->orderBy('name')->get();
@@ -296,14 +297,22 @@ class BugController extends Controller
             ->get(['id', 'bug_id', 'event_type', 'from_value', 'to_value', 'actor_name', 'created_at'])
             ->groupBy('bug_id');
 
+        $bugComments = DB::table('bug_comments')
+            ->where('project_id', $projectId)
+            ->orderBy('created_at')
+            ->get(['id', 'bug_id', 'user_id', 'author_name', 'body', 'created_at'])
+            ->groupBy('bug_id');
+        $watchingBugIds = DB::table('bug_watchers')->where('user_id', Auth::id())->pluck('bug_id')->all();
+        $projectMembers = $this->projectParticipants($projectId);
+
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers') + [
             'currentProjectId' => $projectId,
         ]);
     }
 
-    public function dashboardPage(): View
+    public function dashboardPage(Request $request): View
     {
         abort_unless(Auth::user()?->role === 'manager', 403);
 
@@ -318,8 +327,25 @@ class BugController extends Controller
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->limit(6)->get();
 
         $projects = $this->accessibleProjects();
+        $filters = $request->validate([
+            'account_search' => ['nullable', 'string', 'max:100'],
+            'account_role' => ['nullable', 'in:all,manager,developer,tester'],
+        ]);
+        $accountSearch = trim($filters['account_search'] ?? '');
+        $accountRole = $filters['account_role'] ?? 'all';
+        $accountsQuery = DB::table('users')->select('id', 'name', 'role')->orderBy('name');
 
-        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects') + [
+        if ($accountSearch !== '') {
+            $accountsQuery->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($accountSearch).'%']);
+        }
+        if ($accountRole !== 'all') {
+            $accountsQuery->where('role', $accountRole);
+        }
+
+        $accounts = $accountsQuery->paginate(20)->withQueryString();
+        $totalAccounts = DB::table('users')->count();
+
+        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -444,6 +470,7 @@ class BugController extends Controller
         ) {
             $bugId = DB::table('bugs')->insertGetId([
                 'project_id' => $projectId,
+                'reporter_id' => Auth::id(),
                 'title' => $data['title'],
                 'description' => $data['description'],
                 'priority' => $priority,
@@ -471,6 +498,16 @@ class BugController extends Controller
 
             return $bugId;
         });
+
+        $assignee = DB::table('project_members')
+            ->join('users', 'users.id', '=', 'project_members.user_id')
+            ->where('project_members.project_id', $projectId)
+            ->where('users.role', 'developer')
+            ->where('users.name', $assignedTo)
+            ->first(['users.id']);
+        if ($assignee) {
+            $this->notifyUsers([$assignee->id], $projectId, $bugId, 'assigned', 'Bug assigned to you', 'A new bug was assigned to you.');
+        }
 
         return redirect('/ai-agent')
             ->with('ai_result', $aiResult)
@@ -508,6 +545,8 @@ class BugController extends Controller
             }
 
             $this->recordBugActivity($projectId, $bug->id, 'status_changed', $bug->status, $data['status']);
+            $recipients = $this->bugRelevantUserIds($bug, $projectId);
+            $this->notifyUsers($recipients, $projectId, (int) $bug->id, 'status_changed', 'Bug status changed', "Status changed from {$bug->status} to {$data['status']}.");
         });
 
         return back()->with('success', 'Bug status updated.');
@@ -553,9 +592,130 @@ class BugController extends Controller
             }
 
             $this->recordBugActivity($projectId, $bug->id, 'assignment_changed', $oldAssignee, $newAssignee);
+            $recipients = $this->bugRelevantUserIds($bug, $projectId);
+            $recipients = array_merge($recipients, $this->developerUserIds($projectId, [$oldAssignee, $newAssignee]));
+            $this->notifyUsers($recipients, $projectId, (int) $bug->id, 'reassigned', 'Bug assignment changed', "Assignment changed from {$oldAssignee} to {$newAssignee}.");
         });
 
         return back()->with('success', 'Bug assignment updated.');
+    }
+
+    public function storeComment(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'bug_id' => ['required', 'integer'],
+            'body' => ['required', 'string', 'max:5000'],
+            'mentioned_user_ids' => ['nullable', 'array', 'max:20'],
+            'mentioned_user_ids.*' => ['integer', 'distinct'],
+        ]);
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['bug_id'])->firstOrFail();
+        $participantIds = $this->projectParticipantIds($projectId);
+        $mentions = array_values(array_intersect(array_map('intval', $data['mentioned_user_ids'] ?? []), $participantIds));
+
+        $commentId = DB::transaction(function () use ($data, $projectId, $mentions) {
+            $id = DB::table('bug_comments')->insertGetId([
+                'project_id' => $projectId,
+                'bug_id' => $data['bug_id'],
+                'user_id' => Auth::id(),
+                'author_name' => Auth::user()->name,
+                'body' => trim($data['body']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            foreach ($mentions as $userId) {
+                DB::table('bug_comment_mentions')->insert(['comment_id' => $id, 'user_id' => $userId]);
+            }
+            return $id;
+        });
+
+        $mentioned = $mentions;
+        $this->notifyUsers($mentioned, $projectId, (int) $bug->id, 'mentioned', 'You were mentioned in a bug', Auth::user()->name.' mentioned you: '.mb_substr(trim($data['body']), 0, 180));
+        $watchers = DB::table('bug_watchers')->where('bug_id', $bug->id)->pluck('user_id')->all();
+        $this->notifyUsers(array_diff($watchers, $mentioned), $projectId, (int) $bug->id, 'comment', 'New bug comment', Auth::user()->name.' commented: '.mb_substr(trim($data['body']), 0, 180));
+
+        return back()->with('success', 'Comment posted.');
+    }
+
+    public function toggleWatch(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['bug_id' => ['required', 'integer']]);
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['bug_id'])->firstOrFail();
+        $watcher = DB::table('bug_watchers')->where('bug_id', $bug->id)->where('user_id', Auth::id())->first();
+        if ($watcher) {
+            DB::table('bug_watchers')->where('id', $watcher->id)->delete();
+            return back()->with('success', 'You are no longer watching this bug.');
+        }
+        DB::table('bug_watchers')->insert(['bug_id' => $bug->id, 'user_id' => Auth::id(), 'created_at' => now()]);
+        return back()->with('success', 'You are now watching this bug.');
+    }
+
+    public function notificationsPage(): View
+    {
+        $notifications = Auth::user()->notifications()->latest()->paginate(30);
+        return view('notifications', compact('notifications'));
+    }
+
+    public function openNotification(Request $request, string $id): RedirectResponse
+    {
+        $notification = Auth::user()->notifications()->whereKey($id)->firstOrFail();
+        $projectId = (int) ($notification->data['project_id'] ?? 0);
+        $project = $this->accessibleProjects()->firstWhere('id', $projectId);
+        abort_unless($project, 403);
+        $this->setCurrentProject($request, $project);
+        $notification->markAsRead();
+        $bugId = (int) ($notification->data['bug_id'] ?? 0);
+        return redirect($bugId ? '/workspace#bug-'.$bugId : '/notifications');
+    }
+
+    public function markNotificationRead(string $id): RedirectResponse
+    {
+        Auth::user()->notifications()->whereKey($id)->firstOrFail()->markAsRead();
+        return back();
+    }
+
+    public function markAllNotificationsRead(): RedirectResponse
+    {
+        Auth::user()->unreadNotifications()->update(['read_at' => now()]);
+        return back()->with('success', 'All notifications marked as read.');
+    }
+
+    private function projectParticipants(int $projectId)
+    {
+        return DB::table('users')->whereIn('id', $this->projectParticipantIds($projectId))->orderBy('name')->get(['id', 'name', 'role']);
+    }
+
+    private function projectParticipantIds(int $projectId): array
+    {
+        $managerId = DB::table('projects')->where('id', $projectId)->value('manager_id');
+        return array_values(array_unique(array_merge(
+            DB::table('project_members')->where('project_id', $projectId)->pluck('user_id')->map(fn ($id) => (int) $id)->all(),
+            $managerId ? [(int) $managerId] : [],
+        )));
+    }
+
+    private function bugRelevantUserIds(object $bug, int $projectId): array
+    {
+        $ids = DB::table('bug_watchers')->where('bug_id', $bug->id)->pluck('user_id')->all();
+        if (!empty($bug->reporter_id)) $ids[] = (int) $bug->reporter_id;
+        return array_values(array_unique(array_merge($ids, $this->developerUserIds($projectId, [$bug->assigned_to ?? '']))));
+    }
+
+    private function developerUserIds(int $projectId, array $names): array
+    {
+        return DB::table('project_members')->join('users', 'users.id', '=', 'project_members.user_id')
+            ->where('project_members.project_id', $projectId)->where('users.role', 'developer')
+            ->whereIn('users.name', array_filter($names))->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function notifyUsers(array $userIds, int $projectId, int $bugId, string $event, string $title, string $message): void
+    {
+        $actorId = (int) Auth::id();
+        $recipients = array_values(array_unique(array_filter(array_map('intval', $userIds), fn ($id) => $id !== $actorId)));
+        if (!$recipients) return;
+        $notification = new BugUpdateNotification($projectId, $bugId, $event, $title, $message, Auth::user()->name);
+        \App\Models\User::whereIn('id', $recipients)->get()->each(fn ($user) => $user->notify($notification));
     }
 
     private function isActiveAssignment(bool $isDuplicate, string $status, ?string $assignee): bool

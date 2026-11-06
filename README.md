@@ -85,6 +85,8 @@ The feature suite uses an in-memory SQLite database and fakes the triage process
 
 Managers can switch among projects they own. Testers and developers can switch among projects where they are listed as members. The selected project is saved in the session and checked against that user's current access on every project-scoped request.
 
+The manager dashboard also lists account names and roles across the website. Managers can search names, filter by manager/developer/tester role, and page through results; account email addresses are not shown there.
+
 ## Main code locations
 
 - `routes/web.php` — web routes and authentication-protected pages.

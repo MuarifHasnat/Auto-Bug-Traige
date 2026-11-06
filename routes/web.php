@@ -22,9 +22,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [BugController::class, 'dashboardPage']);
     Route::get('/workspace', [BugController::class, 'workspacePage']);
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
+    Route::get('/notifications', [BugController::class, 'notificationsPage'])->name('notifications.index');
+    Route::post('/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
+    Route::post('/notifications/{id}/read', [BugController::class, 'markNotificationRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [BugController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
     Route::post('/api/bugs/store', [BugController::class, 'store']);
     Route::post('/api/bugs/override', [BugController::class, 'override']);
     Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
+    Route::post('/api/bugs/comments', [BugController::class, 'storeComment'])->name('bugs.comments');
+    Route::post('/api/bugs/watch', [BugController::class, 'toggleWatch'])->name('bugs.watch');
     Route::get('/logout', [BugController::class, 'logout']);
     Route::post('/logout', [BugController::class, 'logout']);
 });

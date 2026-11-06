@@ -41,12 +41,14 @@
                 </a>
             @endif
 
-            @if(auth()->user()->role !== 'tester')
-                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/workspace">
-                    <span class="text-sm">▤</span>
-                    <span>Kanban Workspace</span>
-                </a>
-            @endif
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/workspace">
+                <span class="text-sm">▤</span>
+                <span>Kanban Workspace</span>
+            </a>
+            <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/notifications">
+                <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
+                @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
+            </a>
 
             <a class="relative flex items-center gap-3 rounded-xl bg-indigo-600/20 text-indigo-300 px-3.5 py-2.5 font-bold transition border border-indigo-500/30" href="/ai-agent">
                 <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-500"></span>

@@ -46,6 +46,10 @@
                     <span class="text-sm">▤</span>
                     <span>Kanban Workspace</span>
                 </a>
+                <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/notifications">
+                    <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
+                    @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
+                </a>
 
                 @if(auth()->user()->role === 'developer')
                     <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/ai-agent">
@@ -329,7 +333,9 @@
                                                 @endif
 
                                                 <!-- 1-Click Quick Status Advance Button -->
-                                                @if($bug->status === 'Open')
+                                                @if(auth()->user()->role === 'tester')
+                                                    <span class="text-[10px] text-slate-400">{{ $bug->status }}</span>
+                                                @elseif($bug->status === 'Open')
                                                     <form action="/api/bugs/override" method="POST" class="inline-block">
                                                         @csrf
                                                         <input type="hidden" name="id" value="{{ $bug->id }}">
@@ -383,6 +389,9 @@
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
                                              data-history="{{ json_encode($activity) }}"
+                                             data-comments="{{ json_encode($bugComments->get($bug->id, collect())->values()) }}"
+                                             data-watching="{{ in_array($bug->id, $watchingBugIds, true) ? 'true' : 'false' }}"
+                                             data-project-users="{{ json_encode($projectMembers) }}"
                                              data-reason="{{ $triage['code_help']['assignment_reason'] ?? 'Matched developer tech stack keywords.' }}">
                                         </div>
                                     </div>
@@ -430,6 +439,9 @@
             </button>
             <button type="button" onclick="switchDrawerTab('tabActivity')" id="btnTabActivity" class="flex-1 py-3 border-b-2 border-transparent hover:text-[#0F172A] transition text-center">
                 4. Activity
+            </button>
+            <button type="button" onclick="switchDrawerTab('tabDiscussion')" id="btnTabDiscussion" class="flex-1 py-3 border-b-2 border-transparent hover:text-[#0F172A] transition text-center">
+                5. Discussion
             </button>
         </div>
 
@@ -521,6 +533,24 @@
                 </div>
                 <ol id="drawerActivityList" class="space-y-3"></ol>
             </div>
+
+            <div id="tabDiscussion" class="hidden space-y-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div><h4 class="text-xs font-bold uppercase tracking-wider text-[#64748B]">Comments & mentions</h4><p class="mt-1 text-[11px] text-slate-500">Mention a project member to notify them. Watch to receive bug updates.</p></div>
+                    <form action="{{ route('bugs.watch') }}" method="POST" onclick="event.stopPropagation()">
+                        @csrf<input type="hidden" name="bug_id" id="watchBugId">
+                        <button type="submit" id="watchBugButton" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700">Watch</button>
+                    </form>
+                </div>
+                <ol id="drawerCommentsList" class="space-y-3"></ol>
+                <form action="{{ route('bugs.comments') }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
+                    @csrf<input type="hidden" name="bug_id" id="commentBugId">
+                    <div id="mentionInputs"></div>
+                    <div class="flex gap-2"><select id="mentionMember" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs"><option value="">Mention teammate…</option></select><button type="button" onclick="insertMention()" class="rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold">@ Mention</button></div>
+                    <textarea name="body" id="commentBody" required maxlength="5000" rows="3" placeholder="Write a comment…" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs"></textarea>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white">Post comment</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -529,6 +559,20 @@
             const container = document.getElementById('drawer-data-' + bugId);
             if (!container) return;
             const data = container.firstElementChild;
+            const bugIdValue = data.getAttribute('data-id');
+            document.getElementById('watchBugId').value = bugIdValue;
+            document.getElementById('commentBugId').value = bugIdValue;
+            const watchButton = document.getElementById('watchBugButton');
+            watchButton.textContent = data.getAttribute('data-watching') === 'true' ? 'Unwatch' : 'Watch';
+            const memberSelect = document.getElementById('mentionMember');
+            memberSelect.innerHTML = '<option value="">Mention teammate…</option>';
+            try {
+                JSON.parse(data.getAttribute('data-project-users') || '[]').forEach((member) => {
+                    if (String(member.id) === String({{ auth()->id() }})) return;
+                    const option = document.createElement('option'); option.value = member.id; option.textContent = `${member.name} · ${member.role}`; memberSelect.appendChild(option);
+                });
+            } catch (error) {}
+            renderComments(data.getAttribute('data-comments'));
 
             document.getElementById('drawerBugId').innerText = '#ABT-' + data.getAttribute('data-id');
             document.getElementById('drawerTitle').innerText = data.getAttribute('data-title');
@@ -664,18 +708,45 @@
         }
 
         function switchDrawerTab(tabId) {
-            ['tabDetails', 'tabTriage', 'tabPatch', 'tabActivity'].forEach(id => {
+            ['tabDetails', 'tabTriage', 'tabPatch', 'tabActivity', 'tabDiscussion'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
-            ['btnTabDetails', 'btnTabTriage', 'btnTabPatch', 'btnTabActivity'].forEach(id => {
+            ['btnTabDetails', 'btnTabTriage', 'btnTabPatch', 'btnTabActivity', 'btnTabDiscussion'].forEach(id => {
                 document.getElementById(id).classList.remove('border-indigo-600', 'text-indigo-600');
                 document.getElementById(id).classList.add('border-transparent');
             });
 
             document.getElementById(tabId).classList.remove('hidden');
-            const activeBtn = ({ tabDetails: 'btnTabDetails', tabTriage: 'btnTabTriage', tabPatch: 'btnTabPatch', tabActivity: 'btnTabActivity' })[tabId];
+            const activeBtn = ({ tabDetails: 'btnTabDetails', tabTriage: 'btnTabTriage', tabPatch: 'btnTabPatch', tabActivity: 'btnTabActivity', tabDiscussion: 'btnTabDiscussion' })[tabId];
             document.getElementById(activeBtn).classList.add('border-indigo-600', 'text-indigo-600');
             document.getElementById(activeBtn).classList.remove('border-transparent');
+        }
+
+        function renderComments(serialized) {
+            const list = document.getElementById('drawerCommentsList'); list.innerHTML = '';
+            try {
+                const comments = JSON.parse(serialized || '[]');
+                comments.forEach((comment) => {
+                    const item = document.createElement('li'); item.className = 'rounded-xl border border-[#E2E8F0] bg-white p-3';
+                    const author = document.createElement('p'); author.className = 'text-xs font-bold text-slate-900'; author.textContent = comment.author_name;
+                    const body = document.createElement('p'); body.className = 'mt-2 whitespace-pre-wrap break-words text-xs text-slate-700'; body.textContent = comment.body;
+                    const meta = document.createElement('p'); meta.className = 'mt-2 text-[10px] text-slate-400'; meta.textContent = new Date((comment.created_at || '').replace(' ', 'T')).toLocaleString();
+                    item.append(author, body, meta); list.appendChild(item);
+                });
+                if (!comments.length) { const empty = document.createElement('li'); empty.className = 'rounded-xl border border-dashed border-slate-300 p-4 text-xs text-slate-500'; empty.textContent = 'No comments yet. Start the discussion.'; list.appendChild(empty); }
+            } catch (error) { list.textContent = 'Comments could not be loaded.'; }
+        }
+
+        function insertMention() {
+            const select = document.getElementById('mentionMember'); if (!select.value) return;
+            const option = select.options[select.selectedIndex]; const body = document.getElementById('commentBody');
+            const start = body.selectionStart, end = body.selectionEnd, mention = '@' + option.textContent.split(' · ')[0] + ' ';
+            body.setRangeText(mention, start, end, 'end'); body.focus();
+            const inputs = document.getElementById('mentionInputs');
+            if (![...inputs.querySelectorAll('input')].some(input => input.value === select.value)) {
+                const input = document.createElement('input'); input.type = 'hidden'; input.name = 'mentioned_user_ids[]'; input.value = select.value; inputs.appendChild(input);
+            }
+            select.value = '';
         }
 
         function togglePatchView(mode) {
