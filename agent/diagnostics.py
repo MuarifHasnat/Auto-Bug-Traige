@@ -5,6 +5,7 @@ program is never run. Unsupported languages receive a clear scope message.
 """
 
 import ast
+import difflib
 import os
 import re
 import sqlite3
@@ -76,8 +77,78 @@ def _diagnostic_result(language, source, status, message, steps=None):
             "Syntax-only check. This does not prove the program is logically correct, safe, or free of runtime errors."
         ),
         "fixed_code": source,
+        "fix_suggestions": [],
         "suggested_fix_available": False,
     }
+
+
+def _build_fix_suggestions(language, source, status, steps):
+    """Return cautious, review-only suggestions. Never rewrite the submitted source."""
+    suggestions = []
+
+    if language == "Python" and status == "failed":
+        try:
+            ast.parse(source)
+        except SyntaxError as error:
+            if error.msg == "expected ':'" and error.lineno:
+                lines = source.splitlines()
+                index = error.lineno - 1
+                if 0 <= index < len(lines) and "#" not in lines[index] and not lines[index].rstrip().endswith(":"):
+                    original_line = lines[index]
+                    lines[index] = original_line.rstrip() + ":"
+                    proposed = "\n".join(lines)
+                    diff = "".join(difflib.unified_diff(
+                        source.splitlines(keepends=True),
+                        proposed.splitlines(keepends=True),
+                        fromfile="submitted.py",
+                        tofile="suggested.py",
+                    ))
+                    suggestions.append({
+                        "title": "Add the missing colon",
+                        "detail": f"Python expects a colon at the end of line {error.lineno}. Review this edit before using it.",
+                        "proposed_code": proposed,
+                        "diff": diff,
+                    })
+
+    division = re.search(r"(?<![/])\b[A-Za-z_$][\w$]*\s*/\s*(\$?[A-Za-z_][\w$]*)", source)
+    if division:
+        divisor = division.group(1)
+        clean_name = divisor.lstrip("$")
+        examples = {
+            "Python": f'if {clean_name} == 0:\n    raise ValueError("{clean_name} must not be zero")',
+            "PHP": f'if ({divisor} == 0) {{ throw new InvalidArgumentException("{clean_name} must not be zero"); }}',
+            "JavaScript": f'if ({clean_name} === 0) {{ throw new RangeError("{clean_name} must not be zero"); }}',
+            "TypeScript": f'if ({clean_name} === 0) {{ throw new RangeError("{clean_name} must not be zero"); }}',
+            "Java": f'if ({clean_name} == 0) {{ throw new ArithmeticException("{clean_name} must not be zero"); }}',
+            "C": f'if ({clean_name} == 0) {{ /* handle invalid divisor */ }}',
+            "C++": f'if ({clean_name} == 0) {{ /* handle invalid divisor */ }}',
+            "SQL": f"NULLIF({clean_name}, 0)",
+        }
+        suggestions.append({
+            "title": "Check for division by zero",
+            "detail": f"The divisor `{divisor}` may be zero. Decide how this function should handle that case before dividing.",
+            "example_code": examples.get(language, f"Check `{divisor}` before dividing; the correct handling depends on the intended behavior."),
+        })
+
+    if status == "failed" and not suggestions:
+        diagnostic = " ".join(steps or [])
+        if "expected ';'" in diagnostic or "expected ‘;’" in diagnostic:
+            suggestions.append({
+                "title": "Add the missing semicolon",
+                "detail": "The checker expects a statement terminator near the reported location. Confirm the line is a complete statement before adding `;`.",
+            })
+        elif "unterminated" in diagnostic.lower() or "unclosed" in diagnostic.lower() or "never closed" in diagnostic.lower():
+            suggestions.append({
+                "title": "Close the unmatched string or delimiter",
+                "detail": "Review the reported line and add the matching quote, parenthesis, bracket, or brace if it is missing.",
+            })
+        else:
+            suggestions.append({
+                "title": "Review the reported syntax location",
+                "detail": "Check the indicated token and the line before it for a missing delimiter, statement terminator, or language-specific keyword.",
+            })
+
+    return suggestions
 
 
 def _external_syntax_check(language, source):
@@ -257,4 +328,8 @@ def check_code_error(code, description, selected_language="auto"):
         if description
         else ""
     )
+    result["fix_suggestions"] = _build_fix_suggestions(
+        result["language"], source, result["syntax_status"], result["steps"]
+    )
+    result["suggested_fix_available"] = bool(result["fix_suggestions"])
     return result

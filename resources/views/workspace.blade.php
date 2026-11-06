@@ -379,6 +379,7 @@
                                              data-syntax-status="{{ $triage['code_help']['syntax_status'] ?? 'unknown' }}"
                                              data-syntax-checker="{{ $triage['code_help']['syntax_checker'] ?? '' }}"
                                              data-steps="{{ json_encode($triage['code_help']['steps'] ?? []) }}"
+                                             data-fix-suggestions="{{ json_encode($triage['code_help']['fix_suggestions'] ?? []) }}"
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
                                              data-history="{{ json_encode($activity) }}"
@@ -471,6 +472,10 @@
                     <p id="drawerSyntaxChecker" class="mt-1"></p>
                     <p id="drawerScope" class="mt-2"></p>
                 </div>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
+                    <p class="font-bold">Possible fix suggestions · review before applying</p>
+                    <ol id="drawerFixSuggestions" class="mt-2 space-y-2"></ol>
+                </div>
                 <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-900">
                     <p class="font-bold">Smart Assignment Rationale:</p>
                     <p id="drawerReason" class="mt-1"></p>
@@ -491,13 +496,13 @@
 
                 <div id="viewFinalContainer">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-[#0F172A]">Submitted code (unchanged)</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-[#0F172A]">Submitted code (original)</span>
                         <button type="button" onclick="copyPatchCode()" id="copyPatchBtn" 
                                 class="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-[#F1F5F9] transition">
-                            📋 Copy Code
+                            📋 Copy Submitted Code
                         </button>
                     </div>
-                    <p class="mb-2 text-[11px] text-slate-600">No automatic fix was generated. Review the validation notes and make code changes manually.</p>
+                    <p class="mb-2 text-[11px] text-slate-600">Suggestions are displayed in the Triage tab for review. This original snippet is never changed automatically.</p>
                     <textarea id="drawerFixedCode" readonly spellcheck="false" 
                               class="w-full min-h-[220px] rounded-xl bg-slate-950 p-4 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 focus:outline-none"></textarea>
                 </div>
@@ -545,8 +550,46 @@
             document.getElementById('drawerSyntaxStatus').innerText = syntaxLabels[syntaxStatus] || 'Check status unknown';
             document.getElementById('drawerSyntaxChecker').innerText = data.getAttribute('data-syntax-checker') ? `Checker: ${data.getAttribute('data-syntax-checker')}` : '';
             document.getElementById('drawerScope').innerText = data.getAttribute('data-scope');
+            const suggestionsList = document.getElementById('drawerFixSuggestions');
+            suggestionsList.innerHTML = '';
+            try {
+                const suggestions = JSON.parse(data.getAttribute('data-fix-suggestions') || '[]');
+                if (suggestions.length === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'text-slate-700';
+                    empty.textContent = 'No specific fix suggestion was identified. The submitted code remains unchanged.';
+                    suggestionsList.appendChild(empty);
+                }
+                suggestions.forEach((suggestion) => {
+                    const item = document.createElement('li');
+                    item.className = 'rounded-lg border border-amber-200 bg-white/80 p-2.5';
+                    const title = document.createElement('p');
+                    title.className = 'font-bold';
+                    title.textContent = suggestion.title;
+                    const detail = document.createElement('p');
+                    detail.className = 'mt-1';
+                    detail.textContent = suggestion.detail;
+                    item.append(title, detail);
+                    const code = suggestion.proposed_code || suggestion.example_code;
+                    if (code) {
+                        const details = document.createElement('details');
+                        details.className = 'mt-2';
+                        const summary = document.createElement('summary');
+                        summary.className = 'cursor-pointer font-semibold';
+                        summary.textContent = suggestion.proposed_code ? 'Preview proposed edit (not applied)' : 'View example guard (not applied)';
+                        const preview = document.createElement('pre');
+                        preview.className = 'mt-2 overflow-x-auto rounded-lg bg-slate-950 p-2.5 font-mono-code text-[11px] leading-5 text-emerald-300';
+                        preview.textContent = code;
+                        details.append(summary, preview);
+                        item.appendChild(details);
+                    }
+                    suggestionsList.appendChild(item);
+                });
+            } catch (error) {
+                suggestionsList.textContent = 'Fix suggestions could not be loaded. The submitted code remains unchanged.';
+            }
             document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
-            document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No fixed code provided.';
+            document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No submitted code provided.';
             document.getElementById('drawerDiff').value = data.getAttribute('data-diff') || '// No diff available.';
 
             const activityList = document.getElementById('drawerActivityList');
@@ -654,7 +697,7 @@
             navigator.clipboard.writeText(code);
             const btn = document.getElementById('copyPatchBtn');
             btn.innerText = '✓ Copied to Clipboard!';
-            setTimeout(() => btn.innerText = '📋 Copy Fixed Code', 2000);
+            setTimeout(() => btn.innerText = '📋 Copy Submitted Code', 2000);
         }
 
         // Live Filters

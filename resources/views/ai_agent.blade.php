@@ -238,11 +238,11 @@
                     </form>
                 </section>
 
-                <!-- Right Panel (55% / col-span-7): AI Diagnostic & Auto-Fix Studio -->
+                <!-- Right Panel (55% / col-span-7): Diagnostics and review-only fix suggestions -->
                 <section class="lg:col-span-7 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm flex flex-col min-h-[580px]">
                     <div class="border-b border-[#E2E8F0] pb-4 mb-4 flex items-center justify-between">
                         <div>
-                            <h2 class="text-base font-bold text-[#0F172A]">AI Diagnostic & Auto-Fix Studio</h2>
+                            <h2 class="text-base font-bold text-[#0F172A]">Code Diagnostics & Fix Suggestions</h2>
                             <p class="text-xs text-[#64748B]">Language-specific syntax checks, triage results, and suggested code references.</p>
                         </div>
                         <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold text-indigo-700 font-mono-code">
@@ -318,6 +318,32 @@
                                 @if(!empty($ai['code_help']['description_note']))
                                     <p class="text-[11px] text-rose-700 mt-1">{{ $ai['code_help']['description_note'] }}</p>
                                 @endif
+                                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
+                                    <p class="font-bold">Possible fix suggestions · review before applying</p>
+                                    @if(!empty($ai['code_help']['fix_suggestions']))
+                                        <ul class="mt-2 space-y-2">
+                                            @foreach($ai['code_help']['fix_suggestions'] as $suggestion)
+                                                <li class="rounded-lg border border-amber-200 bg-white/80 p-2.5">
+                                                    <p class="font-bold">{{ $suggestion['title'] }}</p>
+                                                    <p class="mt-1">{{ $suggestion['detail'] }}</p>
+                                                    @if(!empty($suggestion['proposed_code']))
+                                                        <details class="mt-2">
+                                                            <summary class="cursor-pointer font-semibold">Preview proposed edit (not applied)</summary>
+                                                            <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-2.5 font-mono-code text-[11px] leading-5 text-emerald-300">{{ $suggestion['proposed_code'] }}</pre>
+                                                        </details>
+                                                    @elseif(!empty($suggestion['example_code']))
+                                                        <details class="mt-2">
+                                                            <summary class="cursor-pointer font-semibold">View example guard (not applied)</summary>
+                                                            <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-2.5 font-mono-code text-[11px] leading-5 text-emerald-300">{{ $suggestion['example_code'] }}</pre>
+                                                        </details>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        <p class="mt-1">No specific fix suggestion was identified by the current rules. The submitted code remains unchanged.</p>
+                                    @endif
+                                </div>
                             </div>
 
                             <!-- Section C: Smart Assignment Routing Card with Human-in-the-Loop Override -->
@@ -378,13 +404,13 @@
 
                                         <button type="button" onclick="copyStudioFix()" id="copyStudioBtn" 
                                                 class="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-[#F1F5F9] transition">
-                                            📋 Copy Code
+                                                📋 Copy Submitted Code
                                         </button>
                                     </div>
 
                                     <div id="studioFinalView">
-                                        <p class="mb-2 text-[11px] text-slate-600">No automatic fix was generated. The submitted snippet is shown unchanged for reference.</p>
-                                        <textarea id="studioFixedCode" readonly spellcheck="false" class="w-full min-h-[160px] rounded-xl bg-slate-950 p-3.5 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 outline-none">{{ $ai['code_help']['fixed_code'] ?? '// No fixed code snippet generated.' }}</textarea>
+                                        <p class="mb-2 text-[11px] text-slate-600">This is the original submitted snippet. Suggestions above are review-only; the code is never changed automatically.</p>
+                                        <textarea id="studioFixedCode" readonly spellcheck="false" class="w-full min-h-[160px] rounded-xl bg-slate-950 p-3.5 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 outline-none">{{ $ai['code_help']['fixed_code'] ?? '// No submitted code provided.' }}</textarea>
                                     </div>
 
                                     <div id="studioDiffView" class="hidden">
@@ -594,7 +620,7 @@
         navigator.clipboard.writeText(code);
         const btn = document.getElementById('copyStudioBtn');
         btn.innerText = '✓ Copied to Clipboard!';
-        setTimeout(() => btn.innerText = '📋 Copy Fixed Code', 2000);
+        setTimeout(() => btn.innerText = '📋 Copy Submitted Code', 2000);
     }
 </script>
 </body>
