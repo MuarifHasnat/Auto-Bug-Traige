@@ -171,12 +171,12 @@
                 @endif
 
                 <!-- Filter & Control Toolbar -->
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-xs flex flex-col items-stretch gap-3">
                     <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2.5">
                         <!-- Real-time Search Box -->
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
-                            <input id="issue-search" data-live-search name="search" value="{{ request('search') }}" autocomplete="off" placeholder="Search issues, stack traces..." 
+                            <input id="issue-search" data-live-search name="search" value="{{ $filters['search'] ?? '' }}" autocomplete="off" placeholder="Search issues, stack traces..."
                                    class="w-56 sm:w-64 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-2 pl-8 pr-3 text-xs outline-none transition focus:border-indigo-600 focus:bg-white">
                         </div>
 
@@ -184,14 +184,48 @@
                         <select name="priority" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A] outline-none transition focus:border-indigo-600">
                             <option value="">All Priorities</option>
                             @foreach(['High','Medium','Low'] as $priority)
-                                <option value="{{ $priority }}" @selected(request('priority') === $priority)>{{ $priority }} Priority</option>
+                                <option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} Priority</option>
                             @endforeach
+                        </select>
+
+                        <select name="assignee" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
+                            <option value="">All Assignees</option>
+                            @foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
+                        </select>
+                        <select name="status" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
+                            <option value="">All Statuses</option>
+                            @foreach(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
+                        </select>
+                        <select name="issue_type" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
+                            <option value="">All Issue Types</option>
+                            @foreach(['Bug', 'Task', 'Story', 'Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach
+                        </select>
+                        <select name="label" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
+                            <option value="">All Labels</option>
+                            @foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach
                         </select>
 
                         <button type="button" id="clear-filters" class="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition">
                             Clear
                         </button>
                     </form>
+
+                    <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                        <select id="savedFilterSelect" class="min-w-48 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
+                            <option value="">Saved filters…</option>
+                            @foreach($savedFilters as $savedFilter)
+                                <option value="{{ $savedFilter->id }}" data-filters="{{ json_encode($savedFilter->filters) }}">{{ $savedFilter->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" id="loadSavedFilter" class="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
+                        <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
+                        <form id="saveFilterForm" action="{{ route('bug-filters.store') }}" method="POST" class="ml-auto">
+                            @csrf<div id="savedFilterPayload"></div>
+                            <input type="hidden" name="name" id="savedFilterName">
+                            <button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Save current filter</button>
+                        </form>
+                        <form id="deleteFilterForm" method="POST" class="hidden">@csrf @method('DELETE')</form>
+                    </div>
 
                     <!-- Quick Toggles -->
                     <div class="flex items-center gap-2">
@@ -203,7 +237,7 @@
                 </div>
 
                 <!-- Empty Project State with Clear Guide Buttons (if 0 bugs in project) -->
-                @if($bugs->count() === 0 && !request('search') && !request('priority'))
+                @if($bugs->count() === 0 && collect($filters)->filter()->isEmpty())
                     <div class="rounded-3xl border border-dashed border-[#CBD5E1] bg-white p-12 text-center my-6">
                         <div class="flex h-16 w-16 mx-auto items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600 text-3xl mb-3">
                             🎉
@@ -224,7 +258,7 @@
                 @endif
 
                 <!-- Search Empty State -->
-                @if($bugs->count() === 0 && request('search'))
+                @if($bugs->count() === 0 && collect($filters)->filter()->isNotEmpty())
                     <div class="rounded-2xl border border-dashed border-[#CBD5E1] bg-white p-8 text-center my-4">
                         <span class="text-2xl text-slate-400">🔍</span>
                         <p class="text-sm font-bold text-[#0F172A] mt-2">"{{ request('search') }}" নামে কোনো বাগ পাওয়া যায়নি।</p>
@@ -774,7 +808,6 @@
         // Live Filters
         const filterForm = document.getElementById('issue-filters');
         const searchInput = document.querySelector('[data-live-search]');
-        const priorityInput = filterForm.querySelector('[name="priority"]');
         const clearFilters = document.getElementById('clear-filters');
         let searchTimer;
 
@@ -784,14 +817,38 @@
                 searchTimer = setTimeout(() => filterForm.requestSubmit(), 300);
             });
         }
-        if (priorityInput) priorityInput.addEventListener('change', () => filterForm.requestSubmit());
+        filterForm.querySelectorAll('select').forEach(select => select.addEventListener('change', () => filterForm.requestSubmit()));
         if (clearFilters) {
             clearFilters.addEventListener('click', () => {
-                searchInput.value = '';
-                priorityInput.value = '';
+                filterForm.querySelectorAll('input, select').forEach(control => control.value = '');
                 filterForm.requestSubmit();
             });
         }
+
+        document.getElementById('loadSavedFilter').addEventListener('click', () => {
+            const selected = document.getElementById('savedFilterSelect').selectedOptions[0];
+            if (!selected || !selected.value) return;
+            let saved = {};
+            try { saved = JSON.parse(selected.dataset.filters || '{}'); } catch (error) {}
+            filterForm.querySelectorAll('input[name], select[name]').forEach(control => control.value = saved[control.name] || '');
+            filterForm.requestSubmit();
+        });
+        document.getElementById('saveCurrentFilter').addEventListener('click', () => {
+            const name = prompt('Name this saved filter:');
+            if (!name || !name.trim()) return;
+            const payload = document.getElementById('savedFilterPayload'); payload.replaceChildren();
+            filterForm.querySelectorAll('input[name], select[name]').forEach(control => {
+                if (!control.value) return;
+                const input = document.createElement('input'); input.type = 'hidden'; input.name = `filters[${control.name}]`; input.value = control.value; payload.appendChild(input);
+            });
+            document.getElementById('savedFilterName').value = name.trim();
+            document.getElementById('saveFilterForm').requestSubmit();
+        });
+        document.getElementById('deleteSavedFilter').addEventListener('click', () => {
+            const id = document.getElementById('savedFilterSelect').value;
+            if (!id || !confirm('Delete this saved filter?')) return;
+            const form = document.getElementById('deleteFilterForm'); form.action = `/api/bug-filters/${encodeURIComponent(id)}`; form.requestSubmit();
+        });
 
         // Quick Toggles
         let onlyMyIssuesActive = false;

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use App\Notifications\BugUpdateNotification;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class BugController extends Controller
@@ -250,21 +251,30 @@ class BugController extends Controller
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->orderBy('name')->get();
         $query = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id');
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:200'],
+            'assignee' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'])],
+            'priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
+            'issue_type' => ['nullable', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
+            'label' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
             $query->where(function ($builder) use ($search) {
                 $builder->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status')->toString());
+        if (!empty($filters['status'])) $query->where('status', $filters['status']);
+        if (!empty($filters['priority'])) $query->where('priority', $filters['priority']);
+        if (!empty($filters['assignee'])) {
+            $query->where('assigned_to', $filters['assignee'] === 'Unassigned' ? null : $filters['assignee']);
         }
-
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->string('priority')->toString());
-        }
+        if (!empty($filters['issue_type'])) $query->where('issue_type', $filters['issue_type']);
+        if (!empty($filters['label'])) $query->whereJsonContains('labels', $filters['label']);
 
         $bugs = $query->get();
         $stats = [
@@ -304,10 +314,16 @@ class BugController extends Controller
             ->groupBy('bug_id');
         $watchingBugIds = DB::table('bug_watchers')->where('user_id', Auth::id())->pluck('bug_id')->all();
         $projectMembers = $this->projectParticipants($projectId);
+        $availableAssignees = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('assigned_to')->distinct()->orderBy('assigned_to')->pluck('assigned_to')->all();
+        array_unshift($availableAssignees, 'Unassigned');
+        $availableLabels = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('labels')->pluck('labels')
+            ->flatMap(fn ($json) => is_array($json) ? $json : (json_decode($json, true) ?: []))->unique()->sort()->values();
+        $savedFilters = DB::table('saved_bug_filters')->where('user_id', Auth::id())->where('project_id', $projectId)->orderBy('name')->get()
+            ->map(function ($saved) { $saved->filters = json_decode($saved->filters, true) ?: []; return $saved; });
 
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -385,6 +401,8 @@ class BugController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],
             'description' => ['required', 'string', 'max:5000'],
+            'issue_type' => ['required', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
+            'labels' => ['nullable', 'string', 'max:500'],
             'language' => ['nullable', 'string', 'in:auto,PHP,C++,C,Python,JavaScript,TypeScript,Java,SQL'],
             'code_snippet' => ['nullable', 'string', 'max:20000'],
             'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -456,6 +474,7 @@ class BugController extends Controller
         $assignedTo = $aiResult['assigned_to'] ?? 'Unassigned';
         $priority = $aiResult['priority'] ?? 'Medium';
         $status = $aiResult['status'] ?? ($isDuplicate ? 'Duplicate' : 'Open');
+        $labels = array_values(array_unique(array_filter(array_map('trim', explode(',', $data['labels'] ?? '')))));
         $bugId = DB::transaction(function () use (
             $projectId,
             $data,
@@ -464,6 +483,7 @@ class BugController extends Controller
             $assignedTo,
             $priority,
             $status,
+            $labels,
             $screenshotPath,
             $sourceFilePath,
             $request
@@ -475,6 +495,8 @@ class BugController extends Controller
                 'description' => $data['description'],
                 'priority' => $priority,
                 'status' => $status,
+                'issue_type' => $data['issue_type'],
+                'labels' => json_encode($labels, JSON_THROW_ON_ERROR),
                 'assigned_to' => $assignedTo,
                 'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
                 'duplicate_of' => $aiResult['duplicate_of'] ?? null,
@@ -679,6 +701,35 @@ class BugController extends Controller
     {
         Auth::user()->unreadNotifications()->update(['read_at' => now()]);
         return back()->with('success', 'All notifications marked as read.');
+    }
+
+    public function saveBugFilter(Request $request): RedirectResponse
+    {
+        $projectId = $this->currentProjectId();
+        $assignees = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('assigned_to')->distinct()->pluck('assigned_to')->all();
+        $assignees[] = 'Unassigned';
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80', Rule::unique('saved_bug_filters', 'name')->where(fn ($query) => $query->where('user_id', Auth::id())->where('project_id', $projectId))],
+            'filters' => ['nullable', 'array'],
+            'filters.search' => ['nullable', 'string', 'max:200'],
+            'filters.assignee' => ['nullable', Rule::in($assignees)],
+            'filters.status' => ['nullable', Rule::in(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'])],
+            'filters.priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
+            'filters.issue_type' => ['nullable', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
+            'filters.label' => ['nullable', 'string', 'max:50'],
+        ]);
+        $filters = array_filter($data['filters'] ?? [], fn ($value) => $value !== null && $value !== '');
+        DB::table('saved_bug_filters')->insert([
+            'user_id' => Auth::id(), 'project_id' => $projectId, 'name' => $data['name'],
+            'filters' => json_encode($filters, JSON_THROW_ON_ERROR), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return back()->with('success', 'Filter saved.');
+    }
+
+    public function deleteBugFilter(int $id): RedirectResponse
+    {
+        DB::table('saved_bug_filters')->where('id', $id)->where('user_id', Auth::id())->where('project_id', $this->currentProjectId())->delete();
+        return back()->with('success', 'Saved filter deleted.');
     }
 
     private function projectParticipants(int $projectId)

@@ -161,6 +161,17 @@
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
                         </div>
 
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label class="block text-xs font-bold text-[#0F172A]">Issue Type
+                                <select name="issue_type" required class="mt-1.5 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-medium">
+                                    <option value="Bug">Bug</option><option value="Task">Task</option><option value="Story">Story</option><option value="Improvement">Improvement</option>
+                                </select>
+                            </label>
+                            <label class="block text-xs font-bold text-[#0F172A]">Labels <span class="font-normal text-slate-400">(comma-separated)</span>
+                                <input name="labels" maxlength="500" placeholder="backend, checkout, urgent" class="mt-1.5 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-medium">
+                            </label>
+                        </div>
+
                         <!-- 1-Click Bug Description Templates UX -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">

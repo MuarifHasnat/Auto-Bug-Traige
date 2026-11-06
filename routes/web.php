@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
     Route::post('/api/bugs/comments', [BugController::class, 'storeComment'])->name('bugs.comments');
     Route::post('/api/bugs/watch', [BugController::class, 'toggleWatch'])->name('bugs.watch');
+    Route::post('/api/bug-filters', [BugController::class, 'saveBugFilter'])->name('bug-filters.store');
+    Route::delete('/api/bug-filters/{id}', [BugController::class, 'deleteBugFilter'])->whereNumber('id')->name('bug-filters.destroy');
     Route::get('/logout', [BugController::class, 'logout']);
     Route::post('/logout', [BugController::class, 'logout']);
 });
