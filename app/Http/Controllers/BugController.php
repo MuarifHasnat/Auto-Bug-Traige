@@ -104,6 +104,7 @@ class BugController extends Controller
             'project_stack' => $data['project_stack'],
             'project_id' => $project,
         ]);
+        $this->ensureProjectWorkflow((int) $project);
 
         return redirect('/add-developers');
     }
@@ -248,13 +249,16 @@ class BugController extends Controller
         abort_unless(in_array(Auth::user()?->role, ['manager', 'developer', 'tester'], true), 403);
 
         $projectId = $this->currentProjectId();
+        $workflowStatuses = $this->ensureProjectWorkflow($projectId);
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->orderBy('name')->get();
         $query = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id');
 
+        $legacyStatusNames = ['Open' => 'To Do', 'Resolved' => 'Done', 'Closed' => 'Done'];
+        if (isset($legacyStatusNames[$request->input('status')])) $request->merge(['status' => $legacyStatusNames[$request->input('status')]]);
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:200'],
             'assignee' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', Rule::in(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'])],
+            'status' => ['nullable', Rule::in($workflowStatuses->pluck('name')->all())],
             'priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
             'issue_type' => ['nullable', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
             'label' => ['nullable', 'string', 'max:50'],
@@ -277,10 +281,12 @@ class BugController extends Controller
         if (!empty($filters['label'])) $query->whereJsonContains('labels', $filters['label']);
 
         $bugs = $query->get();
+        $doneStatuses = $workflowStatuses->where('is_done', true)->pluck('name')->all();
+        $activeStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
         $stats = [
             'total' => DB::table('bugs')->where('project_id', $projectId)->count(),
-            'open' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', ['Open', 'In Progress'])->count(),
-            'resolved' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', ['Resolved', 'Closed'])->count(),
+            'open' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $activeStatuses)->count(),
+            'resolved' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->count(),
             'high' => DB::table('bugs')->where('project_id', $projectId)->where('priority', 'High')->count(),
         ];
 
@@ -314,6 +320,7 @@ class BugController extends Controller
             ->groupBy('bug_id');
         $watchingBugIds = DB::table('bug_watchers')->where('user_id', Auth::id())->pluck('bug_id')->all();
         $projectMembers = $this->projectParticipants($projectId);
+        $transitionsByStatus = DB::table('project_workflow_transitions')->where('project_id', $projectId)->orderBy('to_status')->get()->groupBy('from_status');
         $availableAssignees = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('assigned_to')->distinct()->orderBy('assigned_to')->pluck('assigned_to')->all();
         array_unshift($availableAssignees, 'Unassigned');
         $availableLabels = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('labels')->pluck('labels')
@@ -323,7 +330,7 @@ class BugController extends Controller
 
         $projects = $this->accessibleProjects();
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'watchingBugIds', 'projectMembers', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -333,10 +340,13 @@ class BugController extends Controller
         abort_unless(Auth::user()?->role === 'manager', 403);
 
         $projectId = $this->currentProjectId();
+        $workflowStatuses = $this->ensureProjectWorkflow($projectId);
+        $doneStatuses = $workflowStatuses->where('is_done', true)->pluck('name')->all();
+        $activeStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
         $stats = [
             'total' => DB::table('bugs')->where('project_id', $projectId)->count(),
-            'open' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', ['Open', 'In Progress'])->count(),
-            'resolved' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', ['Resolved', 'Closed'])->count(),
+            'open' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $activeStatuses)->count(),
+            'resolved' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->count(),
             'high' => DB::table('bugs')->where('project_id', $projectId)->where('priority', 'High')->count(),
         ];
         $recentBugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(8)->get();
@@ -371,6 +381,7 @@ class BugController extends Controller
         abort_unless(in_array(Auth::user()?->role, ['tester', 'developer'], true), 403);
 
         $projectId = $this->currentProjectId();
+        $this->ensureProjectWorkflow($projectId);
         $bugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(10)->get();
         $assignedBugs = collect();
         if (Auth::user()->role === 'developer') {
@@ -426,6 +437,7 @@ class BugController extends Controller
                 : null);
 
         $projectId = $this->currentProjectId();
+        $projectWorkflow = $this->ensureProjectWorkflow($projectId);
         $pastBugs = DB::table('bugs')
             ->where('project_id', $projectId)
             ->whereRaw('is_duplicate = false')
@@ -473,7 +485,8 @@ class BugController extends Controller
         $isDuplicate = (bool) ($aiResult['is_duplicate'] ?? false);
         $assignedTo = $aiResult['assigned_to'] ?? 'Unassigned';
         $priority = $aiResult['priority'] ?? 'Medium';
-        $status = $aiResult['status'] ?? ($isDuplicate ? 'Duplicate' : 'Open');
+        $status = $isDuplicate ? 'Duplicate' : $projectWorkflow->first(fn ($workflowStatus) => $workflowStatus->name !== 'Duplicate')->name;
+        $aiResult['status'] = $status;
         $labels = array_values(array_unique(array_filter(array_map('trim', explode(',', $data['labels'] ?? '')))));
         $bugId = DB::transaction(function () use (
             $projectId,
@@ -514,7 +527,7 @@ class BugController extends Controller
                 $this->recordBugActivity($projectId, $bugId, 'assignment_changed', 'Unassigned', $assignedTo);
             }
 
-            if ($this->isActiveAssignment($isDuplicate, $status, $assignedTo)) {
+            if ($this->isActiveAssignment($projectId, $isDuplicate, $status, $assignedTo)) {
                 DB::table('developers')->where('project_id', $projectId)->where('name', $assignedTo)->increment('active_tasks');
             }
 
@@ -541,19 +554,22 @@ class BugController extends Controller
     {
         abort_unless(in_array(Auth::user()?->role, ['manager', 'developer'], true), 403);
 
+        $projectId = $this->currentProjectId();
+        $workflowStatuses = $this->ensureProjectWorkflow($projectId);
         $data = $request->validate([
             'id' => ['required', 'integer', 'exists:bugs,id'],
-            'status' => ['required', 'in:Open,Duplicate,In Progress,Resolved,Closed'],
+            'status' => ['required', 'string', Rule::in($workflowStatuses->pluck('name')->all())],
         ]);
-        $projectId = $this->currentProjectId();
         DB::transaction(function () use ($data, $projectId) {
             $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->lockForUpdate()->firstOrFail();
             if ($bug->status === $data['status']) {
                 return;
             }
+            abort_unless(DB::table('project_workflow_transitions')->where('project_id', $projectId)
+                ->where('from_status', $bug->status)->where('to_status', $data['status'])->exists(), 422, 'That status transition is not allowed.');
 
-            $wasActive = $this->isActiveAssignment((bool) $bug->is_duplicate, $bug->status, $bug->assigned_to);
-            $willBeActive = $this->isActiveAssignment((bool) $bug->is_duplicate, $data['status'], $bug->assigned_to);
+            $wasActive = $this->isActiveAssignment($projectId, (bool) $bug->is_duplicate, $bug->status, $bug->assigned_to);
+            $willBeActive = $this->isActiveAssignment($projectId, (bool) $bug->is_duplicate, $data['status'], $bug->assigned_to);
 
             DB::table('bugs')->where('project_id', $projectId)->where('id', $data['id'])->update([
                 'status' => $data['status'],
@@ -598,8 +614,8 @@ class BugController extends Controller
             }
 
             $isDuplicate = (bool) $bug->is_duplicate;
-            $wasActive = $this->isActiveAssignment($isDuplicate, $bug->status, $oldAssignee);
-            $willBeActive = $this->isActiveAssignment($isDuplicate, $bug->status, $newAssignee);
+            $wasActive = $this->isActiveAssignment($projectId, $isDuplicate, $bug->status, $oldAssignee);
+            $willBeActive = $this->isActiveAssignment($projectId, $isDuplicate, $bug->status, $newAssignee);
 
             DB::table('bugs')->where('project_id', $projectId)->where('id', $bug->id)->update([
                 'assigned_to' => $newAssignee,
@@ -713,7 +729,7 @@ class BugController extends Controller
             'filters' => ['nullable', 'array'],
             'filters.search' => ['nullable', 'string', 'max:200'],
             'filters.assignee' => ['nullable', Rule::in($assignees)],
-            'filters.status' => ['nullable', Rule::in(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'])],
+            'filters.status' => ['nullable', Rule::in($this->ensureProjectWorkflow($projectId)->pluck('name')->all())],
             'filters.priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
             'filters.issue_type' => ['nullable', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
             'filters.label' => ['nullable', 'string', 'max:50'],
@@ -730,6 +746,87 @@ class BugController extends Controller
     {
         DB::table('saved_bug_filters')->where('id', $id)->where('user_id', Auth::id())->where('project_id', $this->currentProjectId())->delete();
         return back()->with('success', 'Saved filter deleted.');
+    }
+
+    public function workflowPage(): View
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $projectId = $this->currentProjectId();
+        $statuses = $this->ensureProjectWorkflow($projectId);
+        $transitions = DB::table('project_workflow_transitions')->where('project_id', $projectId)->orderBy('from_status')->orderBy('to_status')->get();
+        return view('workflow_settings', compact('statuses', 'transitions'));
+    }
+
+    public function saveWorkflow(Request $request): RedirectResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $projectId = $this->currentProjectId();
+        $this->ensureProjectWorkflow($projectId);
+        $data = $request->validate([
+            'statuses' => ['required', 'string', 'max:2000'],
+            'done_statuses' => ['nullable', 'string', 'max:500'],
+            'transitions' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        $statuses = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $data['statuses'])))));
+        $normalized = array_map(fn ($name) => mb_strtolower($name), $statuses);
+        if (count($statuses) < 3 || count($statuses) > 12 || count(array_unique($normalized)) !== count($normalized)
+            || !in_array('Duplicate', $statuses, true) || $statuses[0] === 'Duplicate') {
+            return back()->withErrors(['statuses' => 'Use 3–12 unique status names, one per line. Keep the reserved Duplicate status, and put the initial status first.']);
+        }
+        foreach ($statuses as $name) {
+            if (mb_strlen($name) > 40 || preg_match('/[<>]/u', $name) || str_contains($name, '->')) {
+                return back()->withErrors(['statuses' => 'Each status must be 40 characters or fewer and cannot contain angle brackets or “->”.']);
+            }
+        }
+        $usedStatuses = DB::table('bugs')->where('project_id', $projectId)->distinct()->pluck('status')->all();
+        if (array_diff($usedStatuses, $statuses)) {
+            return back()->withErrors(['statuses' => 'Keep every status currently used by a bug. Move those bugs first before removing a status.']);
+        }
+
+        $doneStatuses = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $data['done_statuses'] ?? '')))));
+        if (array_diff($doneStatuses, $statuses)) {
+            return back()->withErrors(['done_statuses' => 'Completed statuses must also appear in the status list.']);
+        }
+        if (!$doneStatuses || in_array('Duplicate', $doneStatuses, true)) {
+            return back()->withErrors(['done_statuses' => 'Choose at least one completed status. Duplicate cannot be a completed status.']);
+        }
+
+        $transitionPairs = [];
+        foreach (preg_split('/\R/', $data['transitions'] ?? '') as $line) {
+            $line = trim($line);
+            if ($line === '') continue;
+            $pair = preg_split('/\s*->\s*/', $line);
+            if (count($pair) !== 2 || !in_array($pair[0], $statuses, true) || !in_array($pair[1], $statuses, true) || $pair[0] === $pair[1]) {
+                return back()->withErrors(['transitions' => 'Each transition must use existing status names, like “To Do -> In Progress”.']);
+            }
+            $transitionPairs[$pair[0]."\0".$pair[1]] = [$pair[0], $pair[1]];
+        }
+        if (!$transitionPairs) return back()->withErrors(['transitions' => 'Add at least one allowed transition.']);
+
+        DB::transaction(function () use ($projectId, $statuses, $doneStatuses, $transitionPairs) {
+            DB::table('project_workflow_transitions')->where('project_id', $projectId)->delete();
+            DB::table('project_workflow_statuses')->where('project_id', $projectId)->delete();
+            foreach ($statuses as $position => $name) {
+                DB::table('project_workflow_statuses')->insert([
+                    'project_id' => $projectId, 'name' => $name, 'position' => $position,
+                    'is_done' => in_array($name, $doneStatuses, true), 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            foreach (array_values($transitionPairs) as [$from, $to]) {
+                DB::table('project_workflow_transitions')->insert([
+                    'project_id' => $projectId, 'from_status' => $from, 'to_status' => $to,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            $activeNames = DB::table('project_workflow_statuses')->where('project_id', $projectId)->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
+            foreach (DB::table('developers')->where('project_id', $projectId)->get(['name']) as $developer) {
+                $activeCount = DB::table('bugs')->where('project_id', $projectId)->where('assigned_to', $developer->name)
+                    ->whereIn('status', $activeNames)->where('is_duplicate', false)->count();
+                DB::table('developers')->where('project_id', $projectId)->where('name', $developer->name)->update(['active_tasks' => $activeCount]);
+            }
+        });
+        return back()->with('success', 'Project workflow updated.');
     }
 
     private function projectParticipants(int $projectId)
@@ -769,13 +866,38 @@ class BugController extends Controller
         \App\Models\User::whereIn('id', $recipients)->get()->each(fn ($user) => $user->notify($notification));
     }
 
-    private function isActiveAssignment(bool $isDuplicate, string $status, ?string $assignee): bool
+    private function isActiveAssignment(int $projectId, bool $isDuplicate, string $status, ?string $assignee): bool
     {
+        $isDone = (bool) DB::table('project_workflow_statuses')->where('project_id', $projectId)->where('name', $status)->value('is_done');
         return !$isDuplicate
-            && !in_array($status, ['Duplicate', 'Resolved', 'Closed'], true)
+            && !$isDone
             && $assignee !== null
             && $assignee !== ''
             && $assignee !== 'Unassigned';
+    }
+
+    private function ensureProjectWorkflow(int $projectId)
+    {
+        $statuses = DB::table('project_workflow_statuses')->where('project_id', $projectId)->orderBy('position')->get();
+        if ($statuses->isNotEmpty()) return $statuses;
+
+        $defaults = [['To Do', false], ['In Progress', false], ['Review', false], ['Done', true], ['Duplicate', false]];
+        $edges = [['To Do', 'In Progress'], ['In Progress', 'To Do'], ['In Progress', 'Review'], ['Review', 'In Progress'], ['Review', 'Done'], ['Done', 'To Do']];
+        DB::transaction(function () use ($projectId, $defaults, $edges) {
+            foreach ($defaults as $position => [$name, $isDone]) {
+                DB::table('project_workflow_statuses')->insertOrIgnore([
+                    'project_id' => $projectId, 'name' => $name, 'position' => $position,
+                    'is_done' => $isDone, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            foreach ($edges as [$from, $to]) {
+                DB::table('project_workflow_transitions')->insertOrIgnore([
+                    'project_id' => $projectId, 'from_status' => $from, 'to_status' => $to,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+        return DB::table('project_workflow_statuses')->where('project_id', $projectId)->orderBy('position')->get();
     }
 
     private function changeDeveloperWorkload(int $projectId, string $developerName, int $amount): void

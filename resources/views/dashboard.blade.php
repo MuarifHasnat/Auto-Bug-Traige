@@ -51,6 +51,9 @@
                 <span class="text-sm">👥</span>
                 <span>Team & Skills Matrix</span>
             </a>
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="{{ route('workflow.settings') }}">
+                <span class="text-sm">⇄</span><span>Workflow Settings</span>
+            </a>
             <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/create-project">
                 <span class="text-sm">⚙</span>
                 <span>New Project Wizard</span>

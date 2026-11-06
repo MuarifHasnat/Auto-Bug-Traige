@@ -21,6 +21,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [BugController::class, 'dashboardPage']);
     Route::get('/workspace', [BugController::class, 'workspacePage']);
+    Route::get('/workflow', [BugController::class, 'workflowPage'])->name('workflow.settings');
+    Route::post('/workflow', [BugController::class, 'saveWorkflow'])->name('workflow.save');
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
     Route::get('/notifications', [BugController::class, 'notificationsPage'])->name('notifications.index');
     Route::post('/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');

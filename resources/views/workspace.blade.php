@@ -59,6 +59,9 @@
                 @endif
 
                 @if(auth()->user()->role === 'manager')
+                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="{{ route('workflow.settings') }}">
+                        <span class="text-sm">⇄</span><span>Workflow Settings</span>
+                    </a>
                     <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/add-developers">
                         <span class="text-sm">👥</span>
                         <span>Team & Skills Matrix</span>
@@ -120,7 +123,8 @@
                 
                 <!-- Role-Aware Contextual Greeting Banner -->
                 @php
-                    $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', ['Open', 'In Progress'])->count();
+                    $activeWorkflowStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
+                    $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
                 <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/70 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
@@ -194,7 +198,7 @@
                         </select>
                         <select name="status" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
                             <option value="">All Statuses</option>
-                            @foreach(['Open', 'In Progress', 'Resolved', 'Closed', 'Duplicate'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
+                            @foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach
                         </select>
                         <select name="issue_type" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
                             <option value="">All Issue Types</option>
@@ -268,33 +272,22 @@
                     </div>
                 @endif
 
-                <!-- 4 Kanban Columns -->
-                @php
-                    $columns = [
-                        'Open' => ['label' => 'To Do', 'dot' => 'bg-indigo-500', 'border' => 'border-t-indigo-500'],
-                        'In Progress' => ['label' => 'In Progress', 'dot' => 'bg-amber-500', 'border' => 'border-t-amber-500'],
-                        'Resolved' => ['label' => 'Resolved', 'dot' => 'bg-emerald-500', 'border' => 'border-t-emerald-500'],
-                        'Closed' => ['label' => 'Duplicate / Closed', 'dot' => 'bg-slate-500', 'border' => 'border-t-slate-500'],
-                    ];
-                @endphp
-
-                <div class="jira-scroll grid grid-cols-1 gap-4 overflow-x-auto pb-4 md:grid-cols-2 xl:grid-cols-4">
-                    @foreach($columns as $columnStatus => $col)
+                <!-- Workflow-driven Kanban columns -->
+                <div class="jira-scroll grid gap-4 overflow-x-auto pb-4" style="grid-template-columns: repeat({{ $workflowStatuses->count() }}, minmax(280px, 1fr));">
+                    @foreach($workflowStatuses as $workflowStatus)
                         @php
-                            if ($columnStatus === 'Open') {
-                                $colBugs = $bugs->where('status', 'Open');
-                            } elseif ($columnStatus === 'Closed') {
-                                $colBugs = $bugs->whereIn('status', ['Closed', 'Duplicate']);
-                            } else {
-                                $colBugs = $bugs->where('status', $columnStatus);
-                            }
+                            $columnStatus = $workflowStatus->name;
+                            $colBugs = $bugs->where('status', $columnStatus);
+                            $columnColors = $workflowStatus->is_done
+                                ? ['dot' => 'bg-emerald-500', 'border' => 'border-t-emerald-500']
+                                : ($loop->first ? ['dot' => 'bg-indigo-500', 'border' => 'border-t-indigo-500'] : ['dot' => 'bg-amber-500', 'border' => 'border-t-amber-500']);
                         @endphp
-                        <section class="rounded-2xl border border-[#E2E8F0] border-t-4 {{ $col['border'] }} bg-[#F1F5F9]/80 p-3.5 flex flex-col min-h-[500px]">
+                        <section class="rounded-2xl border border-[#E2E8F0] border-t-4 {{ $columnColors['border'] }} bg-[#F1F5F9]/80 p-3.5 flex flex-col min-h-[500px]">
                             <!-- Column Header -->
                             <div class="mb-3 flex items-center justify-between px-1">
                                 <div class="flex items-center gap-2">
-                                    <span class="h-2.5 w-2.5 rounded-full {{ $col['dot'] }}"></span>
-                                    <h3 class="text-xs font-bold uppercase tracking-wider text-[#475569]">{{ $col['label'] }}</h3>
+                                    <span class="h-2.5 w-2.5 rounded-full {{ $columnColors['dot'] }}"></span>
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-[#475569]">{{ $columnStatus }}</h3>
                                 </div>
                                 <span class="rounded-full bg-white border border-[#CBD5E1] px-2 py-0.5 text-xs font-mono-code font-bold text-slate-700 shadow-xs">
                                     {{ $colBugs->count() }}
@@ -369,37 +362,20 @@
                                                 <!-- 1-Click Quick Status Advance Button -->
                                                 @if(auth()->user()->role === 'tester')
                                                     <span class="text-[10px] text-slate-400">{{ $bug->status }}</span>
-                                                @elseif($bug->status === 'Open')
-                                                    <form action="/api/bugs/override" method="POST" class="inline-block">
-                                                        @csrf
-                                                        <input type="hidden" name="id" value="{{ $bug->id }}">
-                                                        <input type="hidden" name="status" value="In Progress">
-                                                        <button type="submit" title="Advance to In Progress" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 text-[10px] font-bold transition">
-                                                            ▶ Start Work
-                                                        </button>
-                                                    </form>
-                                                @elseif($bug->status === 'In Progress')
-                                                    <form action="/api/bugs/override" method="POST" class="inline-block">
-                                                        @csrf
-                                                        <input type="hidden" name="id" value="{{ $bug->id }}">
-                                                        <input type="hidden" name="status" value="Resolved">
-                                                        <button type="submit" title="Mark as Resolved" class="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 text-[10px] font-bold transition">
-                                                            ✓ Mark Resolved
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <!-- Mini Status Dropdown for Done/Closed -->
+                                                @elseif($transitionsByStatus->has($bug->status) && $transitionsByStatus->get($bug->status)->isNotEmpty())
                                                     <form action="/api/bugs/override" method="POST" class="inline-block">
                                                         @csrf
                                                         <input type="hidden" name="id" value="{{ $bug->id }}">
                                                         <select name="status" onchange="this.form.submit()" 
                                                                 class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-[#0F172A] outline-none hover:bg-white transition">
-                                                            <option value="Open" @selected($bug->status === 'Open')>To Do</option>
-                                                            <option value="In Progress" @selected($bug->status === 'In Progress')>In Prog</option>
-                                                            <option value="Resolved" @selected($bug->status === 'Resolved')>Done</option>
-                                                            <option value="Closed" @selected($bug->status === 'Closed')>Closed</option>
+                                                            <option value="" selected disabled>{{ $bug->status }}</option>
+                                                            @foreach($transitionsByStatus->get($bug->status) as $transition)
+                                                                <option value="{{ $transition->to_status }}">Move to {{ $transition->to_status }}</option>
+                                                            @endforeach
                                                         </select>
                                                     </form>
+                                                @else
+                                                    <span class="text-[10px] text-slate-400">{{ $bug->status }}</span>
                                                 @endif
                                             </div>
                                         </div>
