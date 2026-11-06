@@ -344,6 +344,18 @@ class BugController extends Controller
         ]);
     }
 
+    public function printableBugReport(int $id): View
+    {
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->firstOrFail();
+        $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
+        $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
+        $activities = DB::table('bug_activities')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
+        $clarifications = DB::table('bug_clarification_requests')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
+
+        return view('bug_report_print', compact('bug', 'comments', 'activities', 'clarifications'));
+    }
+
     public function dashboardPage(Request $request): View
     {
         abort_unless(Auth::user()?->role === 'manager', 403);

@@ -467,6 +467,7 @@
         <div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
             <!-- Tab 1: Details -->
             <div id="tabDetails" class="space-y-4">
+                <a id="drawerReportLink" href="#" target="_blank" class="inline-flex rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">Print / Save report as PDF</a>
                 <div>
                     <h3 id="drawerTitle" class="text-lg font-extrabold text-[#0F172A] leading-snug"></h3>
                     <p id="drawerDesc" class="mt-2 text-xs text-[#475569] leading-relaxed whitespace-pre-line"></p>
@@ -622,6 +623,7 @@
             renderClarifications(data.getAttribute('data-clarifications'));
 
             document.getElementById('drawerBugId').innerText = '#ABT-' + data.getAttribute('data-id');
+            document.getElementById('drawerReportLink').href = `/bugs/${encodeURIComponent(bugIdValue)}/report`;
             document.getElementById('drawerTitle').innerText = data.getAttribute('data-title');
             document.getElementById('drawerDesc').innerText = data.getAttribute('data-desc');
             document.getElementById('drawerFeature').innerText = data.getAttribute('data-feat');

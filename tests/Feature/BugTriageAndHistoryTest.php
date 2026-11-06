@@ -227,6 +227,23 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bugId, 'event_type' => 'clarification_answered']);
     }
 
+    public function test_project_member_can_print_a_bug_report_and_other_project_cannot_access_it(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $outsider = User::factory()->create(['role' => 'manager']);
+        $projectId = $this->createProject($manager, 'Printable project');
+        $bugId = (int) DB::table('bugs')->insertGetId([
+            'project_id' => $projectId, 'title' => 'Printable issue', 'description' => 'Details for the report.',
+            'priority' => 'High', 'status' => 'To Do', 'is_duplicate' => false,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->get(route('bugs.report', $bugId))->assertOk()->assertSee('Printable issue')->assertSee('Print / Save as PDF');
+        $otherProject = $this->createProject($outsider, 'Other project');
+        $this->actingAs($outsider)->withSession(['project_id' => $otherProject])
+            ->get(route('bugs.report', $bugId))->assertNotFound();
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([
