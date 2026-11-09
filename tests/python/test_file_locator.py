@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent"))
 
-from file_locator import locate_suspected_files, parse_github_slug
+from file_locator import locate_suspected_files, parse_github_slug, index_repository_structure
 
 
 class FileLocatorTests(unittest.TestCase):
@@ -54,6 +54,19 @@ class FileLocatorTests(unittest.TestCase):
         self.assertTrue(len(results) > 0)
         self.assertIn("AuthRepository.kt", results[0]["path"])
         self.assertFalse(any(".blade.php" in r["path"] for r in results))
+
+    def test_index_repository_structure_handles_invalid_slugs(self):
+        invalid_res = index_repository_structure("invalid_slug_with_no_slash")
+        self.assertFalse(invalid_res["success"])
+        self.assertIn("Invalid", invalid_res["error"])
+
+    def test_index_repository_structure_reads_cached_files_properly(self):
+        # Already cached from our live fetch
+        res = index_repository_structure("https://github.com/MuarifHasnat/Auto-Bug-Traige", force=False)
+        self.assertTrue(res["success"])
+        self.assertGreater(res["total_files"], 0)
+        self.assertIn("layers", res)
+        self.assertIn("views_ui", res["layers"])
 
 
 if __name__ == "__main__":

@@ -39,6 +39,39 @@
             <button type="submit" class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-500">Save workflow</button>
         </div>
     </form>
+
+    <!-- Connected GitHub Repository & Codebase Pre-Indexer -->
+    <div class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🐙</span>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-900">GitHub Codebase Synchronization</h2>
+                    <p class="text-xs text-slate-500">Connect and pre-index your project's GitHub repository structure for automated, error-free file location.</p>
+                </div>
+            </div>
+            <span class="text-[11px] font-mono-code font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full">
+                {{ session('project_stack', 'Multi-stack') }}
+            </span>
+        </div>
+
+        <form action="{{ route('projects.sync-github') }}" method="POST" class="space-y-4">
+            @csrf
+            <div>
+                <label class="block text-xs font-bold text-slate-800 mb-1">GitHub Repository Link or Slug</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" name="github_repo" value="{{ old('github_repo', session('github_repo', 'https://github.com/MuarifHasnat/Auto-Bug-Traige')) }}" placeholder="https://github.com/owner/repository" 
+                           class="flex-1 rounded-xl border border-slate-300 p-2.5 font-mono-code text-xs text-slate-800 outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600">
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-900 hover:from-slate-800 hover:to-indigo-800 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">
+                        <span>↻ Re-sync & Pre-Index Codebase</span>
+                    </button>
+                </div>
+                <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                    💡 <b>Deep Architectural Understanding:</b> রি-সিঙ্ক বাটনে ক্লিক করলে এজেন্ট গিটহাব থেকে সরাসরি আপনার রিপোজিটরির ডিরেক্টরি ট্রি স্ক্যান করে <b>UI Layers, Controllers, Services, ও Models</b> ইনডেক্স করে রাখবে—যাতে বাগ ফাইল লোকেটর কোনো ভুল ছাড়াই কোডের আসল কালপ্রিট ফাইল নির্দেশ করতে পারে।
+                </p>
+            </div>
+        </form>
+    </div>
 </main>
 </body>
 </html>

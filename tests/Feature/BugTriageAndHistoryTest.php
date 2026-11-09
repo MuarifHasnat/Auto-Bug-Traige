@@ -368,6 +368,32 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertSame('In Progress', $updatedBug->status);
     }
 
+    public function test_manager_can_sync_github_repository_tree(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $projectId = $this->createProject($manager, 'GitHub Sync Project');
+        $this->addMember($projectId, $manager);
+
+        Process::fake(['*' => json_encode([
+            'success' => true,
+            'repo' => 'owner/sample-repo',
+            'branch' => 'main',
+            'total_files' => 50,
+            'primary_language' => 'Kotlin',
+        ], JSON_THROW_ON_ERROR)]);
+
+        $response = $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->post('/api/project/sync-github', [
+                'github_repo' => 'https://github.com/owner/sample-repo',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $repo = DB::table('projects')->where('id', $projectId)->value('github_repo');
+        $this->assertSame('https://github.com/owner/sample-repo', $repo);
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

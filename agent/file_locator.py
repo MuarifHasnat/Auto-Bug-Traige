@@ -125,6 +125,133 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
     return 'auto'
 
 
+def index_repository_structure(github_repo, force=False):
+    """
+    Connects to GitHub API, indexes the full codebase architecture,
+    categorizes file layers, detects languages, and caches the metadata.
+    """
+    slug = parse_github_slug(github_repo)
+    if not slug:
+        return {"success": False, "error": "Invalid GitHub repository link."}
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f"{slug.replace('/', '_')}.json"
+
+    if not force and cache_file.exists():
+        try:
+            with open(cache_file, "r", encoding="utf-8") as cf:
+                data = json.load(cf)
+                if isinstance(data, dict) and data.get("total_files", 0) > 0:
+                    data["success"] = True
+                    data["cached"] = True
+                    return data
+        except Exception:
+            pass
+
+    gh_headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")
+    if token:
+        gh_headers["Authorization"] = f"Bearer {token}"
+
+    default_branch = "main"
+    try:
+        repo_meta_url = f"https://api.github.com/repos/{slug}"
+        req = urllib.request.Request(repo_meta_url, headers=gh_headers)
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            meta = json.loads(resp.read().decode())
+            default_branch = meta.get("default_branch") or "main"
+    except Exception:
+        pass
+
+    files = []
+    active_branch = default_branch
+    candidate_branches = [default_branch] + [b for b in ["main", "master"] if b != default_branch]
+
+    for b in candidate_branches:
+        try:
+            tree_url = f"https://api.github.com/repos/{slug}/git/trees/{quote(b, safe='')}?recursive=1"
+            req = urllib.request.Request(tree_url, headers=gh_headers)
+            with urllib.request.urlopen(req, timeout=4.0) as resp:
+                payload = json.loads(resp.read().decode())
+                files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
+                if files:
+                    active_branch = b
+                    break
+        except Exception:
+            continue
+
+    if not files:
+        return {
+            "success": False,
+            "repo": slug,
+            "branch": default_branch,
+            "total_files": 0,
+            "error": "Could not fetch GitHub repository tree (check repo visibility, spelling, or rate limit)."
+        }
+
+    # Language Distribution Analysis
+    lang_counter = {}
+    for f in files:
+        ext = Path(f).suffix.lower()
+        if ext in ['.kt', '.kts']:
+            lang_counter['Kotlin'] = lang_counter.get('Kotlin', 0) + 1
+        elif ext in ['.py']:
+            lang_counter['Python'] = lang_counter.get('Python', 0) + 1
+        elif ext in ['.ts', '.tsx']:
+            lang_counter['TypeScript'] = lang_counter.get('TypeScript', 0) + 1
+        elif ext in ['.js', '.jsx']:
+            lang_counter['JavaScript'] = lang_counter.get('JavaScript', 0) + 1
+        elif ext in ['.java']:
+            lang_counter['Java'] = lang_counter.get('Java', 0) + 1
+        elif ext in ['.go']:
+            lang_counter['Go'] = lang_counter.get('Go', 0) + 1
+        elif ext in ['.rs']:
+            lang_counter['Rust'] = lang_counter.get('Rust', 0) + 1
+        elif ext in ['.dart']:
+            lang_counter['Flutter/Dart'] = lang_counter.get('Flutter/Dart', 0) + 1
+        elif ext in ['.swift']:
+            lang_counter['Swift'] = lang_counter.get('Swift', 0) + 1
+        elif ext in ['.cs']:
+            lang_counter['C#'] = lang_counter.get('C#', 0) + 1
+        elif ext in ['.php']:
+            lang_counter['PHP'] = lang_counter.get('PHP', 0) + 1
+        elif ext in ['.cpp', '.c', '.hpp', '.h']:
+            lang_counter['C/C++'] = lang_counter.get('C/C++', 0) + 1
+        elif ext in ['.xml', '.json', '.yaml', '.yml']:
+            lang_counter['Config/Data'] = lang_counter.get('Config/Data', 0) + 1
+
+    primary_lang = max(lang_counter.items(), key=lambda x: x[1])[0] if lang_counter else "Unknown"
+
+    # Deep Architectural Layer Classification
+    layers = {
+        "views_ui": [f for f in files if re.search(r'activity|fragment|component|screen|page|layout|view|blade|widget|modal', f, re.I)],
+        "services": [f for f in files if re.search(r'service|repository|client|api|helper|util|provider|interactor|usecase', f, re.I)],
+        "controllers": [f for f in files if re.search(r'controller|handler|endpoint|route', f, re.I)],
+        "models": [f for f in files if re.search(r'model|entity|dao|schema|migration|record', f, re.I)],
+        "configs": [f for f in files if re.search(r'gradle|config|manifest|package\.json|docker|settings', f, re.I)],
+    }
+
+    result = {
+        "success": True,
+        "repo": slug,
+        "branch": active_branch,
+        "total_files": len(files),
+        "primary_language": primary_lang,
+        "languages": lang_counter,
+        "layer_counts": {k: len(v) for k, v in layers.items()},
+        "layers": layers,
+        "files": files,
+    }
+
+    try:
+        with open(cache_file, "w", encoding="utf-8") as cf:
+            json.dump(result, cf)
+    except Exception:
+        pass
+
+    return result
+
+
 def get_repository_files(github_slug=None, target_tech='auto', source_file_name=None):
     """
     Retrieves project file tree:
@@ -137,59 +264,16 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
 
     # 1. Try remote GitHub API if slug provided
     if github_slug:
-        # Check cache first
-        try:
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            cache_file = CACHE_DIR / f"{github_slug.replace('/', '_')}.json"
-            if cache_file.exists():
-                with open(cache_file, "r", encoding="utf-8") as cf:
-                    cached_data = json.load(cf)
-                    if isinstance(cached_data, dict):
-                        cached_files = cached_data.get("files", [])
-                        cached_branch = cached_data.get("branch", "main")
-                    elif isinstance(cached_data, list):
-                        cached_files = cached_data
-                        cached_branch = "main"
-                    else:
-                        cached_files = []
-                        cached_branch = "main"
-
-                    if cached_files:
-                        if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in cached_files):
-                            pass
-                        elif target_tech == 'python' and not any(f.endswith('.py') for f in cached_files):
-                            pass
-                        else:
-                            return cached_files, cached_branch
-        except Exception:
-            pass
-
-        # Try live GitHub API (main branch then master branch)
-        gh_headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")
-        if token:
-            gh_headers["Authorization"] = f"Bearer {token}"
-
-        for b in ["main", "master"]:
-            try:
-                url = f"https://api.github.com/repos/{github_slug}/git/trees/{quote(b, safe='')}?recursive=1"
-                req = urllib.request.Request(url, headers=gh_headers)
-                with urllib.request.urlopen(req, timeout=2.5) as resp:
-                    data = json.loads(resp.read().decode())
-                    files = [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
-                    if files:
-                        try:
-                            with open(cache_file, "w", encoding="utf-8") as cf:
-                                json.dump({"files": files, "branch": b}, cf)
-                        except Exception:
-                            pass
-                        if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in files):
-                            break
-                        if target_tech == 'python' and not any(f.endswith('.py') for f in files):
-                            break
-                        return files, b
-            except Exception:
-                continue
+        index_data = index_repository_structure(github_slug, force=False)
+        if index_data and index_data.get("success") and index_data.get("files"):
+            cached_files = index_data["files"]
+            cached_branch = index_data.get("branch", "main")
+            if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in cached_files):
+                pass
+            elif target_tech == 'python' and not any(f.endswith('.py') for f in cached_files):
+                pass
+            else:
+                return cached_files, cached_branch
 
     # 2. Technology-Specific Fallback (Never show Blade files for Kotlin/Python/React projects!)
     if target_tech == 'kotlin':
@@ -358,6 +442,17 @@ def locate_suspected_files(
         if priority_file and fpath == priority_file:
             score += 100
 
+        # Architectural Layer Affinity Boost
+        if any(w in combined_text for w in ['screen', 'ui', 'button', 'click', 'view', 'layout', 'display', 'freeze', 'activity', 'fragment']):
+            if re.search(r'activity|fragment|component|screen|page|layout|view|blade|widget|modal', fpath, re.I):
+                score += 15
+        if any(w in combined_text for w in ['database', 'query', 'migration', 'table', 'column', 'sql', 'dao', 'entity']):
+            if re.search(r'model|entity|dao|schema|migration|record|table', fpath, re.I):
+                score += 15
+        if any(w in combined_text for w in ['service', 'payment', 'token', 'request', 'response', 'timeout', 'network', 'gateway', 'auth', 'login']):
+            if re.search(r'service|repository|client|api|helper|util|provider|interactor|usecase|controller', fpath, re.I):
+                score += 15
+
         if score > 0 or len(repo_files) <= limit:
             file_scores.append({
                 "path": fpath,
@@ -390,3 +485,11 @@ def locate_suspected_files(
         })
 
     return results
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--index":
+        target_repo = sys.argv[2] if len(sys.argv) > 2 else ""
+        res = index_repository_structure(target_repo, force=True)
+        print(json.dumps(res))

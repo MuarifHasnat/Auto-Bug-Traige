@@ -114,7 +114,60 @@ class BugController extends Controller
         ]);
         $this->ensureProjectWorkflow((int) $project);
 
-        return redirect('/add-developers');
+        $githubRepo = !empty($data['github_repo']) ? trim($data['github_repo']) : null;
+        $syncNotice = '';
+        if ($githubRepo) {
+            try {
+                $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+                $proc = Process::timeout(10)->run([$python, base_path('agent/file_locator.py'), '--index', $githubRepo]);
+                if ($proc->successful()) {
+                    $meta = json_decode($proc->output(), true);
+                    if ($meta && ($meta['success'] ?? false)) {
+                        $syncNotice = " • Indexed {$meta['total_files']} files ({$meta['primary_language']}) from branch '{$meta['branch']}'";
+                    }
+                }
+            } catch (\Throwable) {}
+        }
+
+        return redirect('/add-developers')->with('success', "Project created successfully!{$syncNotice}");
+    }
+
+    public function syncGitHubRepo(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $projectId = $this->currentProjectId();
+
+        $data = $request->validate([
+            'github_repo' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (array_key_exists('github_repo', $data) && $data['github_repo'] !== null) {
+            $cleaned = trim($data['github_repo']);
+            DB::table('projects')->where('id', $projectId)->update([
+                'github_repo' => $cleaned ?: null,
+                'updated_at' => now(),
+            ]);
+            session(['github_repo' => $cleaned ?: null]);
+        }
+
+        $repo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
+        if (!$repo) {
+            return back()->withErrors(['github' => 'No GitHub repository is linked. Please enter a valid repository URL.']);
+        }
+
+        $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+        $proc = Process::timeout(12)->run([$python, base_path('agent/file_locator.py'), '--index', $repo]);
+        $meta = json_decode($proc->output(), true);
+
+        if ($request->wantsJson()) {
+            return response()->json($meta ?: ['success' => false, 'error' => 'Indexing process failed.']);
+        }
+
+        if ($meta && ($meta['success'] ?? false)) {
+            return back()->with('success', "GitHub repository synced! Successfully cataloged {$meta['total_files']} files ({$meta['primary_language']}) on branch '{$meta['branch']}'. AI File Locator is primed!");
+        }
+
+        return back()->with('success', "GitHub repository link saved. (Tree pre-fetch will re-attempt during triage).");
     }
 
     public function addDevelopersPage(): View
