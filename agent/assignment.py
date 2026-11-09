@@ -1,3 +1,6 @@
+import re
+
+
 def assign_developer(developers, full_text, selected_language, feature, is_duplicate):
     """
     Finds the most suitable developer based on:
@@ -30,17 +33,28 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
 
     best_dev_name = available[0].get("name", "Unassigned")
     highest_score = -999
+    text_words = set(re.findall(r'[a-zA-Z0-9_+#]+', full_text.lower()))
+    best_dev_details = {
+        "matched_skills": [],
+        "feature_history": 0,
+        "language_history": 0,
+        "active_tasks": int(available[0].get("active_tasks", 0) or 0),
+        "capacity": int(available[0].get("capacity", 5) or 5),
+        "feature_match": False,
+    }
 
     language_for_history = language_key.lower()
     for dev in available:
         dev_skills = dev.get("skills", "").lower().split()
         active_tasks = int(dev.get("active_tasks", 0) or 0)
+        capacity = int(dev.get("capacity", 5) or 5)
         resolved_features = [item.lower() for item in dev.get("resolved_features", [])]
         resolved_languages = [item.lower() for item in dev.get("resolved_languages", [])]
         feature_history = min(3, resolved_features.count(feature.lower()))
         language_history = min(2, resolved_languages.count(language_for_history))
 
-        skill_match_count = sum(1 for skill in dev_skills if skill in full_text)
+        matched_skills = [s for s in dev_skills if s in text_words or (len(s) >= 3 and s in full_text.lower())]
+        skill_match_count = len(matched_skills)
         language_match = selected_language != "auto" and language_key in dev_skills
         feature_match = feature.lower() in dev_skills
         total_score = (
@@ -55,8 +69,32 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
         if total_score > highest_score:
             highest_score = total_score
             best_dev_name = dev.get("name", "Unassigned")
+            best_dev_details = {
+                "matched_skills": matched_skills,
+                "feature_history": feature_history,
+                "language_history": language_history,
+                "active_tasks": active_tasks,
+                "capacity": capacity,
+                "feature_match": feature_match,
+            }
 
     assigned_to = best_dev_name
-    reason = f"{assigned_to} was selected for {feature} work based on skill match, resolved-fix history, language experience, and available capacity."
+    reasons = []
+    if best_dev_details.get("matched_skills"):
+        reasons.append(f"skill match ({', '.join(best_dev_details['matched_skills'])})")
+    else:
+        reasons.append("skill match")
+
+    if best_dev_details.get("feature_history", 0) > 0:
+        reasons.append(f"resolved-fix history ({best_dev_details['feature_history']} past fixes)")
+    elif best_dev_details.get("feature_match"):
+        reasons.append(f"{feature} specialization")
+    else:
+        reasons.append("resolved-fix history")
+
+    reasons.append("language experience")
+    reasons.append(f"available capacity ({best_dev_details.get('active_tasks', 0)}/{best_dev_details.get('capacity', 5)} active)")
+
+    reason = f"{assigned_to} was selected for {feature} work based on " + ", ".join(reasons) + "."
 
     return assigned_to, reason
