@@ -287,13 +287,18 @@
                                     <span class="h-2.5 w-2.5 rounded-full {{ $columnColors['dot'] }}"></span>
                                     <h3 class="text-xs font-bold uppercase tracking-wider text-[#475569]">{{ $columnStatus }}</h3>
                                 </div>
-                                <span class="rounded-full bg-white border border-[#CBD5E1] px-2 py-0.5 text-xs font-mono-code font-bold text-slate-700 shadow-xs">
+                                <span class="rounded-full bg-white border border-[#CBD5E1] px-2 py-0.5 text-xs font-mono-code font-bold text-slate-700 shadow-xs" id="col-count-{{ Str::slug($columnStatus) }}">
                                     {{ $colBugs->count() }}
                                 </span>
                             </div>
 
-                            <!-- Column Cards Container with Independent Scroll -->
-                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[680px] pr-1 custom-scroll" id="column-{{ $columnStatus }}">
+                            <!-- Column Cards Container with Independent Scroll & Drag Target -->
+                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[680px] pr-1 custom-scroll kanban-dropzone rounded-xl transition-all duration-150 p-1" 
+                                 id="column-{{ Str::slug($columnStatus) }}"
+                                 data-status="{{ $columnStatus }}"
+                                 ondragover="handleDragOver(event)"
+                                 ondragleave="handleDragLeave(event)"
+                                 ondrop="handleDrop(event, '{{ $columnStatus }}')">
                                 @forelse($colBugs as $bug)
                                     @php
                                         $triage = json_decode($bug->triage_result ?? '', true);
@@ -306,10 +311,15 @@
                                         $priorityClass = $bug->priority === 'High' ? 'priority-strip-high' : ($bug->priority === 'Low' ? 'priority-strip-low' : 'priority-strip-medium');
                                         $prioritySymbol = $bug->priority === 'High' ? '🔥 ▲ High' : ($bug->priority === 'Low' ? '▼ Low' : '● Medium');
                                     @endphp
-                                    <!-- 4-Layer Card Anatomy with 4px Left Accent Strip & Tooltips -->
-                                    <article id="bug-{{ $bug->id }}" class="bug-card rounded-2xl border border-[#E2E8F0] {{ $priorityClass }} bg-white p-4 shadow-xs card-hover-lift cursor-pointer transition"
+                                    <!-- 4-Layer Card Anatomy with Drag-and-Drop & 4px Left Accent Strip -->
+                                    <article id="bug-{{ $bug->id }}" class="bug-card rounded-2xl border border-[#E2E8F0] {{ $priorityClass }} bg-white p-4 shadow-xs card-hover-lift cursor-grab active:cursor-grabbing transition"
+                                             data-id="{{ $bug->id }}"
+                                             data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to }}"
                                              data-duplicate="{{ $bug->is_duplicate ? 'true' : 'false' }}"
+                                             draggable="true"
+                                             ondragstart="handleDragStart(event, {{ $bug->id }}, '{{ $bug->status }}')"
+                                             ondragend="handleDragEnd(event)"
                                              onclick="openDrawer({{ $bug->id }})">
                                         
                                         <!-- Layer 1: Top Meta (#ABT-X + Priority with Symbol) -->
@@ -995,6 +1005,94 @@
                     card.style.display = 'block';
                 }
             });
+        }
+
+        // Kanban Drag and Drop
+        let draggedBugId = null;
+        let draggedFromStatus = null;
+
+        function handleDragStart(event, bugId, currentStatus) {
+            draggedBugId = bugId;
+            draggedFromStatus = currentStatus;
+            event.dataTransfer.setData('text/plain', bugId);
+            event.dataTransfer.effectAllowed = 'move';
+            const card = document.getElementById(`bug-${bugId}`);
+            if (card) {
+                card.classList.add('opacity-40', 'scale-[0.98]', 'ring-2', 'ring-indigo-500');
+            }
+        }
+
+        function handleDragEnd(event) {
+            if (draggedBugId) {
+                const card = document.getElementById(`bug-${draggedBugId}`);
+                if (card) {
+                    card.classList.remove('opacity-40', 'scale-[0.98]', 'ring-2', 'ring-indigo-500');
+                }
+            }
+            document.querySelectorAll('.kanban-dropzone').forEach(zone => {
+                zone.classList.remove('bg-indigo-50/70', 'ring-2', 'ring-indigo-400');
+            });
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const dropzone = event.currentTarget;
+            dropzone.classList.add('bg-indigo-50/70', 'ring-2', 'ring-indigo-400');
+        }
+
+        function handleDragLeave(event) {
+            const dropzone = event.currentTarget;
+            dropzone.classList.remove('bg-indigo-50/70', 'ring-2', 'ring-indigo-400');
+        }
+
+        async function handleDrop(event, targetStatus) {
+            event.preventDefault();
+            const dropzone = event.currentTarget;
+            dropzone.classList.remove('bg-indigo-50/70', 'ring-2', 'ring-indigo-400');
+
+            if (!draggedBugId || draggedFromStatus === targetStatus) return;
+
+            const card = document.getElementById(`bug-${draggedBugId}`);
+            if (!card) return;
+
+            // Optimistically move card in DOM
+            dropzone.prepend(card);
+            card.setAttribute('data-status', targetStatus);
+
+            function toSlug(s) {
+                return (s || '').toLowerCase().trim().replace(/[\s\W-]+/g, '-');
+            }
+
+            const fromCountEl = document.getElementById(`col-count-${toSlug(draggedFromStatus)}`);
+            const toCountEl = document.getElementById(`col-count-${toSlug(targetStatus)}`);
+            if (fromCountEl) fromCountEl.textContent = Math.max(0, parseInt(fromCountEl.textContent || '0') - 1);
+            if (toCountEl) toCountEl.textContent = parseInt(toCountEl.textContent || '0') + 1;
+
+            const prevStatus = draggedFromStatus;
+            draggedFromStatus = targetStatus;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+                const res = await fetch('/api/bugs/override', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: draggedBugId,
+                        status: targetStatus,
+                        reason: `Moved via drag and drop from ${prevStatus} to ${targetStatus}`
+                    })
+                });
+                if (!res.ok) {
+                    window.location.reload();
+                }
+            } catch (err) {
+                window.location.reload();
+            }
         }
     </script>
 </body>
