@@ -43,26 +43,33 @@
                     </p>
 
                     <!-- UX Feature: One-Click Demo Switcher for fast testing/evaluation -->
-                    <div class="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
+                    <div class="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 shadow-xs">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1">
-                                <span>⚡</span> Quick Demo Login (1-Click Fill)
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                                <span class="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white text-[9px]">⚡</span>
+                                Quick Demo Access
                             </span>
-                            <span class="text-[10px] text-indigo-600 font-mono-code">No typing needed</span>
+                            <span class="text-[10px] text-indigo-600 font-semibold font-mono-code bg-indigo-100/60 px-1.5 py-0.5 rounded">1-Click Fill</span>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
-                            <button type="button" onclick="fillDemo('rakib@gmail.com', '12345678', 'Manager')" 
-                                    class="rounded-xl border border-blue-200 bg-white py-1.5 px-2 text-[11px] font-bold text-[#0052cc] hover:bg-blue-50 transition shadow-2xs">
-                                👤 Manager
+                            <button type="button" onclick="fillDemo('demo-manager@example.test', '12345678', 'Manager')" 
+                                    class="group rounded-xl border border-blue-200 bg-white py-2 px-2 text-[11px] font-bold text-[#0052cc] hover:bg-blue-50/80 hover:border-blue-400 transition shadow-2xs flex flex-col items-center gap-0.5">
+                                <span class="text-sm">👑</span>
+                                <span>Manager</span>
                             </button>
-                            <button type="button" onclick="fillDemo('rakib1@gmail.com', '12345678', 'Developer')" 
-                                    class="rounded-xl border border-emerald-200 bg-white py-1.5 px-2 text-[11px] font-bold text-[#006644] hover:bg-emerald-50 transition shadow-2xs">
-                                💻 Developer
+                            <button type="button" onclick="fillDemo('demo.alice@example.test', '12345678', 'Developer')" 
+                                    class="group rounded-xl border border-emerald-200 bg-white py-2 px-2 text-[11px] font-bold text-[#006644] hover:bg-emerald-50/80 hover:border-emerald-400 transition shadow-2xs flex flex-col items-center gap-0.5">
+                                <span class="text-sm">💻</span>
+                                <span>Developer</span>
                             </button>
-                            <button type="button" onclick="fillDemo('rakib11@gmail.com', '12345678', 'Tester')" 
-                                    class="rounded-xl border border-purple-200 bg-white py-1.5 px-2 text-[11px] font-bold text-[#6554c0] hover:bg-purple-50 transition shadow-2xs">
-                                🐞 QA Tester
+                            <button type="button" onclick="fillDemo('demo-tester@example.test', '12345678', 'Tester')" 
+                                    class="group rounded-xl border border-purple-200 bg-white py-2 px-2 text-[11px] font-bold text-[#6554c0] hover:bg-purple-50/80 hover:border-purple-400 transition shadow-2xs flex flex-col items-center gap-0.5">
+                                <span class="text-sm">🐞</span>
+                                <span>QA Tester</span>
                             </button>
+                        </div>
+                        <div class="mt-2 text-center text-[10px] text-slate-500 font-mono-code">
+                            Preloaded demo accounts • Default password: <span class="font-bold text-slate-700">12345678</span>
                         </div>
                     </div>
 

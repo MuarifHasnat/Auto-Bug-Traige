@@ -172,79 +172,59 @@
                             </label>
                         </div>
 
-                        <!-- 1-Click Bug Description Templates UX -->
+                        <!-- 1-Click Bug Description Templates UX for QA -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
-                                <label class="block text-xs font-bold text-[#0F172A]">Description</label>
+                                <label class="block text-xs font-bold text-[#0F172A]">Problem Description & Reproduction Steps</label>
                                 <div class="flex items-center gap-1">
-                                    <span class="text-[10px] text-[#64748B] font-bold">1-Click Templates:</span>
+                                    <span class="text-[10px] text-[#64748B] font-bold">QA Templates:</span>
                                     <button type="button" onclick="applyTemplate('ui')" class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50">+ UI Glitch</button>
-                                    <button type="button" onclick="applyTemplate('backend')" class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 hover:bg-rose-50">+ 500 Crash</button>
-                                    <button type="button" onclick="applyTemplate('db')" class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 hover:bg-amber-50">+ Slow Query</button>
+                                    <button type="button" onclick="applyTemplate('payment')" class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 hover:bg-rose-50">+ Payment Crash</button>
+                                    <button type="button" onclick="applyTemplate('auth')" class="rounded border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-purple-600 hover:bg-purple-50">+ Login Error</button>
                                 </div>
                             </div>
                             <textarea id="bugDescription" name="description" required rows="4" maxlength="5000" 
-                                      placeholder="Steps to reproduce, expected behavior, actual crash stack trace..." 
-                                      class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"></textarea>
+                                      placeholder="Explain what happened: 1. Clicked checkout, 2. Page froze with spinning wheel, 3. Expected confirmation but got an error..." 
+                                      class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white leading-relaxed"></textarea>
                         </div>
 
-                        <!-- Mini Code Editor with Auto-Language Detection -->
+                        <!-- Full-Width Screenshot Dropzone with Live Preview (Paste & Upload) -->
                         <div>
                             <div class="flex items-center justify-between mb-1">
-                                <label class="block text-xs font-bold text-[#0F172A]">Code Snippet</label>
-                                <div class="flex items-center gap-2">
-                                    <span id="detectedLangBadge" class="hidden rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[10px] font-mono-code font-bold text-emerald-700">
-                                        ✨ Auto-detected: Python
-                                    </span>
-                                    <select id="langSelect" name="language" class="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1 text-[11px] font-semibold text-[#0F172A] outline-none focus:border-indigo-600">
-                                        <option value="auto">Auto-Detect</option>
-                                        <option>PHP</option>
-                                        <option>Python</option>
-                                        <option>JavaScript</option>
-                                        <option>TypeScript</option>
-                                        <option>C++</option>
-                                        <option>C</option>
-                                        <option>Java</option>
-                                        <option>SQL</option>
-                                    </select>
-                                </div>
+                                <label class="block text-xs font-bold text-[#0F172A]">
+                                    Problem Screenshot / Error Proof <span class="text-indigo-600 font-semibold">(Image Evidence)</span>
+                                </label>
+                                <span class="text-[10px] text-slate-500 font-mono-code">No code required</span>
                             </div>
-
-                            <!-- Dark Code Editor with Line Number Gutter -->
-                            <div class="code-editor-wrapper mt-1 border border-slate-800">
-                                <div class="line-numbers">
-                                    1<br>2<br>3<br>4<br>5<br>6<br>7<br>8
+                            <label id="screenshotDropzone" class="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 p-5 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/50 transition group">
+                                <div id="screenshotPlaceholder" class="flex flex-col items-center py-2">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 text-2xl group-hover:scale-105 transition shadow-xs">📸</span>
+                                    <span class="text-xs font-bold text-[#0F172A] mt-2 block" id="screenshotStatus">Click to Upload or Drag & Drop Screenshot</span>
+                                    <span class="text-[11px] text-[#64748B] block mt-0.5">Supports PNG, JPG, WEBP • Or directly press <kbd class="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono-code text-[10px] font-bold text-slate-700 shadow-2xs">Ctrl + V</kbd> to paste</span>
                                 </div>
-                                <textarea id="codeSnippetInput" name="code_snippet" rows="8" maxlength="20000" 
-                                          oninput="detectLanguageRealtime(this.value)"
-                                          placeholder="// Paste buggy function or crash snippet here...&#10;function calculateTax($subtotal, $rate) {&#10;    return $subtotal / $rate;&#10;}" 
-                                          class="flex-1 bg-transparent p-3 font-mono-code text-xs leading-6 text-emerald-400 placeholder-slate-600 outline-none resize-none"></textarea>
-                            </div>
+                                <div id="screenshotPreviewWrapper" class="hidden w-full text-center">
+                                    <img id="screenshotPreview" src="" alt="Screenshot Preview" class="max-h-44 rounded-xl mx-auto object-contain border border-indigo-200 shadow-sm">
+                                    <span class="inline-block mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shadow-2xs" id="screenshotFileName">✓ Image attached</span>
+                                    <button type="button" onclick="clearScreenshot(event)" class="block mx-auto mt-1 text-[10px] font-bold text-rose-500 hover:underline">Remove image</button>
+                                </div>
+                                <input type="file" id="screenshotInput" name="screenshot" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleScreenshotSelected(this)">
+                            </label>
                         </div>
 
-                        <!-- Dual File Dropzone with Clipboard Screenshot (Ctrl+V) Support -->
-                        <div class="grid grid-cols-2 gap-3 pt-1">
-                            <label id="screenshotDropzone" class="rounded-2xl border-2 border-dashed border-[#CBD5E1] p-3 text-center cursor-pointer hover:border-indigo-500 bg-[#F8FAFC] transition">
-                                <span class="text-base block">📷</span>
-                                <span class="text-xs font-bold text-[#0F172A] block mt-1" id="screenshotStatus">Screenshot / Paste</span>
-                                <span class="text-[10px] text-[#64748B] block">Drop or press <b>Ctrl + V</b></span>
-                                <input type="file" id="screenshotInput" name="screenshot" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleFileSelected(this, 'screenshotStatus')">
-                            </label>
-
-                            <label class="rounded-2xl border-2 border-dashed border-[#CBD5E1] p-3 text-center cursor-pointer hover:border-indigo-500 bg-[#F8FAFC] transition">
-                                <span class="text-base block">📁</span>
-                                <span class="text-xs font-bold text-[#0F172A] block mt-1" id="sourceStatus">Source File</span>
-                                <span class="text-[10px] text-[#64748B] block">.py, .php, .js, .cpp</span>
-                                <input type="file" id="sourceInput" name="source_file" accept=".txt,.php,.blade.php,.cpp,.c,.h,.hpp,.py,.js,.ts,.java,.sql,.json,.xml,.css,.html" class="hidden" onchange="handleFileSelected(this, 'sourceStatus')">
-                            </label>
+                        <!-- Real-World Black-Box QA Notice -->
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 text-[11px] text-indigo-950 flex items-start gap-2.5">
+                            <span class="text-base shrink-0">💡</span>
+                            <span class="leading-relaxed">
+                                <b>Black-Box QA Mode:</b> Testers do not need code access. Submit natural language symptoms and screenshots—the AI Agent's NLP engine will determine the module, severity, duplicate status, and assign the best engineer.
+                            </span>
                         </div>
 
                         <!-- Submit Button with Loading State & Keyboard Shortcut Info -->
                         <div>
-                            <button type="submit" id="submitTriageBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 py-3 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
+                            <button type="submit" id="submitTriageBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 py-3.5 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
                                 <span>✨ Run AI Triage & Auto-Assign Developer</span>
                             </button>
-                            <p class="text-center text-[10px] text-slate-400 mt-1 font-mono-code">
+                            <p class="text-center text-[10px] text-slate-400 mt-1.5 font-mono-code">
                                 Pro Tip: Press <b>Ctrl + Enter</b> anywhere to triage
                             </p>
                         </div>
@@ -307,23 +287,23 @@
                             @php($syntaxStatusClass = ['passed' => 'bg-emerald-100 text-emerald-800', 'failed' => 'bg-red-100 text-red-800', 'timeout' => 'bg-amber-100 text-amber-800', 'not_available' => 'bg-amber-100 text-amber-800', 'not_run' => 'bg-slate-100 text-slate-700'][$syntaxStatus] ?? 'bg-slate-100 text-slate-700')
                             <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-4 text-xs">
                                 <div class="flex items-center justify-between mb-1">
-                                    <div class="flex items-center gap-2 text-rose-800 font-bold">
-                                        <span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse"></span>
-                                        <span>Code Validation Result</span>
+                                    <div class="flex items-center gap-2 text-indigo-900 font-bold">
+                                        <span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                                        <span>{{ $syntaxStatus === 'not_run' ? 'Black-Box NLP Analysis' : 'Code Validation Result' }}</span>
                                     </div>
                                     <div class="flex items-center gap-1.5">
-                                        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold {{ $syntaxStatusClass }}">{{ $syntaxStatusLabel }}</span>
+                                        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold {{ $syntaxStatusClass }}">{{ $syntaxStatus === 'not_run' ? 'NLP Verified' : $syntaxStatusLabel }}</span>
                                         <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">{{ $ai['priority'] ?? 'Medium' }} Priority</span>
                                     </div>
                                 </div>
-                                <p class="font-mono-code text-xs font-bold text-rose-900 mt-1">
-                                    ● {{ $ai['code_help']['error_name'] ?? 'Analysis complete' }}
+                                <p class="font-mono-code text-xs font-bold text-indigo-950 mt-1">
+                                    ● {{ $syntaxStatus === 'not_run' ? 'Natural-Language & Symptoms Analysis Completed' : ($ai['code_help']['error_name'] ?? 'Analysis complete') }}
                                 </p>
-                                <p class="text-[11px] text-rose-700 mt-1">
-                                    Context: {{ $ai['code_help']['attachment_note'] ?? 'No external files provided.' }}
+                                <p class="text-[11px] text-slate-700 mt-1">
+                                    Evidence: {{ $ai['code_help']['attachment_note'] ?? 'No attachment provided.' }}
                                 </p>
-                                <p class="text-[11px] text-rose-700 mt-1">
-                                    {{ $ai['code_help']['analysis_scope'] ?? 'This result is a limited static check; it does not prove the code is correct.' }}
+                                <p class="text-[11px] text-slate-600 mt-1">
+                                    {{ $syntaxStatus === 'not_run' ? 'Issue classified, duplicate-checked, and assigned to the domain engineer without requiring source code from the tester.' : ($ai['code_help']['analysis_scope'] ?? 'Static inspection completed.') }}
                                 </p>
                                 @if(!empty($ai['code_help']['syntax_checker']))
                                     <p class="text-[11px] text-rose-700 mt-1">Checker: {{ $ai['code_help']['syntax_checker'] }}</p>
@@ -358,6 +338,47 @@
                                     @endif
                                 </div>
                             </div>
+
+                            @if(!empty($ai['code_help']['suspected_files']) || !empty($ai['suspected_files']))
+                                @php($suspectedList = $ai['code_help']['suspected_files'] ?? ($ai['suspected_files'] ?? []))
+                                <!-- Section: AI Suspected Culprit Files in Repository -->
+                                <div class="rounded-2xl border-2 border-indigo-200 bg-white p-4 text-xs shadow-xs">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-2 text-indigo-950 font-bold">
+                                            <span class="flex h-5 w-5 items-center justify-center rounded-lg bg-indigo-600 text-white text-[11px]">🐙</span>
+                                            <span>AI Suspected Repository Culprit Files</span>
+                                        </div>
+                                        <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
+                                            GitHub Linked
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600 mb-2.5">
+                                        বাগের বর্ণনা ও ডোমেইন বিশ্লেষণ করে এআই এজেন্ট আপনার রিপোজিটরি স্ক্যান করেছে এবং এই ফাইলগুলোতে এরর বা কোড পরিবর্তনের সর্বোচ্চ সম্ভাবনা খুঁজে পেয়েছে:
+                                    </p>
+
+                                    <div class="space-y-2">
+                                        @foreach($suspectedList as $sFile)
+                                            <div class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-[#F8FAFC] p-2.5 hover:border-indigo-400 transition">
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-mono-code text-xs font-bold text-slate-900 truncate">📄 {{ $sFile['path'] }}</span>
+                                                        <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[10px] font-bold font-mono-code">{{ $sFile['confidence'] }}% Match</span>
+                                                    </div>
+                                                    <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ $sFile['reason'] }}</p>
+                                                </div>
+
+                                                @if(!empty($sFile['github_url']))
+                                                    <a href="{{ $sFile['github_url'] }}" target="_blank" rel="noopener noreferrer" 
+                                                       class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
+                                                        <span>GitHub-এ দেখুন</span>
+                                                        <span class="text-xs">↗</span>
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <!-- Section C: Smart Assignment Routing Card with Human-in-the-Loop Override -->
                             <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-xs">
@@ -401,6 +422,7 @@
                                     </div>
                                 @endif
 
+                                @if(!empty(trim($ai['code_help']['fixed_code'] ?? '')))
                                 <!-- Code View Switcher: Final Code vs Diff -->
                                 <div class="border border-[#E2E8F0] rounded-2xl p-3.5 bg-white">
                                     <div class="flex items-center justify-between mb-2">
@@ -430,6 +452,7 @@
                                         <textarea readonly spellcheck="false" class="w-full min-h-[160px] rounded-xl bg-slate-950 p-3.5 font-mono-code text-xs leading-5 text-indigo-300 border border-slate-800 outline-none">{{ $ai['code_help']['diff'] ?? '// No diff changes.' }}</textarea>
                                     </div>
                                 </div>
+                                @endif
 
                                 <div class="pt-1 text-right">
                                     <a href="/workspace" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:underline">
@@ -481,85 +504,80 @@
 </div>
 
 <script>
-    // 1-Click Bug Description Templates
+    // 1-Click QA Description Templates
     function applyTemplate(type) {
         const desc = document.getElementById('bugDescription');
         const title = document.getElementById('bugTitle');
         if (type === 'ui') {
-            title.value = title.value || 'UI Alignment glitch on mobile viewport';
+            title.value = title.value || 'UI Element overlapping and freezing on mobile view';
             desc.value = `### 1. Steps to Reproduce:
-- 1. Open page on mobile viewport (< 640px)
-- 2. Observe navigation header overflow
+- 1. Open the application on a mobile viewport or smaller screen.
+- 2. Click the navigation or action button.
+- 3. Notice the UI element overlaps the content and freezes.
 
 ### 2. Expected Result:
-- Mobile drawer should toggle cleanly without horizontal scroll
+- Elements should be responsive and render without freezing.
 
 ### 3. Actual Error / Behavior:
-- Header overflows by 24px and overlaps content`;
-        } else if (type === 'backend') {
-            title.value = title.value || '500 Internal Server Error in API endpoint';
+- Element overlaps and page becomes unresponsive. (See attached screenshot).`;
+        } else if (type === 'payment') {
+            title.value = title.value || 'Checkout payment fails with spinning loader';
             desc.value = `### 1. Steps to Reproduce:
-- 1. Send POST request with missing authorization bearer token
-- 2. Inspect server error response log
+- 1. Add items to checkout cart and proceed to payment.
+- 2. Click "Pay Now" with valid payment details.
+- 3. Loading spinner spins indefinitely and throws a transaction error.
 
 ### 2. Expected Result:
-- Should return 401 Unauthorized JSON response
+- Payment should complete and redirect to order confirmation.
 
 ### 3. Actual Error / Behavior:
-- Server threw 500 Uncaught Exception: Call to a member function on null`;
-        } else if (type === 'db') {
-            title.value = title.value || 'Slow database query & N+1 problem on list endpoint';
+- Gateway times out and payment is aborted. (See screenshot for error state).`;
+        } else if (type === 'auth') {
+            title.value = title.value || 'Login button triggers session rejection';
             desc.value = `### 1. Steps to Reproduce:
-- 1. Load workspace with 50+ issue records
-- 2. Observe database query execution time
+- 1. Navigate to /login.
+- 2. Enter registered credentials and submit.
+- 3. Alert modal shows "Session expired or rejected".
 
 ### 2. Expected Result:
-- Queries should complete under 120ms using eager loading
+- User should be successfully authenticated and redirected to workspace.
 
 ### 3. Actual Error / Behavior:
-- Multiple redundant SELECT queries causing 3.4s delay`;
+- Rejects valid user and redirects back to sign-in screen.`;
         }
         desc.focus();
     }
 
-    // Auto-Language Detection in Realtime
-    function detectLanguageRealtime(code) {
-        const badge = document.getElementById('detectedLangBadge');
-        const select = document.getElementById('langSelect');
-        if (!code || code.trim().length < 5) {
-            badge.classList.add('hidden');
-            return;
+    // Screenshot File Upload Preview
+    function handleScreenshotSelected(input) {
+        if (input.files && input.files[0]) {
+            renderScreenshotPreview(input.files[0]);
         }
+    }
 
-        let detected = null;
-        if (/<\?php|\$[a-zA-Z0-9_]+|->|namespace\s+/i.test(code)) {
-            detected = 'PHP';
-        } else if (/def\s+[a-zA-Z0-9_]+\(|import\s+[a-zA-Z0-9_]+|elif\s+|print\(/i.test(code)) {
-            detected = 'Python';
-        } else if (/interface\s+[A-Z]|:\s*string|:\s*number|readonly\s+/i.test(code)) {
-            detected = 'TypeScript';
-        } else if (/const\s+|let\s+|console\.log\(|function\s*\(|=>/i.test(code)) {
-            detected = 'JavaScript';
-        } else if (/#include\s*<|std::|cout\s*<</i.test(code)) {
-            detected = 'C++';
-        } else if (/SELECT\s+.+FROM|INSERT\s+INTO|UPDATE\s+.+SET/i.test(code)) {
-            detected = 'SQL';
-        }
+    // Render Preview Helper
+    function renderScreenshotPreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('screenshotPreview').src = e.target.result;
+            document.getElementById('screenshotFileName').innerText = '✓ ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+            document.getElementById('screenshotPlaceholder').classList.add('hidden');
+            document.getElementById('screenshotPreviewWrapper').classList.remove('hidden');
+            document.getElementById('screenshotDropzone').classList.add('border-emerald-500', 'bg-emerald-50/30');
+        };
+        reader.readAsDataURL(file);
+    }
 
-        if (detected) {
-            badge.innerText = '✨ Auto-detected: ' + detected;
-            badge.classList.remove('hidden');
-            if (select.value === 'auto') {
-                for (let i = 0; i < select.options.length; i++) {
-                    if (select.options[i].text.toLowerCase() === detected.toLowerCase()) {
-                        select.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        } else {
-            badge.classList.add('hidden');
-        }
+    // Clear Screenshot
+    function clearScreenshot(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const input = document.getElementById('screenshotInput');
+        input.value = '';
+        document.getElementById('screenshotPreview').src = '';
+        document.getElementById('screenshotPlaceholder').classList.remove('hidden');
+        document.getElementById('screenshotPreviewWrapper').classList.add('hidden');
+        document.getElementById('screenshotDropzone').classList.remove('border-emerald-500', 'bg-emerald-50/30');
     }
 
     // Clipboard Screenshot Paste (Ctrl + V)
@@ -572,10 +590,7 @@
                 const dt = new DataTransfer();
                 dt.items.add(blob);
                 fileInput.files = dt.files;
-                
-                const status = document.getElementById('screenshotStatus');
-                status.innerText = '✓ Screenshot Pasted (' + Math.round(blob.size / 1024) + ' KB)';
-                status.parentElement.classList.add('border-emerald-500', 'bg-emerald-50/50');
+                renderScreenshotPreview(blob);
                 break;
             }
         }

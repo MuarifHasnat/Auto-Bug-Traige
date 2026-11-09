@@ -23,7 +23,7 @@ class DemoSeeder extends Seeder
         $now = now();
         DB::table('projects')->updateOrInsert(
             ['manager_id' => $manager->id, 'name' => 'Demo Bug Tracker'],
-            ['stack' => 'Laravel, PHP, SQLite', 'updated_at' => $now, 'created_at' => $now],
+            ['stack' => 'Laravel, PHP, SQLite', 'github_repo' => 'https://github.com/MuarifHasnat/Auto-Bug-Traige', 'updated_at' => $now, 'created_at' => $now],
         );
         $projectId = (int) DB::table('projects')
             ->where('manager_id', $manager->id)
@@ -72,15 +72,17 @@ class DemoSeeder extends Seeder
                 'status' => 'In Progress',
                 'assigned_to' => $alice->name,
                 'language' => 'PHP',
+                'feature' => 'Authentication',
                 'code' => "if (!filter_var(\$email, FILTER_VALIDATE_EMAIL)) { return false; }",
             ],
             [
-                'title' => 'Dashboard cards overflow on mobile',
-                'description' => 'The summary cards extend beyond the viewport on small screens.',
+                'title' => 'Dashboard cards overflow on mobile viewport',
+                'description' => 'The summary metrics cards extend beyond the viewport on mobile screens.',
                 'priority' => 'Medium',
                 'status' => 'To Do',
                 'assigned_to' => $bob->name,
                 'language' => 'JavaScript',
+                'feature' => 'Frontend',
                 'code' => 'const cards = document.querySelectorAll(".summary-card");',
             ],
         ];
@@ -95,10 +97,11 @@ class DemoSeeder extends Seeder
                 'analysis_scope' => 'Seeded sample result for local demonstration.',
                 'fixed_code' => $bugData['code'],
                 'diff' => '',
-                'feature' => 'General',
-                'assignment_reason' => 'Selected from the demo project team.',
+                'feature' => $bugData['feature'] ?? 'General',
+                'assignment_reason' => !empty($bugData['is_duplicate']) ? 'Duplicate report marked for supervisor review.' : 'Selected based on skill match and available capacity.',
                 'attachment_note' => 'No attachment was provided.',
             ];
+            $isDuplicate = (bool) ($bugData['is_duplicate'] ?? false);
             $bugValues = [
                 'project_id' => $projectId,
                 'title' => $bugData['title'],
@@ -106,15 +109,15 @@ class DemoSeeder extends Seeder
                 'priority' => $bugData['priority'],
                 'status' => $bugData['status'],
                 'assigned_to' => $bugData['assigned_to'],
-                'is_duplicate' => false,
-                'duplicate_of' => null,
-                'detected_feature' => 'General',
+                'is_duplicate' => $isDuplicate,
+                'duplicate_of' => $isDuplicate ? 1 : null,
+                'detected_feature' => $bugData['feature'] ?? 'General',
                 'triage_result' => json_encode([
                     'priority' => $bugData['priority'],
                     'status' => $bugData['status'],
                     'assigned_to' => $bugData['assigned_to'],
-                    'is_duplicate' => false,
-                    'similarity_score' => 0,
+                    'is_duplicate' => $isDuplicate,
+                    'similarity_score' => $isDuplicate ? 92.4 : 0,
                     'code_help' => $triage,
                 ], JSON_THROW_ON_ERROR),
                 'updated_at' => $now,
@@ -170,7 +173,7 @@ class DemoSeeder extends Seeder
     {
         return User::query()->updateOrCreate(
             ['email' => $email],
-            ['name' => $name, 'role' => $role, 'password' => 'demo-password'],
+            ['name' => $name, 'role' => $role, 'password' => '12345678'],
         );
     }
 }
