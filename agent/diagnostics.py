@@ -26,6 +26,8 @@ LANGUAGES = {
     "typescript": "TypeScript",
     "ts": "TypeScript",
     "java": "Java",
+    "kotlin": "Kotlin",
+    "kt": "Kotlin",
     "sql": "SQL",
 }
 
@@ -43,6 +45,8 @@ def detect_language(code):
         return "C"
     if re.search(r"^\s*#include\s*[<\"]", source, re.MULTILINE):
         return "C++"
+    if re.search(r"\b(fun\s+\w+|val\s+\w+|var\s+\w+|package\s+[\w\.]+|data\s+class\s+\w+|suspend\s+fun|override\s+fun)\b", source):
+        return "Kotlin"
     if re.search(r"\b(interface|type)\s+\w+|:\s*(string|number|boolean)\b", source):
         return "TypeScript"
     if re.search(r"\b(def|class|from|import)\s+\w+|\bprint\s*\(", source):
@@ -65,6 +69,7 @@ def _diagnostic_result(language, source, status, message, steps=None):
         "C": "GCC or Clang -fsyntax-only",
         "C++": "G++ or Clang++ -fsyntax-only",
         "Java": "javac (annotation processing disabled)",
+        "Kotlin": "kotlinc (Kotlin CLI compiler)",
         "SQL": "Python sqlite3 parser (SQLite dialect)",
     }
     return {
@@ -120,6 +125,7 @@ def _build_fix_suggestions(language, source, status, steps):
             "JavaScript": f'if ({clean_name} === 0) {{ throw new RangeError("{clean_name} must not be zero"); }}',
             "TypeScript": f'if ({clean_name} === 0) {{ throw new RangeError("{clean_name} must not be zero"); }}',
             "Java": f'if ({clean_name} == 0) {{ throw new ArithmeticException("{clean_name} must not be zero"); }}',
+            "Kotlin": f'if ({clean_name} == 0) {{ throw IllegalArgumentException("{clean_name} must not be zero") }}',
             "C": f'if ({clean_name} == 0) {{ /* handle invalid divisor */ }}',
             "C++": f'if ({clean_name} == 0) {{ /* handle invalid divisor */ }}',
             "SQL": f"NULLIF({clean_name}, 0)",
@@ -159,6 +165,7 @@ def _external_syntax_check(language, source):
         "TypeScript": ("tsc", ".ts", lambda exe, path: [exe, "--noEmit", "--pretty", "false", path]),
         "C": (("gcc", "clang"), ".c", lambda exe, path: [exe, "-std=c11", "-fsyntax-only", path]),
         "C++": (("g++", "clang++"), ".cpp", lambda exe, path: [exe, "-std=c++17", "-fsyntax-only", path]),
+        "Kotlin": (("kotlinc", "kotlinc.bat"), ".kt", lambda exe, path: [exe, path, "-nowarn", "-d", tempfile.gettempdir()]),
     }
     if language == "Java":
         return _java_syntax_check(source)
@@ -317,6 +324,7 @@ def check_code_error(code, description, selected_language="auto"):
                         "C": "No C compiler was found. Install GCC or Clang to enable -fsyntax-only checks.",
                         "C++": "No C++ compiler was found. Install G++ or Clang++ to enable -fsyntax-only checks.",
                         "Java": "javac was not found. Install a JDK to enable Java compilation checks.",
+                        "Kotlin": "kotlinc was not found. Install Kotlin compiler or Android Studio CLI tools to enable Kotlin syntax checks.",
                     }.get(language, f"No supported syntax checker is available for {language} in this runtime."),
                     "The snippet is shown unchanged. This agent does not infer a fix for this language or for logic/runtime errors.",
                 ],

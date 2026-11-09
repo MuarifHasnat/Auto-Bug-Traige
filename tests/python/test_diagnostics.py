@@ -30,6 +30,20 @@ class DiagnosticsTest(unittest.TestCase):
         self.assertEqual("not_available", result["syntax_status"])
         self.assertIn("Install GCC or Clang", result["steps"][0])
 
+    def test_kotlin_detection_and_diagnostics(self):
+        kotlin_code = """
+        package com.example.app
+        data class User(val id: Int, val name: String)
+        fun calculateRatio(total: Int, count: Int): Int {
+            return total / count
+        }
+        """
+        result = check_code_error(kotlin_code, "Zero division crash", "auto")
+        self.assertEqual("Kotlin", result["language"])
+        # Should detect potential division by zero for count
+        self.assertTrue(result["suggested_fix_available"])
+        self.assertTrue(any("count" in s.get("example_code", "") for s in result["fix_suggestions"]))
+
 
 if __name__ == "__main__":
     unittest.main()

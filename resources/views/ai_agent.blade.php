@@ -282,6 +282,42 @@
                             </span>
                         </div>
 
+                        <!-- Optional Source Code or File Upload (.kt, .py, .java, etc.) -->
+                        <details class="group rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 transition">
+                            <summary class="flex cursor-pointer items-center justify-between text-xs font-bold text-slate-700 hover:text-indigo-600 select-none">
+                                <span class="flex items-center gap-2">
+                                    <span class="text-sm">💻</span>
+                                    <span>Advanced / Optional: Attach Code Snippet or Source File (.kt, .py, etc.)</span>
+                                </span>
+                                <span class="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+                            </summary>
+                            <div class="mt-3 space-y-3 pt-2 border-t border-slate-200/70">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <label class="block text-[11px] font-bold text-[#0F172A]">Target Language
+                                        <select name="language" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium">
+                                            <option value="auto">Auto-Detect</option>
+                                            <option value="Kotlin">Kotlin (.kt)</option>
+                                            <option value="Python">Python (.py)</option>
+                                            <option value="TypeScript">TypeScript (.ts/.tsx)</option>
+                                            <option value="JavaScript">JavaScript (.js)</option>
+                                            <option value="Java">Java (.java)</option>
+                                            <option value="PHP">PHP (.php)</option>
+                                            <option value="C++">C++ (.cpp)</option>
+                                            <option value="SQL">SQL</option>
+                                        </select>
+                                    </label>
+                                    <label class="block text-[11px] font-bold text-[#0F172A]">Upload File (.kt, .py, .java, etc.)
+                                        <input type="file" name="source_file" accept=".kt,.kts,.py,.js,.ts,.tsx,.java,.cpp,.php,.sql,.json,.xml" 
+                                               class="mt-1 block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-[#0F172A] mb-1">Paste Code Snippet or Stack Trace</label>
+                                    <textarea name="code_snippet" rows="3" placeholder="fun processPayment(order: Order) { ... }" class="w-full rounded-xl border border-slate-300 bg-white p-2 text-xs font-mono-code text-slate-800 outline-none focus:border-indigo-600"></textarea>
+                                </div>
+                            </div>
+                        </details>
+
                         <!-- Submit Button with Loading State & Keyboard Shortcut Info -->
                         <div>
                             <button type="submit" id="submitTriageBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 py-3.5 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">

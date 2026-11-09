@@ -293,6 +293,81 @@ class BugTriageAndHistoryTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_project_tester_can_submit_kotlin_bug(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $tester = User::factory()->create(['name' => 'Kotlin Tester', 'role' => 'tester']);
+        $projectId = $this->createProject($manager, 'Kotlin Android Project');
+        $this->addMember($projectId, $tester);
+        $this->addDeveloper($projectId, 'Kotlin Dev', 'kotlin android', 0);
+
+        Process::fake(['*' => json_encode([
+            'is_duplicate' => false,
+            'duplicate_of' => null,
+            'similarity_score' => 0,
+            'assigned_to' => 'Kotlin Dev',
+            'priority' => 'High',
+            'status' => 'Open',
+            'code_help' => [
+                'language' => 'Kotlin',
+                'syntax_status' => 'passed',
+                'syntax_checker' => 'kotlinc (Kotlin CLI compiler)',
+                'error_name' => 'Kotlin syntax check passed',
+                'steps' => ['Kotlin syntax valid.'],
+                'suspected_files' => [
+                    ['path' => 'app/src/main/java/com/example/app/MainActivity.kt', 'confidence' => 92, 'reason' => 'Matched Kotlin tokens: activity, main']
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR)]);
+
+        $this->actingAs($tester)->withSession(['project_id' => $projectId])
+            ->post('/api/bugs/store', [
+                'title' => 'MainActivity crashes on start in Kotlin app',
+                'description' => 'Crash occurs when initializing viewmodel in MainActivity.kt',
+                'issue_type' => 'Bug',
+                'labels' => 'android, kotlin',
+                'language' => 'Kotlin',
+                'code_snippet' => "fun onCreate() { val x = 10 }",
+            ])
+            ->assertRedirect('/ai-agent')
+            ->assertSessionHas('ai_result');
+
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('title', 'MainActivity crashes on start in Kotlin app')->first();
+        $this->assertNotNull($bug);
+        $this->assertSame('Kotlin Dev', $bug->assigned_to);
+    }
+
+    public function test_manager_can_move_bug_status_via_ajax_kanban_override(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $projectId = $this->createProject($manager, 'Kanban Project');
+        $this->addMember($projectId, $manager);
+
+        $bugId = DB::table('bugs')->insertGetId([
+            'project_id' => $projectId,
+            'title' => 'Sample Drag Drop Bug',
+            'description' => 'Testing AJAX Kanban override',
+            'issue_type' => 'Bug',
+            'status' => 'To Do',
+            'priority' => 'Medium',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->postJson('/api/bugs/override', [
+                'id' => $bugId,
+                'status' => 'In Progress',
+                'reason' => 'Dragged to In Progress',
+            ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $updatedBug = DB::table('bugs')->where('id', $bugId)->first();
+        $this->assertSame('In Progress', $updatedBug->status);
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

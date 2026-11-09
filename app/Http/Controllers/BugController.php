@@ -550,10 +550,10 @@ class BugController extends Controller
             'description' => ['required', 'string', 'max:5000'],
             'issue_type' => ['required', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
             'labels' => ['nullable', 'string', 'max:500'],
-            'language' => ['nullable', 'string', 'in:auto,PHP,C++,C,Python,JavaScript,TypeScript,Java,SQL'],
+            'language' => ['nullable', 'string', 'in:auto,PHP,C++,C,Python,JavaScript,TypeScript,Java,Kotlin,SQL'],
             'code_snippet' => ['nullable', 'string', 'max:20000'],
             'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'source_file' => ['nullable', 'file', 'mimes:txt,php,blade.php,cpp,c,h,hpp,py,js,ts,java,sql,json,xml,css,html', 'max:5120'],
+            'source_file' => ['nullable', 'file', 'mimes:txt,php,blade.php,cpp,c,h,hpp,py,js,ts,java,kt,kts,sql,json,xml,css,html', 'max:5120'],
         ]);
 
         $sourceFilePath = $request->file('source_file')?->store('bug-reports/source', 'local');
@@ -614,6 +614,8 @@ class BugController extends Controller
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
                 'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),
+                'project_stack' => DB::table('projects')->where('id', $projectId)->value('stack') ?: session('project_stack', ''),
+                'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
             ], JSON_THROW_ON_ERROR));
 
             $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
@@ -727,7 +729,7 @@ class BugController extends Controller
             ->with('success', 'Bug analyzed and added to the workspace.');
     }
 
-    public function override(Request $request): RedirectResponse
+    public function override(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         abort_unless(in_array(Auth::user()?->role, ['manager', 'developer'], true), 403);
 
@@ -763,6 +765,13 @@ class BugController extends Controller
             $recipients = $this->bugRelevantUserIds($bug, $projectId);
             $this->notifyUsers($recipients, $projectId, (int) $bug->id, 'status_changed', 'Bug status changed', "Status changed from {$bug->status} to {$data['status']}.");
         });
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Bug status moved to {$data['status']}.",
+            ]);
+        }
 
         return back()->with('success', 'Bug status updated.');
     }

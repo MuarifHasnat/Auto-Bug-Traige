@@ -64,7 +64,18 @@ def analyze_report(data):
 
     # 6. Locate Suspected Repository / GitHub Files
     github_repo = data.get("github_repo")
-    suspected_files = locate_suspected_files(title, description, feature, github_repo=github_repo)
+    project_stack = data.get("project_stack", "")
+    source_file_name = data.get("source_file_name", "")
+    suspected_files = locate_suspected_files(
+        title=title,
+        description=description,
+        feature=feature,
+        github_repo=github_repo,
+        code_snippet=code_snippet,
+        selected_language=selected_language,
+        project_stack=project_stack,
+        source_file_name=source_file_name
+    )
     if suspected_files:
         code_help["suspected_files"] = suspected_files
 
