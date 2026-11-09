@@ -56,7 +56,7 @@ Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run
 
 After configuring the local database, run `php artisan migrate --seed`. This creates a demo project, manager, tester, two developers, sample triaged bugs and activity history. Seeding is safe to repeat and does not clear existing tables; it is disabled when `APP_ENV=production`.
 
-All demo accounts use the password `demo-password`:
+All demo accounts use the password `12345678`:
 
 | Role | Email |
 | --- | --- |
@@ -85,7 +85,7 @@ The feature suite uses an in-memory SQLite database and fakes the triage process
 
 Managers can switch among projects they own. Testers and developers can switch among projects where they are listed as members. The selected project is saved in the session and checked against that user's current access on every project-scoped request.
 
-The manager dashboard also lists account names and roles across the website. Managers can search names, filter by manager/developer/tester role, and page through results; account email addresses are not shown there.
+The manager dashboard lists the team members and accounts assigned specifically to the active project. Managers can search names, filter by role (Manager, Developer, Tester), monitor workloads, and switch between projects with complete data isolation across all metrics and issue queues.
 
 ## Main code locations
 
