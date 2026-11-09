@@ -96,20 +96,30 @@ def parse_github_slug(repo_input):
 
 
 def detect_target_tech(selected_language="", project_stack="", source_file_name="", text=""):
-    """Determines the target technology stack for file resolution."""
+    """Determines the target technology stack for file resolution using strict word boundaries."""
     probe = f"{selected_language} {project_stack} {source_file_name} {text}".lower()
 
-    if any(k in probe for k in ['kotlin', '.kt', '.kts', 'android', 'compose', 'kotlinc', 'activity', 'viewmodel', 'fragment']):
+    if re.search(r'\b(kotlin|android|compose|kotlinc|activity|viewmodel|fragment)\b', probe) or re.search(r'\.(kt|kts)\b', probe):
         return 'kotlin'
-    if any(k in probe for k in ['python', '.py', 'django', 'flask', 'fastapi', 'pytest']):
+    if re.search(r'\b(python|django|flask|fastapi|pytest|celery)\b', probe) or re.search(r'\.py\b', probe):
         return 'python'
-    if any(k in probe for k in ['typescript', '.tsx', '.ts', 'react', 'nextjs', 'vue', 'javascript', '.jsx', '.js', 'node']):
+    if re.search(r'\b(typescript|javascript|react|nextjs|vue|node|express)\b', probe) or re.search(r'\.(ts|tsx|js|jsx)\b', probe):
         return 'typescript'
-    if any(k in probe for k in ['java', '.java', 'spring', 'springboot', 'maven']):
+    if re.search(r'\b(java|spring|springboot|maven)\b', probe) or re.search(r'\.java\b', probe):
         return 'java'
-    if any(k in probe for k in ['c++', 'cpp', '.cpp', '.hpp', '.h', 'clang']):
+    if re.search(r'\b(golang|goroutine|gin|fiber)\b', probe) or re.search(r'\bgo\b', probe) or re.search(r'\.go\b', probe):
+        return 'go'
+    if re.search(r'\b(rust|cargo|rustc)\b', probe) or re.search(r'\.rs\b', probe):
+        return 'rust'
+    if re.search(r'\b(csharp|dotnet|asp\.net)\b', probe) or re.search(r'\.cs\b', probe):
+        return 'csharp'
+    if re.search(r'\b(flutter|dart)\b', probe) or re.search(r'\.dart\b', probe):
+        return 'flutter'
+    if re.search(r'\b(swift|ios|xcode|swiftui)\b', probe) or re.search(r'\.swift\b', probe):
+        return 'swift'
+    if re.search(r'\b(c\+\+|cpp|clang)\b', probe) or re.search(r'\.(cpp|hpp|cc)\b', probe):
         return 'cpp'
-    if any(k in probe for k in ['php', 'laravel', 'blade', '.blade.php', 'artisan']):
+    if re.search(r'\b(php|laravel|blade|artisan)\b', probe) or re.search(r'\.(php|blade\.php)\b', probe):
         return 'php'
 
     return 'auto'
@@ -155,13 +165,15 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
             pass
 
         # Try live GitHub API (main branch then master branch)
+        gh_headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")
+        if token:
+            gh_headers["Authorization"] = f"Bearer {token}"
+
         for b in ["main", "master"]:
             try:
                 url = f"https://api.github.com/repos/{github_slug}/git/trees/{quote(b, safe='')}?recursive=1"
-                req = urllib.request.Request(
-                    url,
-                    headers={"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
-                )
+                req = urllib.request.Request(url, headers=gh_headers)
                 with urllib.request.urlopen(req, timeout=2.5) as resp:
                     data = json.loads(resp.read().decode())
                     files = [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
@@ -257,15 +269,16 @@ def locate_suspected_files(
         return []
 
     # Filter out files incompatible with detected technology
-    if target_tech == 'kotlin':
+    if target_tech not in ['php', 'auto']:
         compat_files = [f for f in repo_files if not f.endswith(('.blade.php', '.php'))]
-        repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
-    elif target_tech == 'python':
-        compat_files = [f for f in repo_files if not f.endswith(('.blade.php', '.php'))]
-        repo_files = compat_files if compat_files else list(PYTHON_DEFAULT_TREE)
-    elif target_tech in ['typescript', 'javascript']:
-        compat_files = [f for f in repo_files if not f.endswith(('.blade.php', '.php'))]
-        repo_files = compat_files if compat_files else list(TYPESCRIPT_DEFAULT_TREE)
+        if compat_files:
+            repo_files = compat_files
+        elif target_tech == 'kotlin':
+            repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
+        elif target_tech == 'python':
+            repo_files = list(PYTHON_DEFAULT_TREE)
+        elif target_tech in ['typescript', 'javascript']:
+            repo_files = list(TYPESCRIPT_DEFAULT_TREE)
 
     # If source file was explicitly uploaded, boost or prioritize it
     priority_file = None
@@ -311,7 +324,28 @@ def locate_suspected_files(
             if fpath_lower.endswith('.py'):
                 score += 25
         elif target_tech in ['typescript', 'javascript']:
-            if fpath_lower.endswith('.tsx') or fpath_lower.endswith('.ts'):
+            if fpath_lower.endswith(('.tsx', '.ts', '.jsx', '.js')):
+                score += 25
+        elif target_tech == 'java':
+            if fpath_lower.endswith('.java'):
+                score += 25
+        elif target_tech == 'go':
+            if fpath_lower.endswith('.go'):
+                score += 25
+        elif target_tech == 'rust':
+            if fpath_lower.endswith('.rs'):
+                score += 25
+        elif target_tech == 'flutter':
+            if fpath_lower.endswith('.dart'):
+                score += 25
+        elif target_tech == 'swift':
+            if fpath_lower.endswith('.swift'):
+                score += 25
+        elif target_tech == 'csharp':
+            if fpath_lower.endswith('.cs'):
+                score += 25
+        elif target_tech == 'cpp':
+            if fpath_lower.endswith(('.cpp', '.hpp', '.c', '.h', '.cc')):
                 score += 25
         elif target_tech == 'php':
             if 'controller' in fpath_lower:
