@@ -3,6 +3,7 @@ import re
 import urllib.request
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = Path(__file__).resolve().parent / ".repo_cache"
@@ -120,7 +121,10 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
     1. If github_slug is given, attempts to fetch real file tree from GitHub API or local cache.
     2. If remote fetch fails or is offline, uses language-specific project tree.
     3. Only falls back to local Laravel workspace if the project stack is actually PHP/Laravel.
+    Returns (files, branch); branch defaults to 'main'.
     """
+    branch = "main"
+
     # 1. Try remote GitHub API if slug provided
     if github_slug:
         # Check cache first
@@ -130,36 +134,48 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
             if cache_file.exists():
                 with open(cache_file, "r", encoding="utf-8") as cf:
                     cached_data = json.load(cf)
-                    if isinstance(cached_data, list) and cached_data:
-                        # If project is Kotlin but cached repo has zero Kotlin files, do not use it
-                        if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in cached_data):
+                    if isinstance(cached_data, dict):
+                        cached_files = cached_data.get("files", [])
+                        cached_branch = cached_data.get("branch", "main")
+                    elif isinstance(cached_data, list):
+                        cached_files = cached_data
+                        cached_branch = "main"
+                    else:
+                        cached_files = []
+                        cached_branch = "main"
+
+                    if cached_files:
+                        if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in cached_files):
                             pass
-                        elif target_tech == 'python' and not any(f.endswith('.py') for f in cached_data):
+                        elif target_tech == 'python' and not any(f.endswith('.py') for f in cached_files):
                             pass
                         else:
-                            return cached_data
+                            return cached_files, cached_branch
         except Exception:
             pass
 
         # Try live GitHub API (main branch then master branch)
-        for branch in ["main", "master"]:
+        for b in ["main", "master"]:
             try:
-                url = f"https://api.github.com/repos/{github_slug}/git/trees/{branch}?recursive=1"
-                req = urllib.request.Request(url, headers={"User-Agent": "AutoBugTriage-Agent"})
+                url = f"https://api.github.com/repos/{github_slug}/git/trees/{quote(b, safe='')}?recursive=1"
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
+                )
                 with urllib.request.urlopen(req, timeout=2.5) as resp:
                     data = json.loads(resp.read().decode())
                     files = [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
                     if files:
                         try:
                             with open(cache_file, "w", encoding="utf-8") as cf:
-                                json.dump(files, cf)
+                                json.dump({"files": files, "branch": b}, cf)
                         except Exception:
                             pass
                         if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in files):
                             break
                         if target_tech == 'python' and not any(f.endswith('.py') for f in files):
                             break
-                        return files
+                        return files, b
             except Exception:
                 continue
 
@@ -170,7 +186,7 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
             inferred = f"app/src/main/java/com/example/app/{source_file_name}"
             if inferred not in tree:
                 tree.insert(0, inferred)
-        return tree
+        return tree, branch
 
     if target_tech == 'python':
         tree = list(PYTHON_DEFAULT_TREE)
@@ -178,7 +194,7 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
             inferred = f"app/services/{source_file_name}"
             if inferred not in tree:
                 tree.insert(0, inferred)
-        return tree
+        return tree, branch
 
     if target_tech in ['typescript', 'javascript']:
         tree = list(TYPESCRIPT_DEFAULT_TREE)
@@ -186,7 +202,7 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
             inferred = f"src/components/{source_file_name}"
             if inferred not in tree:
                 tree.insert(0, inferred)
-        return tree
+        return tree, branch
 
     # 3. If target_tech is PHP or Auto and local workspace exists, scan local workspace
     if target_tech in ['php', 'auto']:
@@ -200,11 +216,11 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
                     rel = Path(root, f).relative_to(WORKSPACE_ROOT).as_posix()
                     file_list.append(rel)
             if file_list:
-                return file_list
+                return file_list, branch
         except Exception:
             pass
 
-    return list(KOTLIN_ANDROID_DEFAULT_TREE) if target_tech == 'kotlin' else []
+    return (list(KOTLIN_ANDROID_DEFAULT_TREE) if target_tech == 'kotlin' else []), branch
 
 
 def locate_suspected_files(
@@ -232,7 +248,7 @@ def locate_suspected_files(
         text=combined_text
     )
 
-    repo_files = get_repository_files(
+    repo_files, branch = get_repository_files(
         github_slug=github_slug,
         target_tech=target_tech,
         source_file_name=source_file_name
@@ -324,8 +340,11 @@ def locate_suspected_files(
 
     results = []
     for item in top_candidates:
-        confidence = min(98, max(50, int((item["score"] / max_score) * 94)))
-        gh_url = f"https://github.com/{github_slug}/blob/main/{item['path']}" if github_slug else None
+        confidence = min(98, max(45, int((item["score"] / max_score) * 92)))
+        gh_url = (
+            f"https://github.com/{github_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+            if github_slug else None
+        )
         
         matched_str = ', '.join(item['matched_terms'][:3]) if item['matched_terms'] else target_tech
         reason = f"Matched {target_tech.capitalize()} tokens: {matched_str}"
