@@ -3,6 +3,7 @@ import re
 import urllib.request
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,39 +41,45 @@ def parse_github_slug(repo_input):
 
 def get_repository_files(github_slug=None):
     """
-    Retrieves project file tree:
-    1. First tries local project workspace (sub-millisecond speed).
-    2. If remote github_slug is given and internet is reachable, queries GitHub API.
+    Retrieves the configured GitHub repository tree, or the local workspace when
+    no repository is configured. Returns (files, branch); branch is None for local files.
     """
-    file_list = []
+    # When a repository is configured, use that repository's actual tree. The
+    # app's local files may belong to a different project and would create links
+    # to paths that do not exist in the configured GitHub repository.
+    if github_slug:
+        try:
+            headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
+            repo_url = f"https://api.github.com/repos/{github_slug}"
+            with urllib.request.urlopen(urllib.request.Request(repo_url, headers=headers), timeout=3) as resp:
+                repository = json.loads(resp.read().decode())
+            branch = repository.get("default_branch")
+            if not branch:
+                return [], None
 
-    # Local workspace scan
+            tree_url = f"https://api.github.com/repos/{github_slug}/git/trees/{quote(branch, safe='')}?recursive=1"
+            with urllib.request.urlopen(urllib.request.Request(tree_url, headers=headers), timeout=3) as resp:
+                data = json.loads(resp.read().decode())
+            files = [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
+            return files, branch
+        except Exception:
+            # Never build links from unrelated local files when a remote repo
+            # was requested but could not be read (for example, a private repo).
+            return [], None
+
+    file_list = []
     try:
         for root, dirs, filenames in os.walk(WORKSPACE_ROOT):
             dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith('.')]
-            for f in filenames:
-                if f.startswith('.'):
+            for filename in filenames:
+                if filename.startswith('.'):
                     continue
-                rel = Path(root, f).relative_to(WORKSPACE_ROOT).as_posix()
+                rel = Path(root, filename).relative_to(WORKSPACE_ROOT).as_posix()
                 file_list.append(rel)
     except Exception:
         pass
 
-    if file_list:
-        return file_list
-
-    # Fallback to GitHub API if local files empty and slug available
-    if github_slug:
-        try:
-            url = f"https://api.github.com/repos/{github_slug}/git/trees/main?recursive=1"
-            req = urllib.request.Request(url, headers={"User-Agent": "AutoBugTriage-Agent"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                data = json.loads(resp.read().decode())
-                return [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
-        except Exception:
-            pass
-
-    return file_list
+    return file_list, None
 
 
 def locate_suspected_files(title, description, feature="General", github_repo=None, limit=3):
@@ -80,7 +87,7 @@ def locate_suspected_files(title, description, feature="General", github_repo=No
     Identifies the top repository files most likely containing or causing the bug.
     """
     github_slug = parse_github_slug(github_repo)
-    repo_files = get_repository_files(github_slug)
+    repo_files, branch = get_repository_files(github_slug)
     if not repo_files:
         return []
 
@@ -137,7 +144,10 @@ def locate_suspected_files(title, description, feature="General", github_repo=No
     results = []
     for item in top_candidates:
         confidence = min(98, max(45, int((item["score"] / max_score) * 92)))
-        gh_url = f"https://github.com/{github_slug}/blob/main/{item['path']}" if github_slug else None
+        gh_url = (
+            f"https://github.com/{github_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+            if github_slug and branch else None
+        )
         
         reason = f"Matched keywords: {', '.join(item['matched_terms'][:3])}"
         results.append({
