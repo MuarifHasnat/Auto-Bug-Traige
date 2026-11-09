@@ -14,6 +14,11 @@ use Illuminate\View\View;
 
 class BugController extends Controller
 {
+    public function landingPage(): View
+    {
+        return view('landing');
+    }
+
     public function signupPage(): View
     {
         return view('signup');

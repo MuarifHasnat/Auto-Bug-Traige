@@ -23,9 +23,14 @@
                 </span>
             </div>
 
-            <a href="/login" class="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition shadow-2xs">
-                Sign In →
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="/" class="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition shadow-2xs">
+                    ← Home
+                </a>
+                <a href="/login" class="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs">
+                    Sign In →
+                </a>
+            </div>
         </div>
 
         <!-- Clean Manager Signup Card -->

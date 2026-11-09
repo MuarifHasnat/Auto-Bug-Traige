@@ -3,7 +3,8 @@
 use App\Http\Controllers\BugController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [BugController::class, 'signupPage']);
+Route::get('/', [BugController::class, 'landingPage'])->name('landing');
+Route::get('/signup', [BugController::class, 'signupPage'])->name('signup');
 Route::post('/signup', [BugController::class, 'handleSignup']);
 Route::get('/login', [BugController::class, 'loginPage'])->name('login');
 Route::post('/login', [BugController::class, 'handleLogin']);

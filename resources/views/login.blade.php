@@ -23,9 +23,14 @@
                 </span>
             </div>
 
-            <a href="/" class="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition shadow-2xs">
-                Register Workspace →
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="/" class="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition shadow-2xs">
+                    ← Home
+                </a>
+                <a href="/signup" class="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs">
+                    Register Workspace →
+                </a>
+            </div>
         </div>
 
         <!-- Clean Login Card -->
@@ -113,7 +118,7 @@
         <!-- Footer link -->
         <p class="text-center text-xs text-[#64748B]">
             Need a new organization? 
-            <a href="/" class="font-bold text-indigo-600 hover:underline">
+            <a href="/signup" class="font-bold text-indigo-600 hover:underline">
                 Create Workspace as Manager
             </a>
         </p>
@@ -138,6 +143,15 @@
                 passInput.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50');
             }, 500);
         }
+
+        // Auto-fill if query parameters passed from landing page
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const email = params.get('email');
+            if (email) {
+                fillDemo(email, '12345678');
+            }
+        });
     </script>
 </body>
 </html>

@@ -119,6 +119,23 @@ class ProjectAndAccountFlowTest extends TestCase
         $responseTwo->assertDontSee('alpha@project-one.test');
     }
 
+    public function test_guest_can_view_landing_and_auth_pages(): void
+    {
+        $landingResponse = $this->get('/');
+        $landingResponse->assertOk();
+        $landingResponse->assertSee('AutoBugTriage');
+        $landingResponse->assertSee('Demo Accounts');
+        $landingResponse->assertSee('GitHub Culprit Locator');
+
+        $signupResponse = $this->get('/signup');
+        $signupResponse->assertOk();
+        $signupResponse->assertSee('Create your workspace');
+
+        $loginResponse = $this->get('/login');
+        $loginResponse->assertOk();
+        $loginResponse->assertSee('Welcome back');
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([
