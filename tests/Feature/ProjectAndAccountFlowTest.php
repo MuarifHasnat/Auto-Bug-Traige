@@ -90,6 +90,35 @@ class ProjectAndAccountFlowTest extends TestCase
         $this->post('/api/bugs/reassign', [])->assertForbidden();
     }
 
+    public function test_dashboard_accounts_table_only_shows_members_assigned_to_active_project(): void
+    {
+        $manager = User::factory()->create(['name' => 'Manager Boss', 'role' => 'manager']);
+        $devOne = User::factory()->create(['name' => 'Alpha Developer', 'email' => 'alpha@project-one.test', 'role' => 'developer']);
+        $devTwo = User::factory()->create(['name' => 'Beta Developer', 'email' => 'beta@project-two.test', 'role' => 'developer']);
+
+        $projectOne = $this->createProject($manager, 'Project Alpha');
+        $projectTwo = $this->createProject($manager, 'Project Beta');
+
+        DB::table('project_members')->insert([
+            ['project_id' => $projectOne, 'user_id' => $devOne->id],
+            ['project_id' => $projectTwo, 'user_id' => $devTwo->id],
+        ]);
+
+        $responseOne = $this->actingAs($manager)->withSession(['project_id' => $projectOne])->get('/dashboard');
+        $responseOne->assertOk();
+        $responseOne->assertSee('Alpha Developer');
+        $responseOne->assertSee('alpha@project-one.test');
+        $responseOne->assertDontSee('Beta Developer');
+        $responseOne->assertDontSee('beta@project-two.test');
+
+        $responseTwo = $this->actingAs($manager)->withSession(['project_id' => $projectTwo])->get('/dashboard');
+        $responseTwo->assertOk();
+        $responseTwo->assertSee('Beta Developer');
+        $responseTwo->assertSee('beta@project-two.test');
+        $responseTwo->assertDontSee('Alpha Developer');
+        $responseTwo->assertDontSee('alpha@project-one.test');
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

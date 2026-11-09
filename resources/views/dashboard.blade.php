@@ -43,6 +43,10 @@
                 <span class="text-sm">▤</span>
                 <span>Kanban Workspace</span>
             </a>
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/ai-agent">
+                <span class="text-sm">⚡</span>
+                <span>AI Triage Studio</span>
+            </a>
             <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/notifications">
                 <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
                 @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
@@ -355,37 +359,44 @@
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 class="text-sm font-bold text-[#0F172A]">Website Accounts</h2>
-                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{{ $totalAccounts }} total</span>
+                            <h2 class="text-sm font-bold text-[#0F172A]">Project Team & Assigned Members</h2>
+                            <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">{{ $totalAccounts }} assigned</span>
                         </div>
-                        <p class="mt-1 text-xs text-[#64748B]">Search registered accounts by name and filter by role.</p>
+                        <p class="mt-1 text-xs text-[#64748B]">Active developers, QA testers, and manager assigned specifically to this project.</p>
                     </div>
-                    <form action="/dashboard" method="GET" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <label class="sr-only" for="accountSearch">Search account names</label>
-                        <input id="accountSearch" type="search" name="account_search" value="{{ $accountSearch }}" maxlength="100"
-                               placeholder="Search names…"
-                               class="min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white sm:w-52">
-                        <label class="sr-only" for="accountRole">Filter accounts by role</label>
-                        <select id="accountRole" name="account_role"
-                                class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
-                            <option value="all" @selected($accountRole === 'all')>All roles</option>
-                            <option value="manager" @selected($accountRole === 'manager')>Managers</option>
-                            <option value="developer" @selected($accountRole === 'developer')>Developers</option>
-                            <option value="tester" @selected($accountRole === 'tester')>Testers</option>
-                        </select>
-                        <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-indigo-500">Filter</button>
-                        @if($accountSearch !== '' || $accountRole !== 'all')
-                            <a href="/dashboard" class="rounded-xl border border-[#CBD5E1] px-4 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
-                        @endif
-                    </form>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form action="/dashboard" method="GET" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            <label class="sr-only" for="accountSearch">Search team members</label>
+                            <input id="accountSearch" type="search" name="account_search" value="{{ $accountSearch }}" maxlength="100"
+                                   placeholder="Search member name…"
+                                   class="min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white sm:w-48">
+                            <label class="sr-only" for="accountRole">Filter by role</label>
+                            <select id="accountRole" name="account_role"
+                                    class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
+                                <option value="all" @selected($accountRole === 'all')>All roles</option>
+                                <option value="manager" @selected($accountRole === 'manager')>Managers</option>
+                                <option value="developer" @selected($accountRole === 'developer')>Developers</option>
+                                <option value="tester" @selected($accountRole === 'tester')>Testers</option>
+                            </select>
+                            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-indigo-500">Filter</button>
+                            @if($accountSearch !== '' || $accountRole !== 'all')
+                                <a href="/dashboard" class="rounded-xl border border-[#CBD5E1] px-4 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
+                            @endif
+                        </form>
+                        <a href="/add-developers" class="rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition">
+                            + Manage Team
+                        </a>
+                    </div>
                 </div>
 
                 <div class="mt-4 overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-[#E2E8F0] text-[10px] font-bold uppercase text-[#64748B]">
-                                <th class="pb-2.5">Name</th>
-                                <th class="pb-2.5">Role</th>
+                                <th class="pb-2.5">Member</th>
+                                <th class="pb-2.5">Email</th>
+                                <th class="pb-2.5">Project Role</th>
+                                <th class="pb-2.5 text-right">Project Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E2E8F0]">
@@ -397,16 +408,30 @@
                                             <span class="font-semibold text-[#0F172A]">{{ $account->name }}</span>
                                         </div>
                                     </td>
+                                    <td class="py-3 text-slate-500 font-mono-code text-[11px]">
+                                        {{ $account->email ?? '—' }}
+                                    </td>
                                     <td class="py-3">
-                                        <span class="rounded-full px-2 py-1 text-[10px] font-bold {{ $account->role === 'manager' ? 'bg-indigo-50 text-indigo-700' : ($account->role === 'developer' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800') }}">
-                                            {{ ucfirst($account->role) }}
+                                        <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $account->role === 'manager' ? 'bg-purple-50 text-purple-700 border border-purple-200' : ($account->role === 'developer' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200') }}">
+                                            {{ $account->role === 'tester' ? 'QA Tester' : ucfirst($account->role) }}
                                         </span>
+                                    </td>
+                                    <td class="py-3 text-right">
+                                        @if($account->role === 'developer')
+                                            <span class="font-mono-code text-[11px] font-semibold text-slate-600">
+                                                {{ $devWorkloads[$account->name] ?? 0 }} active {{ ($devWorkloads[$account->name] ?? 0) === 1 ? 'task' : 'tasks' }}
+                                            </span>
+                                        @elseif($account->role === 'manager')
+                                            <span class="text-[11px] text-purple-700 font-semibold">Project Lead</span>
+                                        @else
+                                            <span class="text-[11px] text-amber-700 font-semibold">QA Reporting</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="2" class="py-8 text-center text-slate-500">
-                                        {{ $totalAccounts === 0 ? 'No accounts have been registered yet.' : 'No accounts match this search and role.' }}
+                                    <td colspan="4" class="py-8 text-center text-slate-500">
+                                        {{ $totalAccounts === 0 ? 'No members assigned to this project yet.' : 'No team members match this search and role.' }}
                                     </td>
                                 </tr>
                             @endforelse

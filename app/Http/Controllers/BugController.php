@@ -90,18 +90,21 @@ class BugController extends Controller
         $data = $request->validate([
             'project_name' => ['required', 'string', 'max:150'],
             'project_stack' => ['required', 'string', 'max:255'],
+            'github_repo' => ['nullable', 'string', 'max:255'],
         ]);
 
         $project = DB::table('projects')->insertGetId([
             'manager_id' => Auth::id(),
             'name' => $data['project_name'],
             'stack' => $data['project_stack'],
+            'github_repo' => $data['github_repo'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
         $request->session()->put([
             'project_name' => $data['project_name'],
             'project_stack' => $data['project_stack'],
+            'github_repo' => $data['github_repo'] ?? null,
             'project_id' => $project,
         ]);
         $this->ensureProjectWorkflow((int) $project);
@@ -172,6 +175,44 @@ class BugController extends Controller
         abort_unless(Auth::user()?->role === 'manager', 403);
         $projectId = $this->currentProjectId();
 
+        $existingUser = \App\Models\User::where('email', $request->input('email'))->first();
+        if ($existingUser) {
+            $isAlreadyMember = DB::table('project_members')
+                ->where('project_id', $projectId)
+                ->where('user_id', $existingUser->id)
+                ->exists();
+            if ($isAlreadyMember) {
+                return back()->withErrors(['email' => 'This user is already a member of this project.'])->withInput();
+            }
+
+            $data = $request->validate([
+                'skills' => ['nullable', 'string', 'max:255'],
+                'capacity' => ['nullable', 'integer', 'min:1', 'max:100'],
+            ]);
+
+            DB::transaction(function () use ($existingUser, $projectId, $data) {
+                DB::table('project_members')->insert([
+                    'project_id' => $projectId,
+                    'user_id' => $existingUser->id,
+                ]);
+
+                if ($existingUser->role === 'developer') {
+                    DB::table('developers')->updateOrInsert(
+                        ['project_id' => $projectId, 'name' => $existingUser->name],
+                        [
+                            'skills' => strtolower($data['skills'] ?? ''),
+                            'active_tasks' => 0,
+                            'capacity' => $data['capacity'] ?? 5,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                }
+            });
+
+            return back()->with('success', ucfirst($existingUser->role).' ('.$existingUser->name.') assigned to this project successfully.');
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -234,8 +275,9 @@ class BugController extends Controller
     public function deleteDeveloper(int $id): RedirectResponse
     {
         abort_unless(Auth::user()?->role === 'manager', 403);
+        $projectId = $this->currentProjectId();
 
-        $developer = DB::table('developers')->where('project_id', $this->currentProjectId())->where('id', $id)->first();
+        $developer = DB::table('developers')->where('project_id', $projectId)->where('id', $id)->first();
 
         if (!$developer) {
             return back()->withErrors(['developer' => 'Developer not found.']);
@@ -245,7 +287,13 @@ class BugController extends Controller
             return back()->withErrors(['developer' => 'A developer with active tasks cannot be removed.']);
         }
 
-        DB::table('developers')->where('project_id', $this->currentProjectId())->where('id', $id)->delete();
+        DB::transaction(function () use ($projectId, $id, $developer) {
+            DB::table('developers')->where('project_id', $projectId)->where('id', $id)->delete();
+            $user = DB::table('users')->where('name', $developer->name)->first();
+            if ($user) {
+                DB::table('project_members')->where('project_id', $projectId)->where('user_id', $user->id)->delete();
+            }
+        });
 
         return back()->with('success', 'Developer removed successfully.');
     }
@@ -396,7 +444,11 @@ class BugController extends Controller
         ]);
         $accountSearch = trim($filters['account_search'] ?? '');
         $accountRole = $filters['account_role'] ?? 'all';
-        $accountsQuery = DB::table('users')->select('id', 'name', 'role')->orderBy('name');
+        $participantIds = $this->projectParticipantIds($projectId);
+        $accountsQuery = DB::table('users')
+            ->whereIn('id', $participantIds)
+            ->select('id', 'name', 'email', 'role')
+            ->orderBy('name');
 
         if ($accountSearch !== '') {
             $accountsQuery->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($accountSearch).'%']);
@@ -406,9 +458,14 @@ class BugController extends Controller
         }
 
         $accounts = $accountsQuery->paginate(20)->withQueryString();
-        $totalAccounts = DB::table('users')->count();
+        $totalAccounts = count($participantIds);
 
-        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts', 'triageEvaluation') + [
+        $devWorkloads = DB::table('developers')
+            ->where('project_id', $projectId)
+            ->pluck('active_tasks', 'name')
+            ->all();
+
+        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts', 'triageEvaluation', 'devWorkloads') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -456,10 +513,6 @@ class BugController extends Controller
             'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'source_file' => ['nullable', 'file', 'mimes:txt,php,blade.php,cpp,c,h,hpp,py,js,ts,java,sql,json,xml,css,html', 'max:5120'],
         ]);
-
-        if (!$request->filled('code_snippet') && !$request->hasFile('source_file') && !$request->hasFile('screenshot')) {
-            return back()->withErrors(['bug' => 'Add a code snippet, source file, or screenshot so the Agent can inspect the report.']);
-        }
 
         $sourceFilePath = $request->file('source_file')?->store('bug-reports/source', 'local');
         $screenshotPath = $request->file('screenshot')?->store('bug-reports/screenshots', 'local');
@@ -518,6 +571,7 @@ class BugController extends Controller
                 'attachment' => $attachment,
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
+                'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),
             ], JSON_THROW_ON_ERROR));
 
             $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
@@ -1138,7 +1192,7 @@ class BugController extends Controller
 
     private function accessibleProjects()
     {
-        $query = DB::table('projects')->select('projects.id', 'projects.name', 'projects.stack');
+        $query = DB::table('projects')->select('projects.id', 'projects.name', 'projects.stack', 'projects.github_repo');
 
         if (Auth::user()->role === 'manager') {
             return $query->where('projects.manager_id', Auth::id())->orderBy('projects.name')->get();
@@ -1157,6 +1211,7 @@ class BugController extends Controller
             'project_id' => $project->id,
             'project_name' => $project->name,
             'project_stack' => $project->stack,
+            'github_repo' => $project->github_repo ?? null,
         ]);
     }
 }
