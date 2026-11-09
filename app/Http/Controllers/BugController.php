@@ -541,7 +541,7 @@ class BugController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         abort_unless(Auth::user()?->role === 'tester', 403);
 
@@ -708,6 +708,17 @@ class BugController extends Controller
             ->first(['users.id']);
         if ($assignee) {
             $this->notifyUsers([$assignee->id], $projectId, $bugId, 'assigned', 'Bug assigned to you', 'A new bug was assigned to you.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'bug_id' => $bugId,
+                'assigned_to' => $assignedTo,
+                'ai_result' => $aiResult,
+                'redirect_url' => '/bugs/' . $bugId,
+                'message' => 'Bug analyzed and added to the workspace.',
+            ]);
         }
 
         return redirect('/ai-agent')

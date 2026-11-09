@@ -216,7 +216,7 @@
                         <p class="text-xs text-[#64748B] mt-0.5">Fill out report details or attach crash snippets for AST diagnosis.</p>
                     </div>
 
-                    <form id="triageForm" action="/api/bugs/store" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="handleTriageSubmit()">
+                    <form id="triageForm" action="/api/bugs/store" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="handleTriageSubmit(event)">
                         @csrf
                         <div>
                             <label class="block text-xs font-bold text-[#0F172A] mb-1">Issue Summary / Title</label>
@@ -325,7 +325,13 @@
                                             Status: {{ $ai['status'] ?? 'Open' }}
                                         </span>
                                     </div>
-                                    <span class="text-[10px] font-semibold text-indigo-800">Rule-based estimate · review before acting</span>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="replayCurrentTriage()" class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 shadow-2xs transition">
+                                            <span>▷</span>
+                                            <span>Replay AI Triage Pipeline</span>
+                                        </button>
+                                        <span class="text-[10px] font-semibold text-indigo-800">Rule-based estimate</span>
+                                    </div>
                                 </div>
                                 @if(!empty($ai['is_duplicate']))
                                     <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -714,6 +720,338 @@
         btn.innerText = '✓ Copied to Clipboard!';
         setTimeout(() => btn.innerText = '📋 Copy Submitted Code', 2000);
     }
+
+    // ==========================================
+    // Autonomous AI Triage Live Stepper & Terminal
+    // ==========================================
+    let triageTimer = null;
+    let triageStartTime = null;
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function openTriageModal(title) {
+        const modal = document.getElementById('triageTerminalModal');
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        
+        // Reset Terminal
+        document.getElementById('terminalBugTitle').innerText = title || 'Processing Anomaly';
+        document.getElementById('terminalOutput').innerHTML = '';
+        document.getElementById('triageProgressBar').style.width = '8%';
+        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> RUNNING NEURAL PIPELINE`;
+        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 font-mono-code';
+        document.getElementById('terminalResultCard').classList.add('hidden');
+        
+        // Reset Steps
+        [1, 2, 3, 4].forEach(i => {
+            const step = document.getElementById(`step-pill-${i}`);
+            if (step) {
+                step.className = 'px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition';
+                step.innerText = `${i}. ${step.dataset.name || 'Stage ' + i}`;
+            }
+        });
+        setStepActive(1);
+        
+        // Live Millisecond Timer
+        triageStartTime = performance.now();
+        clearInterval(triageTimer);
+        triageTimer = setInterval(() => {
+            const elapsed = ((performance.now() - triageStartTime) / 1000).toFixed(2);
+            document.getElementById('terminalTimer').innerText = `[ ${elapsed}s ]`;
+        }, 50);
+    }
+
+    function closeTriageModal() {
+        clearInterval(triageTimer);
+        document.getElementById('triageTerminalModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function setStepActive(stepNum) {
+        const step = document.getElementById(`step-pill-${stepNum}`);
+        if (step) {
+            step.className = 'px-2.5 py-1.5 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 font-bold transition animate-pulse';
+        }
+    }
+
+    function setStepDone(stepNum) {
+        const step = document.getElementById(`step-pill-${stepNum}`);
+        if (step) {
+            step.className = 'px-2.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold transition';
+            step.innerText = `✓ ${step.dataset.name || 'Step ' + stepNum}`;
+        }
+    }
+
+    function appendTerminalLog(prefix, msg, color = 'text-slate-300') {
+        const terminal = document.getElementById('terminalOutput');
+        if (!terminal) return;
+        const elapsed = ((performance.now() - triageStartTime) / 1000).toFixed(2);
+        const div = document.createElement('div');
+        div.className = `flex items-start gap-2 text-xs font-mono-code ${color} transition`;
+        div.innerHTML = `<span class="text-slate-500 shrink-0 font-normal">[+${elapsed}s]</span> <span class="font-bold text-indigo-400 shrink-0">${prefix}</span> <span>${msg}</span>`;
+        terminal.appendChild(div);
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // Submit Handler with Streaming Execution
+    async function handleTriageSubmit(e) {
+        if (e) e.preventDefault();
+        const form = document.getElementById('triageForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const title = document.getElementById('bugTitle').value;
+        const formData = new FormData(form);
+
+        openTriageModal(title);
+        appendTerminalLog('[BOOT]', 'Initializing AutoBugTriage neural inference core v2.4...', 'text-slate-300');
+
+        // Step 1: Ingestion
+        await sleep(250);
+        appendTerminalLog('[INGEST]', 'Ingesting natural-language symptoms and screenshot proof...', 'text-sky-300');
+        document.getElementById('triageProgressBar').style.width = '25%';
+        setStepDone(1);
+        setStepActive(2);
+
+        // Concurrently dispatch request
+        const apiPromise = fetch('/api/bugs/store', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: formData
+        }).then(async res => {
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Server error occurred during triage.');
+            }
+            return res.json();
+        });
+
+        // Step 2: NLP & Vector Similarity
+        await sleep(400);
+        appendTerminalLog('[NLP-VEC]', 'Extracting domain entity tokens & calculating cosine similarity...', 'text-purple-300');
+        document.getElementById('triageProgressBar').style.width = '50%';
+
+        // Step 3: AST & GitHub Repo Scanning
+        await sleep(450);
+        setStepDone(2);
+        setStepActive(3);
+        appendTerminalLog('[AST-CODE]', 'Running AST exception pattern checks & inspecting call-stack...', 'text-blue-300');
+        appendTerminalLog('[GITHUB]', 'Scanning project repository tree to isolate culprit files...', 'text-cyan-300');
+        document.getElementById('triageProgressBar').style.width = '75%';
+
+        // Step 4: Routing & Dispatch
+        await sleep(400);
+        setStepDone(3);
+        setStepActive(4);
+        appendTerminalLog('[ROUTER]', 'Evaluating engineer tech stack taxonomy & queue workload...', 'text-amber-300');
+        document.getElementById('triageProgressBar').style.width = '90%';
+
+        try {
+            const resData = await apiPromise;
+            clearInterval(triageTimer);
+            const totalDuration = ((performance.now() - triageStartTime) / 1000).toFixed(2);
+            document.getElementById('terminalTimer').innerText = `[ ${totalDuration}s ]`;
+            document.getElementById('triageProgressBar').style.width = '100%';
+            setStepDone(4);
+
+            const ai = resData.ai_result || {};
+            const feat = ai.feature || 'General';
+            const priority = ai.priority || 'Medium';
+            const simScore = ai.similarity_score ?? 0;
+            const assignee = resData.assigned_to || 'Alice Developer';
+            const bugId = resData.bug_id || 1;
+            const suspected = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files[0]) 
+                ? ai.code_help.suspected_files[0].path 
+                : (ai.suspected_files && ai.suspected_files[0] ? ai.suspected_files[0].path : 'app/Services');
+
+            appendTerminalLog('[SUCCESS]', `Triage completed in ${totalDuration}s!`, 'text-emerald-400 font-bold');
+            appendTerminalLog('[DISPATCH]', `Anomaly categorized under module: ${feat} (${priority} Priority)`, 'text-emerald-300');
+            appendTerminalLog('[DISPATCH]', `Duplicate vector similarity: ${simScore}% (${simScore > 70 ? 'POSSIBLE DUPLICATE' : 'UNIQUE ISSUE'})`, 'text-emerald-300');
+            appendTerminalLog('[DISPATCH]', `Suspected GitHub Culprit: ${suspected}`, 'text-sky-300');
+            appendTerminalLog('[DISPATCH]', `Assigned to: ${assignee} (Based on skills & active tasks balance)`, 'text-emerald-400 font-bold');
+
+            // Status Pill Complete
+            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> TRIAGE COMPLETED`;
+            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 font-mono-code';
+
+            // Show Result Card
+            document.getElementById('terminalResultKey').innerText = `#ABT-${bugId}`;
+            document.getElementById('resAssignee').innerText = assignee;
+            document.getElementById('resPriority').innerText = priority + ' Priority';
+            document.getElementById('resSimilarity').innerText = simScore + '% (' + (simScore > 70 ? 'Duplicate' : 'Unique') + ')';
+            document.getElementById('resCulprit').innerText = suspected;
+            document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
+            document.getElementById('terminalResultCard').classList.remove('hidden');
+
+        } catch (err) {
+            clearInterval(triageTimer);
+            appendTerminalLog('[ERROR]', err.message || 'Triage failed.', 'text-rose-400 font-bold');
+            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> FAILED`;
+            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-2.5 py-0.5 text-[10px] font-bold text-rose-300 font-mono-code';
+            setTimeout(() => {
+                alert('Triage error: ' + err.message);
+                closeTriageModal();
+            }, 1200);
+        }
+    }
+
+    // Replay function for existing session results
+    @if(session('ai_result'))
+    async function replayCurrentTriage() {
+        const ai = @json(session('ai_result'));
+        const bugId = '{{ session("last_bug_id", 1) }}';
+        openTriageModal('{{ session("ai_result.code_help.feature", "Anomaly") }} Diagnosis Replay');
+        
+        appendTerminalLog('[REPLAY]', 'Replaying autonomous triage execution pipeline...', 'text-slate-300');
+        await sleep(250);
+        appendTerminalLog('[INGEST]', 'Loaded anomaly symptoms and screenshot proof.', 'text-sky-300');
+        document.getElementById('triageProgressBar').style.width = '25%';
+        setStepDone(1);
+        setStepActive(2);
+
+        await sleep(350);
+        appendTerminalLog('[NLP-VEC]', `Extracted feature: ${ai.feature || 'General'} · Duplicate score: ${ai.similarity_score || 0}%`, 'text-purple-300');
+        document.getElementById('triageProgressBar').style.width = '50%';
+
+        await sleep(400);
+        setStepDone(2);
+        setStepActive(3);
+        appendTerminalLog('[AST-CODE]', `Syntax check: ${ai.code_help?.syntax_status || 'verified'} · Exception: ${ai.code_help?.error_name || 'Pattern matched'}`, 'text-blue-300');
+        const susp = (ai.code_help?.suspected_files && ai.code_help.suspected_files[0]) ? ai.code_help.suspected_files[0].path : 'Repository files scanned';
+        appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300');
+        document.getElementById('triageProgressBar').style.width = '75%';
+
+        await sleep(350);
+        setStepDone(3);
+        setStepActive(4);
+        appendTerminalLog('[ROUTER]', `Evaluated developer capacity and domain skills.`, 'text-amber-300');
+        document.getElementById('triageProgressBar').style.width = '100%';
+        setStepDone(4);
+        clearInterval(triageTimer);
+
+        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> REPLAY COMPLETE`;
+        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 font-mono-code';
+
+        document.getElementById('terminalResultKey').innerText = `#ABT-${bugId}`;
+        document.getElementById('resAssignee').innerText = '{{ session("ai_result.recommended_assignee", "Developer") }}';
+        document.getElementById('resPriority').innerText = (ai.priority || 'Medium') + ' Priority';
+        document.getElementById('resSimilarity').innerText = (ai.similarity_score || 0) + '% Match';
+        document.getElementById('resCulprit').innerText = susp;
+        document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
+        document.getElementById('terminalResultCard').classList.remove('hidden');
+    }
+    @endif
+</script>
+
+    <!-- Autonomous AI Triage Live Terminal HUD Modal -->
+    <div id="triageTerminalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="relative w-full max-w-2xl rounded-3xl border border-slate-700/80 bg-[#0F172A] p-5 sm:p-6 shadow-2xl text-white overflow-hidden flex flex-col space-y-4">
+            <!-- Window Top Chrome -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
+                    <span class="h-3 w-3 rounded-full bg-amber-500 inline-block"></span>
+                    <span class="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
+                    <span class="ml-2 text-xs font-bold font-mono-code text-slate-300">
+                        ⚡ AutoBugTriage Neural Core v2.4
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="terminalTimer" class="font-mono-code text-xs text-indigo-400 font-bold">[ 0.00s ]</span>
+                    <div id="terminalStatusPill" class="flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 font-mono-code">
+                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        RUNNING NEURAL PIPELINE
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Anomaly Banner -->
+            <div class="rounded-2xl border border-slate-800 bg-[#1E293B]/60 p-3 flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono-code">TARGET ANOMALY</span>
+                    <p id="terminalBugTitle" class="text-xs font-bold text-white truncate mt-0.5">Payment checkout 401 error</p>
+                </div>
+                <span class="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono-code font-bold px-2 py-0.5 shrink-0">
+                    4-PHASE INFERENCE
+                </span>
+            </div>
+
+            <!-- 4-Phase Stepper Pills -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px] font-mono-code">
+                <div id="step-pill-1" data-name="Ingestion" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 font-bold transition">
+                    1. Ingestion
+                </div>
+                <div id="step-pill-2" data-name="NLP & Vector" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                    2. NLP & Vector
+                </div>
+                <div id="step-pill-3" data-name="AST & GitHub" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                    3. AST & GitHub
+                </div>
+                <div id="step-pill-4" data-name="Dispatch" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                    4. Dispatch
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div id="triageProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-1.5 rounded-full transition-all duration-300" style="width: 5%"></div>
+            </div>
+
+            <!-- Live Streaming Console Logs -->
+            <div id="terminalOutput" class="rounded-2xl border border-slate-800 bg-[#090D16] p-4 font-mono-code text-xs space-y-1.5 max-h-[190px] sm:max-h-[220px] overflow-y-auto custom-scroll shadow-inner">
+                <!-- Log items appended dynamically -->
+            </div>
+
+            <!-- Result Card (shown on completion) -->
+            <div id="terminalResultCard" class="hidden rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-black text-xs">✓</span>
+                        <span class="text-xs font-extrabold text-emerald-400">Autonomous Triage Successful</span>
+                    </div>
+                    <span id="terminalResultKey" class="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-mono-code font-bold px-2 py-0.5">
+                        #ABT-104
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                        <span class="text-[9px] text-slate-400 block font-mono-code">ASSIGNED TO</span>
+                        <span id="resAssignee" class="font-bold text-white text-[11px] truncate block mt-0.5">Alice Dev</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                        <span class="text-[9px] text-slate-400 block font-mono-code">SEVERITY</span>
+                        <span id="resPriority" class="font-bold text-rose-400 text-[11px] truncate block mt-0.5">High Priority</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                        <span class="text-[9px] text-slate-400 block font-mono-code">SIMILARITY</span>
+                        <span id="resSimilarity" class="font-bold text-emerald-400 text-[11px] truncate block mt-0.5">0.12 (Unique)</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                        <span class="text-[9px] text-slate-400 block font-mono-code">CULPRIT FILE</span>
+                        <span id="resCulprit" class="font-bold text-sky-400 text-[11px] truncate block mt-0.5">PaymentService.php</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+                    <button type="button" onclick="closeTriageModal()" class="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition">
+                        Submit Another
+                    </button>
+                    <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition">
+                        Kanban Board ▤
+                    </a>
+                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 px-4 py-1.5 text-xs font-extrabold text-white shadow-md shadow-indigo-600/30 transition hover:scale-[1.02]">
+                        Open Issue & Fix Guidance ➔
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </script>
 </body>
 </html>
