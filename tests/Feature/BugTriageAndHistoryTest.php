@@ -244,6 +244,55 @@ class BugTriageAndHistoryTest extends TestCase
             ->get(route('bugs.report', $bugId))->assertNotFound();
     }
 
+    public function test_project_developer_can_open_dedicated_issue_details_page(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $developer = User::factory()->create(['name' => 'Alice Dev', 'role' => 'developer']);
+        $outsider = User::factory()->create(['role' => 'developer']);
+
+        $projectId = $this->createProject($manager, 'Dev Project');
+        $this->addMember($projectId, $developer);
+        $this->addDeveloper($projectId, 'Alice Dev', 'php laravel', 1);
+
+        $bugId = (int) DB::table('bugs')->insertGetId([
+            'project_id' => $projectId,
+            'title' => 'Null pointer in payment checkout',
+            'description' => 'Detailed reproduction steps for developer.',
+            'priority' => 'High',
+            'status' => 'In Progress',
+            'assigned_to' => 'Alice Dev',
+            'is_duplicate' => false,
+            'detected_feature' => 'Payments',
+            'triage_result' => json_encode([
+                'priority' => 'High',
+                'status' => 'In Progress',
+                'code_help' => [
+                    'feature' => 'Payments',
+                    'error_name' => 'NullPointer check',
+                    'syntax_status' => 'passed',
+                    'steps' => ['Step 1: Check card token.'],
+                ],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($developer)->withSession(['project_id' => $projectId])
+            ->get("/bugs/{$bugId}");
+
+        $response->assertOk();
+        $response->assertSee('Null pointer in payment checkout');
+        $response->assertSee('Detailed reproduction steps for developer');
+        $response->assertSee('Alice Dev');
+        $response->assertSee('Workflow State');
+
+        $otherProject = $this->createProject($manager, 'Other Project');
+        $this->addMember($otherProject, $outsider);
+        $this->actingAs($outsider)->withSession(['project_id' => $otherProject])
+            ->get("/bugs/{$bugId}")
+            ->assertNotFound();
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

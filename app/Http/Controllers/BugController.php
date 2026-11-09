@@ -392,6 +392,43 @@ class BugController extends Controller
         ]);
     }
 
+    public function showBug(int $id): View
+    {
+        abort_unless(in_array(Auth::user()?->role, ['manager', 'developer', 'tester'], true), 403);
+
+        $projectId = $this->currentProjectId();
+        $this->ensureProjectWorkflow($projectId);
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->firstOrFail();
+        $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
+        $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
+        $activities = DB::table('bug_activities')->where('project_id', $projectId)->where('bug_id', $id)->orderByDesc('created_at')->orderByDesc('id')->get();
+        $clarifications = DB::table('bug_clarification_requests')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
+        $isWatching = DB::table('bug_watchers')->where('bug_id', $id)->where('user_id', Auth::id())->exists();
+        $projectMembers = $this->projectParticipants($projectId);
+        $developers = DB::table('developers')->where('project_id', $projectId)->orderBy('name')->get();
+        $workflowStatuses = DB::table('project_workflow_statuses')->where('project_id', $projectId)->orderBy('position')->get();
+        $transitions = DB::table('project_workflow_transitions')->where('project_id', $projectId)->where('from_status', $bug->status)->pluck('to_status')->all();
+        $triageMetric = DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $id)->first();
+        $projects = $this->accessibleProjects();
+
+        return view('bug_details', compact(
+            'bug', 'comments', 'activities', 'clarifications', 'isWatching',
+            'projectMembers', 'developers', 'workflowStatuses', 'transitions',
+            'triageMetric', 'projects'
+        ) + [
+            'currentProjectId' => $projectId,
+        ]);
+    }
+
+    public function showScreenshot(int $id)
+    {
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->firstOrFail();
+        abort_unless($bug->screenshot_path && Storage::disk('local')->exists($bug->screenshot_path), 404, 'Screenshot not found.');
+
+        return Storage::disk('local')->response($bug->screenshot_path);
+    }
+
     public function printableBugReport(int $id): View
     {
         $projectId = $this->currentProjectId();

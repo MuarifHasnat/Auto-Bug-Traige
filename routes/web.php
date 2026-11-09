@@ -21,6 +21,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [BugController::class, 'dashboardPage']);
     Route::get('/workspace', [BugController::class, 'workspacePage']);
+    Route::get('/bugs/{id}', [BugController::class, 'showBug'])->whereNumber('id')->name('bugs.show');
+    Route::get('/bugs/{id}/screenshot', [BugController::class, 'showScreenshot'])->whereNumber('id')->name('bugs.screenshot');
     Route::get('/bugs/{id}/report', [BugController::class, 'printableBugReport'])->whereNumber('id')->name('bugs.report');
     Route::get('/workflow', [BugController::class, 'workflowPage'])->name('workflow.settings');
     Route::post('/workflow', [BugController::class, 'saveWorkflow'])->name('workflow.save');

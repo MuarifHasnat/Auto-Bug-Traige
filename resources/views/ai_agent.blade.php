@@ -143,8 +143,71 @@
                 </div>
             @endif
 
-            <!-- Split-Screen IDE Workbench: 45% Left / 55% Right -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            @if(auth()->user()->role === 'developer')
+                <!-- Developer Workspace View: Assigned Tasks with AI Root-Cause Diagnostic Cards -->
+                <div class="space-y-6">
+                    <div class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xs">
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4 mb-5">
+                            <div>
+                                <h2 class="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                                    <span>💻</span>
+                                    <span>Issues Assigned to You ({{ $assignedBugs->count() }})</span>
+                                </h2>
+                                <p class="text-xs text-[#64748B] mt-0.5">Click into any issue to view full details, screenshots, AI fix guidance, and GitHub culprit files.</p>
+                            </div>
+                            <a href="/workspace" class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 transition shadow-xs">
+                                <span>Open Kanban Board</span> ➔
+                            </a>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @forelse($assignedBugs as $bug)
+                                <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 space-y-3 hover:border-indigo-300 hover:bg-white transition shadow-2xs flex flex-col justify-between">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-mono-code font-bold text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">
+                                                #ABT-{{ $bug->id }}
+                                            </span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="rounded-lg px-2 py-0.5 text-[10px] font-bold {{ $bug->priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200' }}">
+                                                    {{ $bug->priority }}
+                                                </span>
+                                                <span class="rounded-lg px-2 py-0.5 text-[10px] font-bold {{ $bug->status === 'Done' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-200 text-slate-700' }}">
+                                                    {{ $bug->status }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <h3 class="font-bold text-sm text-[#0F172A] leading-snug">
+                                            {{ $bug->title }}
+                                        </h3>
+                                        <p class="text-xs text-[#64748B] line-clamp-2">
+                                            {{ $bug->description }}
+                                        </p>
+                                    </div>
+
+                                    <div class="pt-3 border-t border-[#E2E8F0] flex items-center justify-between gap-2">
+                                        <span class="text-[11px] font-semibold text-purple-700">
+                                            ✨ {{ $bug->detected_feature ?? 'Module' }}
+                                        </span>
+                                        <a href="/bugs/{{ $bug->id }}" class="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-1.5 transition shadow-2xs">
+                                            <span>Open & Fix Issue</span> ➔
+                                        </a>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="col-span-2 text-center py-12 border border-dashed border-[#CBD5E1] rounded-2xl bg-[#F8FAFC]">
+                                    <span class="text-3xl">🎉</span>
+                                    <p class="text-sm font-bold text-[#0F172A] mt-2">All caught up!</p>
+                                    <p class="text-xs text-[#64748B] mt-1">You currently have no open bugs assigned to you.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            @else
+                <!-- Split-Screen IDE Workbench: 45% Left / 55% Right -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 <!-- Left Panel (45% / col-span-5): Tester Bug Input Console with 1-Click Templates & Paste Support -->
                 <section class="lg:col-span-5 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
@@ -499,6 +562,7 @@
                     @endif
                 </section>
             </div>
+            @endif
         </div>
     </main>
 </div>

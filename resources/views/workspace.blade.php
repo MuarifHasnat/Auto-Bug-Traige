@@ -314,9 +314,10 @@
                                         
                                         <!-- Layer 1: Top Meta (#ABT-X + Priority with Symbol) -->
                                         <div class="flex items-center justify-between mb-2">
-                                            <span class="font-mono-code font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5">
-                                                #ABT-{{ $bug->id }}
-                                            </span>
+                                            <a href="/bugs/{{ $bug->id }}" title="Open full issue page" onclick="event.stopPropagation()" class="font-mono-code font-bold text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded px-1.5 py-0.5 transition inline-flex items-center gap-1">
+                                                <span>#ABT-{{ $bug->id }}</span>
+                                                <span class="text-[9px]">↗</span>
+                                            </a>
                                             <span class="rounded px-2 py-0.5 text-[10px] font-bold {{ $bug->priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : ($bug->priority === 'Low' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200') }}">
                                                 {{ $prioritySymbol }}
                                             </span>
@@ -466,7 +467,12 @@
         <div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
             <!-- Tab 1: Details -->
             <div id="tabDetails" class="space-y-4">
-                <a id="drawerReportLink" href="#" target="_blank" class="inline-flex rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">Print / Save report as PDF</a>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a id="drawerFullPageLink" href="#" class="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-xs font-bold shadow-2xs transition">
+                        <span>Open Full Issue Page</span> ↗
+                    </a>
+                    <a id="drawerReportLink" href="#" target="_blank" class="inline-flex rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition">Print / Save report as PDF</a>
+                </div>
                 <div>
                     <h3 id="drawerTitle" class="text-lg font-extrabold text-[#0F172A] leading-snug"></h3>
                     <p id="drawerDesc" class="mt-2 text-xs text-[#475569] leading-relaxed whitespace-pre-line"></p>
@@ -631,6 +637,8 @@
 
             document.getElementById('drawerBugId').innerText = '#ABT-' + data.getAttribute('data-id');
             document.getElementById('drawerReportLink').href = `/bugs/${encodeURIComponent(bugIdValue)}/report`;
+            const fullPageLink = document.getElementById('drawerFullPageLink');
+            if (fullPageLink) fullPageLink.href = `/bugs/${encodeURIComponent(bugIdValue)}`;
             document.getElementById('drawerTitle').innerText = data.getAttribute('data-title');
             document.getElementById('drawerDesc').innerText = data.getAttribute('data-desc');
             document.getElementById('drawerFeature').innerText = data.getAttribute('data-feat');
