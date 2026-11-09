@@ -34,7 +34,7 @@ class DemoSeeder extends Seeder
         foreach ($workflowStatuses as $position => [$name, $isDone]) {
             DB::table('project_workflow_statuses')->insertOrIgnore([
                 'project_id' => $projectId, 'name' => $name, 'position' => $position,
-                'is_done' => $isDone, 'created_at' => $now, 'updated_at' => $now,
+                'is_done' => DB::raw($isDone ? 'true' : 'false'), 'created_at' => $now, 'updated_at' => $now,
             ]);
         }
         foreach ([

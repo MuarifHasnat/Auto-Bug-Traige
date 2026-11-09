@@ -580,7 +580,7 @@ class BugController extends Controller
             ->all();
         $fixHistory = [];
         if ($doneStatuses) {
-            foreach (DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->where('is_duplicate', false)
+            foreach (DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->whereRaw('is_duplicate = false')
                 ->whereNotNull('assigned_to')->get(['assigned_to', 'detected_feature', 'triage_result']) as $fixedBug) {
                 $history = $fixHistory[$fixedBug->assigned_to] ?? ['resolved_features' => [], 'resolved_languages' => []];
                 if ($fixedBug->detected_feature) $history['resolved_features'][] = strtolower($fixedBug->detected_feature);
@@ -665,7 +665,7 @@ class BugController extends Controller
                 'recommended_assignee' => $assignedTo,
                 'sentiment' => $aiResult['sentiment'] ?? 'neutral',
                 'sentiment_score' => $aiResult['sentiment_score'] ?? 0,
-                'blocker_signal' => (bool) ($aiResult['blocker_signal'] ?? false),
+                'blocker_signal' => DB::raw(!empty($aiResult['blocker_signal']) ? 'true' : 'false'),
                 'is_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
                 'duplicate_of' => $aiResult['duplicate_of'] ?? null,
                 'screenshot_path' => $screenshotPath,
@@ -682,7 +682,7 @@ class BugController extends Controller
                 'bug_id' => $bugId,
                 'triage_duration_ms' => $triageDurationMs,
                 'duplicate_similarity_score' => $aiResult['similarity_score'] ?? 0,
-                'predicted_duplicate' => $isDuplicate,
+                'predicted_duplicate' => DB::raw($isDuplicate ? 'true' : 'false'),
                 'recommended_assignee' => $assignedTo,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -825,7 +825,7 @@ class BugController extends Controller
             DB::table('bug_triage_metrics')->insert([
                 'project_id' => $projectId, 'bug_id' => $bug->id, 'triage_duration_ms' => 0,
                 'duplicate_similarity_score' => $triage['similarity_score'] ?? 0,
-                'predicted_duplicate' => (bool) $bug->is_duplicate, 'recommended_assignee' => $recommendation,
+                'predicted_duplicate' => DB::raw(!empty($bug->is_duplicate) ? 'true' : 'false'), 'recommended_assignee' => $recommendation,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
@@ -853,7 +853,7 @@ class BugController extends Controller
                 DB::table('bug_triage_metrics')->insert([
                     'project_id' => $projectId, 'bug_id' => $bug->id, 'triage_duration_ms' => 0,
                     'duplicate_similarity_score' => $triage['similarity_score'] ?? 0,
-                    'predicted_duplicate' => (bool) $bug->is_duplicate,
+                    'predicted_duplicate' => DB::raw(!empty($bug->is_duplicate) ? 'true' : 'false'),
                     'recommended_assignee' => $bug->recommended_assignee ?: ($bug->assigned_to ?: 'Unassigned'),
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
@@ -870,7 +870,7 @@ class BugController extends Controller
             $willBeActive = $this->isActiveAssignment($projectId, $actualDuplicate, $targetStatus, $bug->assigned_to);
 
             DB::table('bugs')->where('id', $bug->id)->update([
-                'is_duplicate' => $actualDuplicate,
+                'is_duplicate' => DB::raw($actualDuplicate ? 'true' : 'false'),
                 'status' => $targetStatus,
                 'duplicate_of' => $actualDuplicate ? $bug->duplicate_of : null,
                 'updated_at' => now(),
@@ -879,7 +879,7 @@ class BugController extends Controller
             elseif (!$wasActive && $willBeActive) $this->changeDeveloperWorkload($projectId, $bug->assigned_to, 1);
 
             DB::table('bug_triage_metrics')->where('id', $metrics->id)->update([
-                'actual_duplicate' => $actualDuplicate,
+                'actual_duplicate' => DB::raw($actualDuplicate ? 'true' : 'false'),
                 'reviewed_by' => Auth::id(), 'reviewed_at' => now(), 'updated_at' => now(),
             ]);
             $this->recordBugActivity($projectId, $bug->id, 'duplicate_reviewed', $bug->is_duplicate ? 'Duplicate' : 'Not duplicate', $actualDuplicate ? 'Duplicate' : 'Not duplicate');
@@ -1104,7 +1104,7 @@ class BugController extends Controller
             foreach ($statuses as $position => $name) {
                 DB::table('project_workflow_statuses')->insert([
                     'project_id' => $projectId, 'name' => $name, 'position' => $position,
-                    'is_done' => in_array($name, $doneStatuses, true), 'created_at' => now(), 'updated_at' => now(),
+                    'is_done' => DB::raw(in_array($name, $doneStatuses, true) ? 'true' : 'false'), 'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
             foreach (array_values($transitionPairs) as [$from, $to]) {
@@ -1113,10 +1113,10 @@ class BugController extends Controller
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
-            $activeNames = DB::table('project_workflow_statuses')->where('project_id', $projectId)->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
+            $activeNames = DB::table('project_workflow_statuses')->where('project_id', $projectId)->whereRaw('is_done = false')->where('name', '!=', 'Duplicate')->pluck('name')->all();
             foreach (DB::table('developers')->where('project_id', $projectId)->get(['name']) as $developer) {
                 $activeCount = DB::table('bugs')->where('project_id', $projectId)->where('assigned_to', $developer->name)
-                    ->whereIn('status', $activeNames)->where('is_duplicate', false)->count();
+                    ->whereIn('status', $activeNames)->whereRaw('is_duplicate = false')->count();
                 DB::table('developers')->where('project_id', $projectId)->where('name', $developer->name)->update(['active_tasks' => $activeCount]);
             }
         });
@@ -1181,7 +1181,7 @@ class BugController extends Controller
             foreach ($defaults as $position => [$name, $isDone]) {
                 DB::table('project_workflow_statuses')->insertOrIgnore([
                     'project_id' => $projectId, 'name' => $name, 'position' => $position,
-                    'is_done' => $isDone, 'created_at' => now(), 'updated_at' => now(),
+                    'is_done' => DB::raw($isDone ? 'true' : 'false'), 'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
             foreach ($edges as [$from, $to]) {
