@@ -51,12 +51,10 @@
                     @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
                 </a>
 
-                @if(auth()->user()->role === 'developer')
-                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/ai-agent">
-                        <span class="text-sm">⚡</span>
-                        <span>AI Fix Studio</span>
-                    </a>
-                @endif
+                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/ai-agent">
+                    <span class="text-sm">⚡</span>
+                    <span>AI Triage Studio</span>
+                </a>
 
                 @if(auth()->user()->role === 'manager')
                     <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="{{ route('workflow.settings') }}">
@@ -405,6 +403,7 @@
                                              data-fix-suggestions="{{ json_encode($triage['code_help']['fix_suggestions'] ?? []) }}"
                                              data-fixed="{{ $triage['code_help']['fixed_code'] ?? '' }}"
                                              data-diff="{{ $triage['code_help']['diff'] ?? '' }}"
+                                             data-suspected-files="{{ json_encode($triage['code_help']['suspected_files'] ?? ($triage['suspected_files'] ?? [])) }}"
                                              data-history="{{ json_encode($activity) }}"
                                              data-comments="{{ json_encode($bugComments->get($bug->id, collect())->values()) }}"
                                              data-clarifications="{{ json_encode($clarifications->get($bug->id, collect())->values()) }}"
@@ -516,6 +515,14 @@
                 <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
                     <p class="font-bold">Possible fix suggestions · review before applying</p>
                     <ol id="drawerFixSuggestions" class="mt-2 space-y-2"></ol>
+                </div>
+                <div id="drawerSuspectedFilesSection" class="hidden rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-950">
+                    <div class="flex items-center gap-1.5 font-bold text-sky-900">
+                        <span>🔍</span>
+                        <span>Suspected Culprit Files (Root Cause Locator)</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-sky-700">Agent analyzed project file tree to pinpoint where this bug likely originates:</p>
+                    <div id="drawerSuspectedFilesList" class="mt-2.5 space-y-1.5"></div>
                 </div>
                 <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-900">
                     <p class="font-bold">Smart Assignment Rationale:</p>
@@ -706,6 +713,39 @@
                 suggestionsList.textContent = 'Fix suggestions could not be loaded. The submitted code remains unchanged.';
             }
             document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
+
+            const suspectedFilesRaw = data.getAttribute('data-suspected-files');
+            const suspectedSection = document.getElementById('drawerSuspectedFilesSection');
+            const suspectedList = document.getElementById('drawerSuspectedFilesList');
+            if (suspectedSection && suspectedList) {
+                suspectedList.innerHTML = '';
+                let files = [];
+                try { files = JSON.parse(suspectedFilesRaw || '[]'); } catch (e) { files = []; }
+                if (files && files.length > 0) {
+                    files.forEach(f => {
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center justify-between gap-2 rounded-lg bg-white border border-sky-200 px-2.5 py-1.5 text-xs';
+                        const left = document.createElement('div');
+                        left.className = 'flex items-center gap-1.5 min-w-0';
+                        const filePath = typeof f === 'string' ? f : (f.path || '');
+                        left.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">📄</span><span class="font-mono text-[11px] font-semibold text-slate-800 truncate">${filePath}</span>`;
+                        item.appendChild(left);
+                        if (f && f.github_url) {
+                            const link = document.createElement('a');
+                            link.href = f.github_url;
+                            link.target = '_blank';
+                            link.rel = 'noreferrer noopener';
+                            link.className = 'inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition';
+                            link.innerHTML = `<span>View on GitHub</span> ↗`;
+                            item.appendChild(link);
+                        }
+                        suspectedList.appendChild(item);
+                    });
+                    suspectedSection.classList.remove('hidden');
+                } else {
+                    suspectedSection.classList.add('hidden');
+                }
+            }
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No submitted code provided.';
             document.getElementById('drawerDiff').value = data.getAttribute('data-diff') || '// No diff available.';
 

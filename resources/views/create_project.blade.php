@@ -114,6 +114,22 @@
                     </div>
                 </div>
 
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                            <span class="text-slate-800">🐙</span>
+                            <span>GitHub Repository Link</span>
+                            <span class="text-[10px] text-indigo-600 font-mono-code font-semibold">(AI File Locator)</span>
+                        </label>
+                        <span class="text-[10px] text-slate-400 font-mono-code">Auto-Locate Culprit Files</span>
+                    </div>
+                    <input type="text" name="github_repo" value="{{ old('github_repo', 'https://github.com/MuarifHasnat/Auto-Bug-Traige') }}" placeholder="https://github.com/owner/repository" 
+                           class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10 font-mono-code">
+                    <p class="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+                        গিটহাব রিপোজিটরি লিংক দিলে এজেন্ট স্বয়ংক্রিয়ভাবে প্রজেক্টের ফাইল স্ট্রাকচার স্ক্যান করে বলে দেবে কোন কোন ফাইলে সমস্যা বা বাগ থাকতে পারে!
+                    </p>
+                </div>
+
                 <div class="pt-2 border-t border-[#E2E8F0]">
                     <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-3 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
                         <span>Save & Proceed to Team Setup ➔</span>

@@ -12,6 +12,7 @@ from categorization import calculate_priority, detect_feature
 from diagnostics import check_code_error
 from similarity import detect_duplicates
 from sentiment import analyze_sentiment
+from file_locator import locate_suspected_files
 
 
 def analyze_report(data):
@@ -61,6 +62,12 @@ def analyze_report(data):
     if assignment_reason:
         code_help["assignment_reason"] = assignment_reason
 
+    # 6. Locate Suspected Repository / GitHub Files
+    github_repo = data.get("github_repo")
+    suspected_files = locate_suspected_files(title, description, feature, github_repo=github_repo)
+    if suspected_files:
+        code_help["suspected_files"] = suspected_files
+
     # Assemble and return response
     result = {
         "is_duplicate": is_duplicate,
@@ -68,6 +75,8 @@ def analyze_report(data):
         "similarity_score": similarity_percent,
         "assigned_to": assigned_to,
         "priority": priority,
+        "github_repo": github_repo,
+        "suspected_files": suspected_files,
         **sentiment,
         "status": "Duplicate" if is_duplicate else "Open",
         "code_help": code_help,
