@@ -253,3 +253,4 @@ def analyze_screenshot(image_path: str, gemini_api_key: str = None) -> dict:
         "suspected_files": [],
         "summary": "No vision or OCR engine was able to extract text."
     }
+

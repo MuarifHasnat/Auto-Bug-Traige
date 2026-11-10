@@ -36,7 +36,7 @@ class FileLocatorTests(unittest.TestCase):
         top_paths = [r["path"].lower() for r in results]
         # Should match User model or login/auth related files
         self.assertTrue(any("user" in p or "login" in p or "auth" in p for p in top_paths))
-        self.assertIn("https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/", results[0]["github_url"])
+        self.assertIn("https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/", str(results[0]["github_url"]))
 
     def test_locate_suspected_files_for_kotlin_project(self):
         results = locate_suspected_files(

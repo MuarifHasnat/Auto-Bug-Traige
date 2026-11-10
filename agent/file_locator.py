@@ -5,6 +5,20 @@ import json
 import tempfile
 from pathlib import Path
 from urllib.parse import quote
+from typing import TypedDict, Optional, List, Dict, Any
+
+class FileCandidateScore(TypedDict):
+    path: str
+    score: int
+    matched_terms: List[str]
+    is_screenshot_match: bool
+    matched_ss_name: Optional[str]
+
+class SuspectedFileResult(TypedDict):
+    path: str
+    confidence: int
+    reason: str
+    github_url: Optional[str]
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -370,7 +384,7 @@ def locate_suspected_files(
     source_file_name="",
     screenshot_data=None,
     limit=3
-):
+) -> List[SuspectedFileResult]:
     """
     Identifies the top repository files most likely containing or causing the bug.
     Guarantees strict technology alignment (e.g. Kotlin files for Kotlin projects).
@@ -448,7 +462,7 @@ def locate_suspected_files(
     stop_words = {'the', 'and', 'for', 'with', 'this', 'that', 'when', 'does', 'not', 'have', 'from', 'what', 'page', 'error', 'bug', 'code'}
     query_keywords = raw_tokens - stop_words
 
-    file_scores = []
+    file_scores: List[FileCandidateScore] = []
     for fpath in repo_files:
         fpath_lower = fpath.lower()
         path_tokens = set(re.findall(r'[a-zA-Z0-9]{3,}', fpath_lower))
@@ -540,17 +554,25 @@ def locate_suspected_files(
             })
 
     if not file_scores:
-        file_scores = [{"path": f, "score": 10, "matched_terms": ["context"], "is_screenshot_match": False, "matched_ss_name": None} for f in repo_files[:limit]]
+        file_scores = [{
+            "path": f,
+            "score": 10,
+            "matched_terms": ["context"],
+            "is_screenshot_match": False,
+            "matched_ss_name": None
+        } for f in repo_files[:limit]]
 
     file_scores.sort(key=lambda x: x["score"], reverse=True)
     top_candidates = file_scores[:limit]
     max_score = max(c["score"] for c in top_candidates) or 1
 
-    results = []
+    results: List[SuspectedFileResult] = []
     for item in top_candidates:
-        confidence = min(98, max(45, int((item["score"] / max_score) * 92)))
+        item_score = item["score"]
+        item_path = item["path"]
+        confidence = min(98, max(45, int((item_score / max_score) * 92)))
         gh_url = (
-            f"https://github.com/{github_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+            f"https://github.com/{github_slug}/blob/{quote(branch, safe='')}/{quote(item_path, safe='/')}"
             if github_slug else None
         )
         
@@ -558,13 +580,15 @@ def locate_suspected_files(
             confidence = max(95, confidence)
             line_str = f" (line {ss_lines[0]})" if ss_lines else ""
             err_str = f" [{ss_error}]" if ss_error else ""
-            reason = f"Identified from screenshot crash trace: {item.get('matched_ss_name')}{line_str}{err_str}"
+            ss_name = item.get("matched_ss_name") or item_path
+            reason = f"Identified from screenshot crash trace: {ss_name}{line_str}{err_str}"
         else:
-            matched_str = ', '.join(item['matched_terms'][:3]) if item['matched_terms'] else target_tech
+            matched_terms = list(item.get("matched_terms") or [])
+            matched_str = ', '.join(matched_terms[:3]) if matched_terms else target_tech
             reason = f"Matched {target_tech.capitalize()} tokens: {matched_str}"
 
         results.append({
-            "path": item["path"],
+            "path": item_path,
             "confidence": confidence,
             "reason": reason,
             "github_url": gh_url
