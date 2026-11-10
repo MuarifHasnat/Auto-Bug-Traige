@@ -70,11 +70,11 @@ IGNORED_ASSET_EXTENSIONS = (
 
 IGNORED_TEST_AND_BUILD_EXTENSIONS = (
     '.pro', '.properties', '.toml', '.jar', '.lock', '.bat', '.cmd', '.exe',
-    '.bin', '.md', '.txt'
+    '.bin', '.md', '.txt', '.rst', '.adoc', '.markdown'
 )
 
 IGNORED_PATH_SEGMENTS = {
-    'test', 'tests', 'androidtest', 'testfixtures', '.gradle', 'gradle'
+    'test', 'tests', 'androidtest', 'testfixtures', '.gradle', 'gradle', 'docs', 'doc', 'documentation'
 }
 
 ABBREVIATION_EXPANSIONS = {
@@ -597,7 +597,7 @@ def locate_suspected_files(
         if fl.endswith(IGNORED_TEST_AND_BUILD_EXTENSIONS) or Path(f).name.lower() in ('gradlew', 'license'):
             continue
         parts = [p.lower() for p in Path(f).parts]
-        if any(seg in parts for seg in IGNORED_PATH_SEGMENTS) or re.search(r'test\.(kt|java|py|ts|js|php)$', fl):
+        if any(seg in parts for seg in IGNORED_PATH_SEGMENTS) or re.search(r'[\.\-_](test|spec|tests)\.(kt|java|py|ts|tsx|js|jsx|php)$', fl) or fl.endswith(('test.kt', 'test.java', 'test.py', 'test.ts', 'test.js')):
             other_files.append(f)
         else:
             prod_files.append(f)
