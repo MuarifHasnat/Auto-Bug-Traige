@@ -588,9 +588,13 @@ class BugController extends Controller
         $mode = Auth::user()->role === 'developer' ? 'developer' : 'tester';
 
         $projects = $this->accessibleProjects();
+        $currentProject = DB::table('projects')->where('id', $projectId)->first();
+        $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
         return view('ai_agent', compact('bugs', 'assignedBugs', 'mode', 'projects') + [
             'currentProjectId' => $projectId,
+            'currentProject' => $currentProject,
+            'projectGithubRepo' => $projectGithubRepo,
         ]);
     }
 
@@ -666,6 +670,18 @@ class BugController extends Controller
 
         $triageStartedAt = microtime(true);
         try {
+            $formRepo = $request->input('github_repo');
+            $projectRepo = DB::table('projects')->where('id', $projectId)->value('github_repo');
+            $effectiveRepo = !empty($formRepo) ? trim($formRepo) : ($projectRepo ?: session('github_repo'));
+
+            if (!empty($formRepo) && trim($formRepo) !== $projectRepo) {
+                DB::table('projects')->where('id', $projectId)->update([
+                    'github_repo' => trim($formRepo),
+                    'updated_at' => now(),
+                ]);
+                session(['github_repo' => trim($formRepo)]);
+            }
+
             file_put_contents($payloadPath, json_encode([
                 ...$data,
                 'code_snippet' => $analysisCode,
@@ -676,7 +692,7 @@ class BugController extends Controller
                 'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
-                'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo') ?: 'https://github.com/MuarifHasnat/Auto-Bug-Traige',
+                'github_repo' => $effectiveRepo,
                 'project_stack' => DB::table('projects')->where('id', $projectId)->value('stack') ?: session('project_stack', ''),
                 'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
             ], JSON_THROW_ON_ERROR));

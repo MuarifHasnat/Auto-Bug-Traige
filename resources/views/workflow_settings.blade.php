@@ -60,7 +60,7 @@
             <div>
                 <label class="block text-xs font-bold text-slate-800 mb-1">GitHub Repository Link or Slug</label>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" name="github_repo" value="{{ old('github_repo', session('github_repo', 'https://github.com/MuarifHasnat/Auto-Bug-Traige')) }}" placeholder="https://github.com/owner/repository" 
+                    <input type="text" name="github_repo" value="{{ old('github_repo', session('github_repo', '')) }}" placeholder="https://github.com/your-username/your-repository" 
                            class="flex-1 rounded-xl border border-slate-300 p-2.5 font-mono-code text-xs text-slate-800 outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600">
                     <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-900 hover:from-slate-800 hover:to-indigo-800 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">
                         <span>↻ Re-sync & Pre-Index Codebase</span>

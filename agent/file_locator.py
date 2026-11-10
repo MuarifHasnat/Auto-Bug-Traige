@@ -3,6 +3,9 @@ import re
 import urllib.request
 import json
 import tempfile
+import zipfile
+import io
+import subprocess
 from pathlib import Path
 from urllib.parse import quote
 from typing import TypedDict, Optional, List, Dict, Any
@@ -170,10 +173,118 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
     return 'auto'
 
 
+def _fetch_files_via_codeload(slug):
+    """
+    Downloads zip archive from GitHub codeload (no token required, no rate limit)
+    and extracts file paths in-memory without saving large files to disk.
+    """
+    candidate_branches = ["main", "master", "11.x", "10.x", "develop", "trunk"]
+    for b in candidate_branches:
+        try:
+            url = f"https://codeload.github.com/{slug}/zip/refs/heads/{quote(b, safe='')}"
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AutoBugTriage/2.0"
+            })
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                if resp.status == 200:
+                    zf = zipfile.ZipFile(io.BytesIO(resp.read()))
+                    raw_names = zf.namelist()
+                    if not raw_names:
+                        continue
+                    prefix = raw_names[0].split('/')[0] + '/'
+                    clean_files = []
+                    for n in raw_names:
+                        if n.endswith('/') or not n.startswith(prefix):
+                            continue
+                        rel_path = n[len(prefix):]
+                        if not rel_path:
+                            continue
+                        p = Path(rel_path)
+                        if p.name in IGNORED_FILE_NAMES:
+                            continue
+                        parts = rel_path.split('/')
+                        if any(part in parts for part in ['storage', 'vendor', 'node_modules', '.git']):
+                            continue
+                        clean_files.append(rel_path)
+                    if clean_files:
+                        return b, clean_files
+        except Exception:
+            continue
+    return None, []
+
+
+def _fetch_files_via_api(slug):
+    """Fetches repository tree using GitHub REST API (supports token)."""
+    gh_headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")
+    if token:
+        gh_headers["Authorization"] = f"Bearer {token}"
+
+    default_branch = "main"
+    try:
+        repo_meta_url = f"https://api.github.com/repos/{slug}"
+        req = urllib.request.Request(repo_meta_url, headers=gh_headers)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            meta = json.loads(resp.read().decode())
+            default_branch = meta.get("default_branch") or "main"
+    except Exception:
+        pass
+
+    candidate_branches = [default_branch] + [b for b in ["main", "master", "develop"] if b != default_branch]
+    for b in candidate_branches:
+        try:
+            tree_url = f"https://api.github.com/repos/{slug}/git/trees/{quote(b, safe='')}?recursive=1"
+            req = urllib.request.Request(tree_url, headers=gh_headers)
+            with urllib.request.urlopen(req, timeout=3.5) as resp:
+                payload = json.loads(resp.read().decode())
+                raw_files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
+                clean_files = [
+                    f for f in raw_files
+                    if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git'])
+                ]
+                if clean_files:
+                    return b, clean_files
+        except Exception:
+            continue
+    return None, []
+
+
+def _fetch_files_via_git(slug):
+    """Fallback: uses shallow blobless git clone without checkout to list tree."""
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_url = f"https://github.com/{slug}.git"
+            res = subprocess.run(
+                ["git", "clone", "--depth", "1", "--filter=blob:none", "--no-checkout", repo_url, tmp_dir],
+                capture_output=True,
+                text=True,
+                timeout=12
+            )
+            if res.returncode == 0:
+                ls_res = subprocess.run(
+                    ["git", "-C", tmp_dir, "ls-tree", "-r", "--name-only", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if ls_res.returncode == 0:
+                    raw = [line.strip() for line in ls_res.stdout.splitlines() if line.strip()]
+                    clean = [
+                        f for f in raw
+                        if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git'])
+                    ]
+                    if clean:
+                        return "main", clean
+    except Exception:
+        pass
+    return None, []
+
+
 def index_repository_structure(github_repo, force=False):
     """
-    Connects to GitHub API, indexes the full codebase architecture,
+    Connects to GitHub, indexes the full codebase architecture,
     categorizes file layers, detects languages, and caches the metadata.
+    Uses codeload zipball, API, and git clone fallbacks for 100% reliability without rate limits.
     """
     slug = parse_github_slug(github_repo)
     if not slug:
@@ -196,49 +307,19 @@ def index_repository_structure(github_repo, force=False):
         except Exception:
             pass
 
-    gh_headers = {"User-Agent": "AutoBugTriage-Agent", "Accept": "application/vnd.github+json"}
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")
-    if token:
-        gh_headers["Authorization"] = f"Bearer {token}"
-
-    default_branch = "main"
-    try:
-        repo_meta_url = f"https://api.github.com/repos/{slug}"
-        req = urllib.request.Request(repo_meta_url, headers=gh_headers)
-        with urllib.request.urlopen(req, timeout=1.8) as resp:
-            meta = json.loads(resp.read().decode())
-            default_branch = meta.get("default_branch") or "main"
-    except Exception:
-        pass
-
-    files = []
-    active_branch = default_branch
-    candidate_branches = [default_branch] + [b for b in ["main", "master"] if b != default_branch]
-
-    for b in candidate_branches:
-        try:
-            tree_url = f"https://api.github.com/repos/{slug}/git/trees/{quote(b, safe='')}?recursive=1"
-            req = urllib.request.Request(tree_url, headers=gh_headers)
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
-                payload = json.loads(resp.read().decode())
-                raw_files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
-                # Filter out junk/ignored files from GitHub
-                clean_files = [
-                    f for f in raw_files
-                    if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git'])
-                ]
-                if clean_files:
-                    files = clean_files
-                    active_branch = b
-                    break
-        except Exception:
-            continue
+    active_branch, files = _fetch_files_via_codeload(slug)
+    if not files:
+        active_branch, files = _fetch_files_via_api(slug)
+    if not files:
+        active_branch, files = _fetch_files_via_git(slug)
+    if not active_branch:
+        active_branch = "main"
 
     if not files:
         return {
             "success": False,
             "repo": slug,
-            "branch": default_branch,
+            "branch": active_branch,
             "total_files": 0,
             "error": "Could not fetch GitHub repository tree (check repo visibility, spelling, or rate limit)."
         }
@@ -309,25 +390,20 @@ def index_repository_structure(github_repo, force=False):
 def get_repository_files(github_slug=None, target_tech='auto', source_file_name=None):
     """
     Retrieves project file tree:
-    1. If github_slug is given, attempts to fetch real file tree from GitHub API or local cache.
+    1. If github_slug is given, attempts to fetch real file tree from GitHub or local cache.
     2. If remote fetch fails or is offline, uses language-specific project tree.
-    3. Only falls back to local Laravel workspace if the project stack is actually PHP/Laravel.
+    3. Only falls back to local Laravel workspace if NO custom github repo is provided OR it targets Auto-Bug-Traige.
     Returns (files, branch); branch defaults to 'main'.
     """
     branch = "main"
 
-    # 1. Try remote GitHub API if slug provided
+    # 1. Try remote GitHub / Cache if slug provided
     if github_slug:
         index_data = index_repository_structure(github_slug, force=False)
         if index_data and index_data.get("success") and index_data.get("files"):
             cached_files = index_data["files"]
             cached_branch = index_data.get("branch", "main")
-            if target_tech == 'kotlin' and not any(f.endswith(('.kt', '.kts')) for f in cached_files):
-                pass
-            elif target_tech == 'python' and not any(f.endswith('.py') for f in cached_files):
-                pass
-            else:
-                return cached_files, cached_branch
+            return cached_files, cached_branch
 
     # 2. Technology-Specific Fallback (Never show Blade files for Kotlin/Python/React projects!)
     if target_tech == 'kotlin':
@@ -354,23 +430,24 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
                 tree.insert(0, inferred)
         return tree, branch
 
-    # 3. If target_tech is PHP or Auto and local workspace exists, scan local workspace
-    if target_tech in ['php', 'auto']:
-        file_list = []
-        try:
-            for root, dirs, filenames in os.walk(WORKSPACE_ROOT):
-                dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith('.')]
-                for f in filenames:
-                    if f.startswith('.'):
-                        continue
-                    rel = Path(root, f).relative_to(WORKSPACE_ROOT).as_posix()
-                    file_list.append(rel)
-            if file_list:
-                return file_list, branch
-        except Exception:
-            pass
+    # 3. Only scan local workspace if NO custom github_slug was provided OR it explicitly targets Auto-Bug-Traige
+    if not github_slug or github_slug.lower() == "muarifhasnat/auto-bug-traige":
+        if target_tech in ['php', 'auto']:
+            file_list = []
+            try:
+                for root, dirs, filenames in os.walk(WORKSPACE_ROOT):
+                    dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith('.')]
+                    for f in filenames:
+                        if f.startswith('.'):
+                            continue
+                        rel = Path(root, f).relative_to(WORKSPACE_ROOT).as_posix()
+                        file_list.append(rel)
+                if file_list:
+                    return file_list, branch
+            except Exception:
+                pass
 
-    return (list(KOTLIN_ANDROID_DEFAULT_TREE) if target_tech == 'kotlin' else []), branch
+    return [], branch
 
 
 def locate_suspected_files(
@@ -390,7 +467,7 @@ def locate_suspected_files(
     Guarantees strict technology alignment (e.g. Kotlin files for Kotlin projects).
     Supports Vision/OCR screenshot intelligence for instant crash trace pinpointing.
     """
-    github_slug = parse_github_slug(github_repo) or "MuarifHasnat/Auto-Bug-Traige"
+    github_slug = parse_github_slug(github_repo)
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
     ss_files = screenshot_data.get("suspected_files", []) if screenshot_data else []
     ss_error = screenshot_data.get("error_name") if screenshot_data else None
@@ -406,24 +483,36 @@ def locate_suspected_files(
         text=combined_text
     )
 
+    if not github_slug and target_tech in ['php', 'auto'] and (WORKSPACE_ROOT / "resources" / "views").exists():
+        github_slug = "MuarifHasnat/Auto-Bug-Traige"
+
     repo_files, branch = get_repository_files(
         github_slug=github_slug,
         target_tech=target_tech,
         source_file_name=source_file_name
     )
     if not repo_files and not ss_files:
-        repo_files = [
-            "resources/views/workspace.blade.php",
-            "resources/views/ai_agent.blade.php",
-            "app/Http/Controllers/BugController.php"
-        ]
+        if target_tech == 'kotlin':
+            repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
+        elif target_tech == 'python':
+            repo_files = list(PYTHON_DEFAULT_TREE)
+        elif target_tech in ['typescript', 'javascript']:
+            repo_files = list(TYPESCRIPT_DEFAULT_TREE)
+        elif github_slug and github_slug.lower() == "muarifhasnat/auto-bug-traige":
+            repo_files = [
+                "resources/views/workspace.blade.php",
+                "resources/views/ai_agent.blade.php",
+                "app/Http/Controllers/BugController.php"
+            ]
+        else:
+            repo_files = [
+                "src/index.php",
+                "src/App.php",
+                "config/app.php"
+            ]
 
     if repo_files is None:
-        repo_files = [
-            "resources/views/workspace.blade.php",
-            "resources/views/ai_agent.blade.php",
-            "app/Http/Controllers/BugController.php"
-        ]
+        repo_files = []
 
     # Filter out files incompatible with detected technology
     if target_tech not in ['php', 'auto']:

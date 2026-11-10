@@ -277,6 +277,27 @@
                             </label>
                         </div>
 
+                        <!-- GitHub Repository Target (Auto-filled from project, editable by user) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                                    <span>🐙</span>
+                                    <span>Target GitHub Repository</span>
+                                </label>
+                                @if(!empty($projectGithubRepo))
+                                    <span class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-mono-code font-bold">Project Linked</span>
+                                @else
+                                    <span class="text-[10px] text-slate-500 font-mono-code">Scans actual codebase files</span>
+                                @endif
+                            </div>
+                            <input type="text" id="triageGithubRepo" name="github_repo" value="{{ old('github_repo', $projectGithubRepo ?? '') }}" 
+                                   placeholder="https://github.com/username/repository" 
+                                   class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs font-mono-code text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
+                            <p class="text-[10px] text-slate-500 mt-1">
+                                এজেন্ট এই রিপোজিটরির ফাইলগুলো সরাসরি স্ক্যান করে কোন ফাইলে বাগটি হয়েছে তা বের করবে।
+                            </p>
+                        </div>
+
                         <!-- 1-Click Bug Description Templates UX for QA -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
@@ -524,7 +545,8 @@
                                                     <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ $sFile['reason'] }}</p>
                                                 </div>
 
-                                                @php($ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/')))
+                                                @php($baseRepoSlug = !empty($projectGithubRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectGithubRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige')
+                                                @php($ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/' . $baseRepoSlug . '/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/')))
                                                 <a href="{{ $ghUrl }}" target="_blank" rel="noopener noreferrer" 
                                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
                                                     <span>GitHub-এ দেখুন</span>
@@ -998,10 +1020,17 @@
                 ? ai.code_help.suspected_files 
                 : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
 
-            const defaultGhBase = 'https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/';
+            const currentGhRepo = document.getElementById('triageGithubRepo')?.value || '{{ $projectGithubRepo ?? "" }}';
+            let safeRepoSlug = '';
+            if (currentGhRepo) {
+                const m = currentGhRepo.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
+                if (m) safeRepoSlug = `${m[1]}/${m[2].replace(/\.git$/, '')}`;
+                else if (currentGhRepo.includes('/')) safeRepoSlug = currentGhRepo.trim();
+            }
+            const defaultGhBase = safeRepoSlug ? `https://github.com/${safeRepoSlug}/blob/main/` : '';
             const topCandidate = filesList.length ? filesList[0] : null;
-            const suspected = topCandidate ? (topCandidate.path || topCandidate) : 'resources/views/workspace.blade.php';
-            const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase + encodeURIComponent(suspected))) : (defaultGhBase + encodeURIComponent(suspected));
+            const suspected = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
+            const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '')) : (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '');
 
             appendTerminalLog('[SUCCESS]', `Triage completed in ${totalDuration}s!`, 'text-emerald-400 font-bold');
             appendTerminalLog('[DISPATCH]', `Anomaly categorized under module: ${feat} (${priority} Priority)`, 'text-emerald-300');
@@ -1108,10 +1137,17 @@
         const filesList = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files.length) 
             ? ai.code_help.suspected_files 
             : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
-        const defaultGhBase = 'https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/';
+        const currentGhRepo = document.getElementById('triageGithubRepo')?.value || '{{ $projectGithubRepo ?? "" }}';
+        let safeRepoSlug = '';
+        if (currentGhRepo) {
+            const m = currentGhRepo.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
+            if (m) safeRepoSlug = `${m[1]}/${m[2].replace(/\.git$/, '')}`;
+            else if (currentGhRepo.includes('/')) safeRepoSlug = currentGhRepo.trim();
+        }
+        const defaultGhBase = safeRepoSlug ? `https://github.com/${safeRepoSlug}/blob/main/` : '';
         const topCandidate = filesList.length ? filesList[0] : null;
-        const susp = topCandidate ? (topCandidate.path || topCandidate) : 'resources/views/workspace.blade.php';
-        const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase + encodeURIComponent(susp))) : (defaultGhBase + encodeURIComponent(susp));
+        const susp = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
+        const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase ? defaultGhBase + encodeURIComponent(susp) : '')) : (defaultGhBase ? defaultGhBase + encodeURIComponent(susp) : '');
 
         appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300 font-bold');
         document.getElementById('triageProgressBar').style.width = '75%';

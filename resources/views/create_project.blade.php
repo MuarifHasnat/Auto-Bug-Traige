@@ -123,7 +123,7 @@
                         </label>
                         <span class="text-[10px] text-indigo-600 font-mono-code font-semibold">Understands Architecture & Links</span>
                     </div>
-                    <input type="text" name="github_repo" value="{{ old('github_repo', 'https://github.com/MuarifHasnat/Auto-Bug-Traige') }}" placeholder="https://github.com/owner/repository" 
+                    <input type="text" name="github_repo" value="{{ old('github_repo', '') }}" placeholder="https://github.com/your-username/your-repository" 
                            class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10 font-mono-code">
                     <p class="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
                         গিটহাব লিংক দিলে এজেন্ট সাথে সাথে পুরো রিপোজিটরি স্ক্যান করে এর <b>UI Layers, Controllers, Services, Models</b> ও ফাইল স্ট্রাকচার ইনডেক্স করে ফেলবে—যাতে ভবিষ্যতে যেকোনো বাগে কোনো ভুল ছাড়াই আসল ফাইল নির্দেশ করতে পারে!
