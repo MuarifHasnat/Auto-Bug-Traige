@@ -221,7 +221,7 @@
                         </select>
                         <button type="button" id="loadSavedFilter" class="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
                         <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
-                        <form id="saveFilterForm" action="{{ route('bug-filters.store') }}" method="POST" class="ml-auto">
+                        <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">
                             @csrf<div id="savedFilterPayload"></div>
                             <input type="hidden" name="name" id="savedFilterName">
                             <button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Save current filter</button>
@@ -492,7 +492,7 @@
                     <p><b>Assigned Developer:</b> <span id="drawerAssignee" class="font-bold text-indigo-600"></span></p>
                 </div>
                 @if(auth()->user()->role === 'manager')
-                    <form id="reassignBugForm" action="{{ route('bugs.reassign') }}" method="POST" class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-2" onclick="event.stopPropagation()">
+                    <form id="reassignBugForm" action="{{ route('bugs.reassign', [], false) }}" method="POST" class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-2" onclick="event.stopPropagation()">
                         @csrf
                         <input type="hidden" name="id" id="reassignBugId">
                         <label for="reassignDeveloper" class="block text-xs font-bold text-indigo-950">Reassign bug</label>
@@ -509,8 +509,8 @@
                     <div class="rounded-xl border border-slate-200 bg-white p-4 space-y-3" onclick="event.stopPropagation()">
                         <div><p class="text-xs font-bold text-slate-900">Agent recommendation review</p><p class="mt-1 text-[11px] text-slate-500">Confirm whether the duplicate and assignment recommendations are correct to measure acceptance, precision and recall.</p></div>
                         <p class="text-xs">Recommended assignee: <b id="drawerRecommendedAssignee"></b><span id="drawerAssignmentFeedback" class="ml-2 text-[10px] text-slate-500"></span></p>
-                        <form id="acceptRecommendationForm" action="{{ route('bugs.recommendation.accept') }}" method="POST" class="hidden">@csrf<input type="hidden" name="id" id="acceptRecommendationBugId"><button id="acceptRecommendationButton" class="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white">Accept recommendation</button></form>
-                        <form id="duplicateReviewForm" action="{{ route('bugs.duplicate-review') }}" method="POST" class="space-y-2">
+                        <form id="acceptRecommendationForm" action="{{ route('bugs.recommendation.accept', [], false) }}" method="POST" class="hidden">@csrf<input type="hidden" name="id" id="acceptRecommendationBugId"><button id="acceptRecommendationButton" class="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white">Accept recommendation</button></form>
+                        <form id="duplicateReviewForm" action="{{ route('bugs.duplicate-review', [], false) }}" method="POST" class="space-y-2">
                             @csrf<input type="hidden" name="id" id="reviewDuplicateBugId">
                             <p id="duplicateReviewState" class="text-[11px] text-slate-600"></p>
                             <div class="flex flex-wrap gap-2"><button id="confirmDuplicateValue" name="actual_duplicate" value="1" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-[10px] font-semibold">Confirm prediction</button><button id="correctDuplicateValue" name="actual_duplicate" value="0" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-[10px] font-semibold">Correct prediction</button></div>
@@ -589,7 +589,7 @@
             <div id="tabDiscussion" class="hidden space-y-4">
                 <div class="flex items-center justify-between gap-3">
                     <div><h4 class="text-xs font-bold uppercase tracking-wider text-[#64748B]">Comments & mentions</h4><p class="mt-1 text-[11px] text-slate-500">Mention a project member to notify them. Watch to receive bug updates.</p></div>
-                    <form action="{{ route('bugs.watch') }}" method="POST" onclick="event.stopPropagation()">
+                    <form action="{{ route('bugs.watch', [], false) }}" method="POST" onclick="event.stopPropagation()">
                         @csrf<input type="hidden" name="bug_id" id="watchBugId">
                         <button type="submit" id="watchBugButton" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700">Watch</button>
                     </form>
@@ -598,7 +598,7 @@
                 <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
                     <p id="drawerSentiment" class="text-xs font-bold text-amber-900">Report signal: Neutral</p>
                     @if(auth()->user()->role === 'developer')
-                        <form action="{{ route('bugs.clarifications.request') }}" method="POST" class="mt-2 space-y-2" onclick="event.stopPropagation()">
+                        <form action="{{ route('bugs.clarifications.request', [], false) }}" method="POST" class="mt-2 space-y-2" onclick="event.stopPropagation()">
                             @csrf<input type="hidden" name="bug_id" id="clarificationBugId">
                             <textarea name="question" required maxlength="2000" rows="2" placeholder="Ask the reporter for missing steps or expected behavior…" class="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs"></textarea>
                             <button class="rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-bold text-amber-900">Request clarification</button>
@@ -606,7 +606,7 @@
                     @endif
                 </div>
                 <ol id="drawerClarificationsList" class="space-y-2"></ol>
-                <form action="{{ route('bugs.comments') }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
+                <form action="{{ route('bugs.comments', [], false) }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
                     @csrf<input type="hidden" name="bug_id" id="commentBugId">
                     <div id="mentionInputs"></div>
                     <div class="flex gap-2"><select id="mentionMember" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs"><option value="">Mention teammate…</option></select><button type="button" onclick="insertMention()" class="rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold">@ Mention</button></div>
@@ -879,7 +879,7 @@
                     if (request.answer) { const answer = document.createElement('p'); answer.className = 'mt-2 whitespace-pre-wrap text-slate-600'; answer.textContent = `Answer: ${request.answer}`; item.appendChild(answer); }
                     @if(auth()->user()->role === 'manager' || auth()->user()->role === 'tester')
                     if (request.status === 'open') {
-                        const form = document.createElement('form'); form.method = 'POST'; form.action = @json(route('bugs.clarifications.answer')); form.className = 'mt-2 space-y-2';
+                        const form = document.createElement('form'); form.method = 'POST'; form.action = @json(route('bugs.clarifications.answer', [], false)); form.className = 'mt-2 space-y-2';
                         form.innerHTML = @json('<input type="hidden" name="_token" value="'.csrf_token().'"><input type="hidden" name="request_id" value="">');
                         form.querySelector('[name=request_id]').value = request.id;
                         const answerInput = document.createElement('textarea'); answerInput.name = 'answer'; answerInput.required = true; answerInput.maxLength = 2000; answerInput.placeholder = 'Answer the developer…'; answerInput.className = 'w-full rounded-lg border border-slate-300 p-2';

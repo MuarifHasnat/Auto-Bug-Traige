@@ -11,7 +11,7 @@
     <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div><a href="/workspace" class="text-sm font-bold text-indigo-600">← Workspace</a><h1 class="mt-3 text-2xl font-extrabold">Notifications</h1><p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes.</p></div>
         @if($notifications->whereNull('read_at')->isNotEmpty())
-            <form action="{{ route('notifications.read-all') }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold">Mark all read</button></form>
+            <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold">Mark all read</button></form>
         @endif
     </header>
     <div class="space-y-3">
@@ -23,8 +23,8 @@
                         <p class="mt-1 text-sm text-slate-600">{{ $data['message'] ?? '' }}</p>
                         <p class="mt-2 text-[11px] text-slate-400">{{ $data['actor_name'] ?? 'A teammate' }} · {{ $notification->created_at->diffForHumans() }} · #ABT-{{ $data['bug_id'] ?? '' }}</p></div>
                     <div class="flex shrink-0 gap-2">
-                        <form action="{{ route('notifications.open', $notification->id) }}" method="POST">@csrf<button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Open bug</button></form>
-                        @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id) }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold">Read</button></form>@endunless
+                        <form action="{{ route('notifications.open', $notification->id, false) }}" method="POST">@csrf<button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Open bug</button></form>
+                        @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id, false) }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold">Read</button></form>@endunless
                     </div>
                 </div>
             </article>

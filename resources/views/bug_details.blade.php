@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <form action="{{ route('bugs.watch') }}" method="POST">
+                    <form action="{{ route('bugs.watch', [], false) }}" method="POST">
                         @csrf
                         <input type="hidden" name="bug_id" value="{{ $bug->id }}">
                         <button type="submit" class="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition">
@@ -263,7 +263,7 @@
                                         <p class="mt-1 text-slate-700">{{ $req->answer }}</p>
                                     </div>
                                 @elseif(auth()->id() === $bug->reporter_id || auth()->user()->role === 'manager')
-                                    <form action="{{ route('bugs.clarifications.answer') }}" method="POST" class="mt-2 space-y-2">
+                                    <form action="{{ route('bugs.clarifications.answer', [], false) }}" method="POST" class="mt-2 space-y-2">
                                         @csrf
                                         <input type="hidden" name="request_id" value="{{ $req->id }}">
                                         <textarea name="answer" required rows="2" placeholder="Answer the developer's question…" class="w-full rounded-xl border border-amber-200 bg-white p-2.5 text-xs outline-none focus:border-amber-500"></textarea>
@@ -276,7 +276,7 @@
                         @endforeach
 
                         @if(auth()->user()->role === 'developer' && $bug->assigned_to === auth()->user()->name)
-                            <form action="{{ route('bugs.clarifications.request') }}" method="POST" class="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-2">
+                            <form action="{{ route('bugs.clarifications.request', [], false) }}" method="POST" class="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-2">
                                 @csrf
                                 <input type="hidden" name="bug_id" value="{{ $bug->id }}">
                                 <label class="block text-xs font-bold text-amber-950">Ask reporter for clarification / missing steps:</label>
@@ -304,7 +304,7 @@
                         </div>
 
                         <!-- Post Comment Form -->
-                        <form action="{{ route('bugs.comments') }}" method="POST" class="pt-2 space-y-2">
+                        <form action="{{ route('bugs.comments', [], false) }}" method="POST" class="pt-2 space-y-2">
                             @csrf
                             <input type="hidden" name="bug_id" value="{{ $bug->id }}">
                             <textarea name="body" required rows="2" placeholder="Write a comment or mention a teammate…" class="w-full rounded-xl border border-[#CBD5E1] bg-white p-3 text-xs outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"></textarea>
@@ -361,7 +361,7 @@
                     </div>
 
                     @if(auth()->user()->role === 'manager')
-                        <form action="{{ route('bugs.reassign') }}" method="POST" class="pt-2 space-y-2">
+                        <form action="{{ route('bugs.reassign', [], false) }}" method="POST" class="pt-2 space-y-2">
                             @csrf
                             <input type="hidden" name="id" value="{{ $bug->id }}">
                             <label class="block text-xs font-bold text-slate-800">Reassign Issue:</label>

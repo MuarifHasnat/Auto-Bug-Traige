@@ -18,7 +18,7 @@
     @if(session('success'))<div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"><ul class="list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
-    <form action="{{ route('workflow.save') }}" method="POST" class="grid gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
+    <form action="{{ route('workflow.save', [], false) }}" method="POST" class="grid gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
         @csrf
         <label class="block text-sm font-bold">Board statuses <span class="font-normal text-slate-500">(one per line, 2–12)</span>
             <textarea name="statuses" required rows="9" class="mt-2 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm">{{ old('statuses', $statuses->pluck('name')->implode("\n")) }}</textarea>
@@ -55,7 +55,7 @@
             </span>
         </div>
 
-        <form action="{{ route('projects.sync-github') }}" method="POST" class="space-y-4">
+        <form action="{{ route('projects.sync-github', [], false) }}" method="POST" class="space-y-4">
             @csrf
             <div>
                 <label class="block text-xs font-bold text-slate-800 mb-1">GitHub Repository Link or Slug</label>

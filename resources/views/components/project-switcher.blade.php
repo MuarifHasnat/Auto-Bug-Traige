@@ -1,7 +1,7 @@
 @if(isset($projects) && $projects->count() > 1)
     @php($darkSwitcher = ($variant ?? 'light') === 'dark')
     @php($compactSwitcher = ($variant ?? 'light') === 'mobile')
-    <form action="{{ route('projects.switch') }}" method="POST" class="{{ $darkSwitcher ? 'mt-3' : ($compactSwitcher ? 'lg:hidden' : 'min-w-[180px]') }}">
+    <form action="{{ route('projects.switch', [], false) }}" method="POST" class="{{ $darkSwitcher ? 'mt-3' : ($compactSwitcher ? 'lg:hidden' : 'min-w-[180px]') }}">
         @csrf
         <label for="project-switcher-{{ $variant ?? 'light' }}" class="mb-1 block text-[10px] font-bold uppercase tracking-wider {{ $compactSwitcher ? 'sr-only' : '' }} {{ $darkSwitcher ? 'text-slate-400' : 'text-slate-500' }}">
             Switch project
