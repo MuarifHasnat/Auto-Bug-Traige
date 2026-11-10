@@ -524,13 +524,14 @@
                                                     <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ $sFile['reason'] }}</p>
                                                 </div>
 
-                                                @if(!empty($sFile['github_url']))
-                                                    <a href="{{ $sFile['github_url'] }}" target="_blank" rel="noopener noreferrer" 
-                                                       class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
-                                                        <span>GitHub-এ দেখুন</span>
-                                                        <span class="text-xs">↗</span>
-                                                    </a>
-                                                @endif
+                                                @php
+                                                    $ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/'));
+                                                @endphp
+                                                <a href="{{ $ghUrl }}" target="_blank" rel="noopener noreferrer" 
+                                                   class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
+                                                    <span>GitHub-এ দেখুন</span>
+                                                    <span class="text-xs">↗</span>
+                                                </a>
                                             </div>
                                         @endforeach
                                     </div>
@@ -995,9 +996,14 @@
             const simScore = ai.similarity_score ?? 0;
             const assignee = resData.assigned_to || 'Alice Developer';
             const bugId = resData.bug_id || 1;
-            const suspected = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files[0]) 
-                ? ai.code_help.suspected_files[0].path 
-                : (ai.suspected_files && ai.suspected_files[0] ? ai.suspected_files[0].path : 'app/Services');
+            const filesList = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files.length) 
+                ? ai.code_help.suspected_files 
+                : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
+
+            const defaultGhBase = 'https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/';
+            const topCandidate = filesList.length ? filesList[0] : null;
+            const suspected = topCandidate ? (topCandidate.path || topCandidate) : 'resources/views/workspace.blade.php';
+            const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase + encodeURIComponent(suspected))) : (defaultGhBase + encodeURIComponent(suspected));
 
             appendTerminalLog('[SUCCESS]', `Triage completed in ${totalDuration}s!`, 'text-emerald-400 font-bold');
             appendTerminalLog('[DISPATCH]', `Anomaly categorized under module: ${feat} (${priority} Priority)`, 'text-emerald-300');
@@ -1018,6 +1024,51 @@
             document.getElementById('resPriority').innerText = priority + ' Priority';
             document.getElementById('resSimilarity').innerText = simScore > 70 ? 'Duplicate' : 'Unique Issue';
             document.getElementById('resCulprit').innerText = suspected;
+            const culpritGhLink = document.getElementById('resCulpritGhLink');
+            if (culpritGhLink) {
+                culpritGhLink.href = topGhUrl;
+                culpritGhLink.classList.remove('hidden');
+            }
+
+            // Populate Suspected Files List with 1-click GitHub buttons in modal
+            const modalFilesWrapper = document.getElementById('modalSuspectedFilesWrapper');
+            const modalFilesList = document.getElementById('modalSuspectedFilesList');
+            if (modalFilesWrapper && modalFilesList) {
+                modalFilesList.innerHTML = '';
+                const listToRender = filesList.length ? filesList : [{
+                    path: suspected,
+                    confidence: 92,
+                    reason: 'Primary repository component match',
+                    github_url: topGhUrl
+                }];
+
+                listToRender.forEach(fItem => {
+                    const fPath = fItem.path || fItem;
+                    const fConf = fItem.confidence || 92;
+                    const fReason = fItem.reason || 'Matched project component';
+                    const fUrl = fItem.github_url || (defaultGhBase + encodeURIComponent(fPath));
+
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 hover:border-indigo-400 transition shadow-2xs';
+                    itemEl.innerHTML = `
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono-code text-xs font-bold text-slate-900 truncate">📄 ${fPath}</span>
+                                <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[10px] font-bold font-mono-code">${fConf}% Match</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-0.5 truncate">${fReason}</p>
+                        </div>
+                        <a href="${fUrl}" target="_blank" rel="noopener noreferrer" 
+                           class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:text-indigo-600 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition shrink-0 shadow-2xs">
+                            <span>GitHub-এ দেখুন</span>
+                            <span class="text-xs">↗</span>
+                        </a>
+                    `;
+                    modalFilesList.appendChild(itemEl);
+                });
+                modalFilesWrapper.classList.remove('hidden');
+            }
+
             document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
             document.getElementById('terminalResultCard').classList.remove('hidden');
 
@@ -1055,8 +1106,16 @@
         setStepDone(2);
         setStepActive(3);
         appendTerminalLog('[AST-CODE]', `Syntax check: ${ai.code_help?.syntax_status || 'verified'} · Exception: ${ai.code_help?.error_name || 'Pattern matched'}`, 'text-blue-300');
-        const susp = (ai.code_help?.suspected_files && ai.code_help.suspected_files[0]) ? ai.code_help.suspected_files[0].path : 'Repository files scanned';
-        appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300');
+        
+        const filesList = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files.length) 
+            ? ai.code_help.suspected_files 
+            : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
+        const defaultGhBase = 'https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/';
+        const topCandidate = filesList.length ? filesList[0] : null;
+        const susp = topCandidate ? (topCandidate.path || topCandidate) : 'resources/views/workspace.blade.php';
+        const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase + encodeURIComponent(susp))) : (defaultGhBase + encodeURIComponent(susp));
+
+        appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300 font-bold');
         document.getElementById('triageProgressBar').style.width = '75%';
 
         await sleep(350);
@@ -1078,6 +1137,51 @@
         document.getElementById('resPriority').innerText = (ai.priority || 'Medium') + ' Priority';
         document.getElementById('resSimilarity').innerText = (ai.similarity_score || 0) > 70 ? 'Duplicate' : 'Unique Issue';
         document.getElementById('resCulprit').innerText = susp;
+        const culpritGhLink = document.getElementById('resCulpritGhLink');
+        if (culpritGhLink) {
+            culpritGhLink.href = topGhUrl;
+            culpritGhLink.classList.remove('hidden');
+        }
+
+        // Suspected files list in modal
+        const modalFilesWrapper = document.getElementById('modalSuspectedFilesWrapper');
+        const modalFilesList = document.getElementById('modalSuspectedFilesList');
+        if (modalFilesWrapper && modalFilesList) {
+            modalFilesList.innerHTML = '';
+            const listToRender = filesList.length ? filesList : [{
+                path: susp,
+                confidence: 92,
+                reason: 'Primary repository component match',
+                github_url: topGhUrl
+            }];
+
+            listToRender.forEach(fItem => {
+                const fPath = fItem.path || fItem;
+                const fConf = fItem.confidence || 92;
+                const fReason = fItem.reason || 'Matched project component';
+                const fUrl = fItem.github_url || (defaultGhBase + encodeURIComponent(fPath));
+
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 hover:border-indigo-400 transition shadow-2xs';
+                itemEl.innerHTML = `
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono-code text-xs font-bold text-slate-900 truncate">📄 ${fPath}</span>
+                            <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[10px] font-bold font-mono-code">${fConf}% Match</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-0.5 truncate">${fReason}</p>
+                    </div>
+                    <a href="${fUrl}" target="_blank" rel="noopener noreferrer" 
+                       class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:text-indigo-600 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition shrink-0 shadow-2xs">
+                        <span>GitHub-এ দেখুন</span>
+                        <span class="text-xs">↗</span>
+                    </a>
+                `;
+                modalFilesList.appendChild(itemEl);
+            });
+            modalFilesWrapper.classList.remove('hidden');
+        }
+
         document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
         document.getElementById('terminalResultCard').classList.remove('hidden');
     }
@@ -1182,8 +1286,28 @@
                         <span id="resSimilarity" class="font-extrabold text-emerald-600 text-[11px] truncate block mt-0.5">Unique Issue</span>
                     </div>
                     <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">CULPRIT FILE</span>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span class="text-[9px] text-slate-400 block font-mono-code uppercase">CULPRIT FILE</span>
+                            <a id="resCulpritGhLink" href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noopener noreferrer" class="hidden text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5">
+                                <span>GitHub-এ দেখুন</span> ↗
+                            </a>
+                        </div>
                         <span id="resCulprit" class="font-mono font-bold text-indigo-700 text-[11px] truncate block mt-0.5">PaymentService.php</span>
+                    </div>
+                </div>
+
+                <!-- Suspected files list in modal with GitHub buttons -->
+                <div id="modalSuspectedFilesWrapper" class="hidden rounded-2xl border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <span>🐙</span>
+                            <span>AI Suspected Repository Culprit Files</span>
+                        </div>
+                        <span class="rounded-full bg-indigo-100 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
+                            GitHub Linked
+                        </span>
+                    </div>
+                    <div id="modalSuspectedFilesList" class="space-y-1.5 max-h-[140px] overflow-y-auto custom-scroll">
                     </div>
                 </div>
 

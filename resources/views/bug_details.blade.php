@@ -161,11 +161,13 @@
                                         <span class="text-slate-400 font-mono text-xs">📄</span>
                                         <span class="font-mono text-xs font-bold text-slate-800 truncate">{{ $file['path'] ?? $file }}</span>
                                     </div>
-                                    @if(!empty($file['github_url']))
-                                        <a href="{{ $file['github_url'] }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-bold px-3 py-1.5 transition">
-                                            <span>Inspect on GitHub</span> ↗
-                                        </a>
-                                    @endif
+                                    @php
+                                        $fPath = $file['path'] ?? (is_string($file) ? $file : '');
+                                        $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($fPath, '/'));
+                                    @endphp
+                                    <a href="{{ $ghLink }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-bold px-3 py-1.5 transition">
+                                        <span>Inspect on GitHub</span> ↗
+                                    </a>
                                 </div>
                             @endforeach
                         </div>

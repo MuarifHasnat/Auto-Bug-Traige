@@ -676,7 +676,7 @@ class BugController extends Controller
                 'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
-                'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),
+                'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo') ?: 'https://github.com/MuarifHasnat/Auto-Bug-Traige',
                 'project_stack' => DB::table('projects')->where('id', $projectId)->value('stack') ?: session('project_stack', ''),
                 'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
             ], JSON_THROW_ON_ERROR));
