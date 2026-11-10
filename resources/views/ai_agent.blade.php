@@ -524,9 +524,7 @@
                                                     <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ $sFile['reason'] }}</p>
                                                 </div>
 
-                                                @php
-                                                    $ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/'));
-                                                @endphp
+                                                @php($ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/')))
                                                 <a href="{{ $ghUrl }}" target="_blank" rel="noopener noreferrer" 
                                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
                                                     <span>GitHub-এ দেখুন</span>
