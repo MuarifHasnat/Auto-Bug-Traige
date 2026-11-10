@@ -611,6 +611,7 @@ class BugController extends Controller
 
         $sourceFilePath = $request->file('source_file')?->store('bug-reports/source', 'local');
         $screenshotPath = $request->file('screenshot')?->store('bug-reports/screenshots', 'local');
+        $screenshotAbsolutePath = $screenshotPath ? Storage::disk('local')->path($screenshotPath) : null;
         $uploadedCode = $request->file('source_file')
             ? file_get_contents(Storage::disk('local')->path($sourceFilePath))
             : '';
@@ -670,6 +671,9 @@ class BugController extends Controller
                 'code_snippet' => $analysisCode,
                 'selected_language' => $data['language'] ?? 'auto',
                 'attachment' => $attachment,
+                'screenshot_path' => $screenshotAbsolutePath,
+                'screenshot_name' => $request->file('screenshot')?->getClientOriginalName(),
+                'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
                 'github_repo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),

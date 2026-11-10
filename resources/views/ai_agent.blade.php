@@ -449,6 +449,16 @@
                                 <p class="text-[11px] text-slate-700 mt-1">
                                     Evidence: {{ $ai['code_help']['attachment_note'] ?? 'No attachment provided.' }}
                                 </p>
+                                @if(!empty($ai['code_help']['screenshot_vision']['stack_traces']))
+                                    <details class="mt-2 rounded-xl border border-indigo-200 bg-white p-2.5">
+                                        <summary class="cursor-pointer font-bold text-indigo-700 text-[11px] flex items-center gap-1.5 select-none">
+                                            <span>📸</span>
+                                            <span>View Extracted Screenshot Crash Lines</span>
+                                        </summary>
+                                        <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-2 font-mono text-[10px] text-emerald-400">@foreach($ai['code_help']['screenshot_vision']['stack_traces'] as $stLine){{ $stLine }}
+@endforeach</pre>
+                                    </details>
+                                @endif
                                 <p class="text-[11px] text-slate-600 mt-1">
                                     {{ $syntaxStatus === 'not_run' ? 'Issue classified, duplicate-checked, and assigned to the domain engineer without requiring source code from the tester.' : ($ai['code_help']['analysis_scope'] ?? 'Static inspection completed.') }}
                                 </p>

@@ -368,17 +368,25 @@ def locate_suspected_files(
     selected_language="auto",
     project_stack="",
     source_file_name="",
+    screenshot_data=None,
     limit=3
 ):
     """
     Identifies the top repository files most likely containing or causing the bug.
     Guarantees strict technology alignment (e.g. Kotlin files for Kotlin projects).
+    Supports Vision/OCR screenshot intelligence for instant crash trace pinpointing.
     """
     github_slug = parse_github_slug(github_repo)
-    combined_text = f"{title} {description} {feature} {code_snippet}".lower()
+    ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
+    ss_files = screenshot_data.get("suspected_files", []) if screenshot_data else []
+    ss_error = screenshot_data.get("error_name") if screenshot_data else None
+    ss_lines = screenshot_data.get("line_numbers", []) if screenshot_data else []
+    ss_lang = screenshot_data.get("detected_language", "") if screenshot_data else ""
+
+    combined_text = f"{title} {description} {feature} {code_snippet} {ss_text}".lower()
     
     target_tech = detect_target_tech(
-        selected_language=selected_language,
+        selected_language=selected_language if selected_language != "auto" else (ss_lang or "auto"),
         project_stack=project_stack,
         source_file_name=source_file_name,
         text=combined_text
@@ -389,8 +397,11 @@ def locate_suspected_files(
         target_tech=target_tech,
         source_file_name=source_file_name
     )
-    if not repo_files:
+    if not repo_files and not ss_files:
         return []
+
+    if repo_files is None:
+        repo_files = []
 
     # Filter out files incompatible with detected technology
     if target_tech not in ['php', 'auto']:
@@ -403,6 +414,19 @@ def locate_suspected_files(
             repo_files = list(PYTHON_DEFAULT_TREE)
         elif target_tech in ['typescript', 'javascript']:
             repo_files = list(TYPESCRIPT_DEFAULT_TREE)
+
+    # Inject screenshot-discovered files if not already in repository file tree
+    for s_file in ss_files:
+        s_base = Path(s_file).name.lower()
+        if not any(Path(r).name.lower() == s_base for r in repo_files):
+            if target_tech == 'kotlin':
+                repo_files.insert(0, f"app/src/main/java/com/example/app/{Path(s_file).name}")
+            elif target_tech == 'python':
+                repo_files.insert(0, f"app/{Path(s_file).name}")
+            elif target_tech in ['typescript', 'javascript']:
+                repo_files.insert(0, f"src/{Path(s_file).name}")
+            else:
+                repo_files.insert(0, s_file)
 
     # If source file was explicitly uploaded, boost or prioritize it
     priority_file = None
@@ -437,6 +461,19 @@ def locate_suspected_files(
 
         matches = normalized_tokens.intersection(query_keywords)
         score = len(matches) * 20
+
+        # High-priority Vision & OCR match from screenshot
+        is_screenshot_match = False
+        matched_ss_name = None
+        fpath_base = Path(fpath).name.lower()
+        for s_file in ss_files:
+            s_base = Path(s_file).name.lower()
+            if fpath_base == s_base or fpath_lower.endswith(s_base):
+                score += 250
+                is_screenshot_match = True
+                matched_ss_name = s_file
+                matches.add(f"screenshot:{Path(s_file).name}")
+                break
 
         # Technology-specific file type bonus
         if target_tech == 'kotlin':
@@ -497,11 +534,13 @@ def locate_suspected_files(
             file_scores.append({
                 "path": fpath,
                 "score": score,
-                "matched_terms": sorted(list(matches))
+                "matched_terms": sorted(list(matches)),
+                "is_screenshot_match": is_screenshot_match,
+                "matched_ss_name": matched_ss_name
             })
 
     if not file_scores:
-        file_scores = [{"path": f, "score": 10, "matched_terms": ["context"]} for f in repo_files[:limit]]
+        file_scores = [{"path": f, "score": 10, "matched_terms": ["context"], "is_screenshot_match": False, "matched_ss_name": None} for f in repo_files[:limit]]
 
     file_scores.sort(key=lambda x: x["score"], reverse=True)
     top_candidates = file_scores[:limit]
@@ -515,8 +554,15 @@ def locate_suspected_files(
             if github_slug else None
         )
         
-        matched_str = ', '.join(item['matched_terms'][:3]) if item['matched_terms'] else target_tech
-        reason = f"Matched {target_tech.capitalize()} tokens: {matched_str}"
+        if item.get("is_screenshot_match"):
+            confidence = max(95, confidence)
+            line_str = f" (line {ss_lines[0]})" if ss_lines else ""
+            err_str = f" [{ss_error}]" if ss_error else ""
+            reason = f"Identified from screenshot crash trace: {item.get('matched_ss_name')}{line_str}{err_str}"
+        else:
+            matched_str = ', '.join(item['matched_terms'][:3]) if item['matched_terms'] else target_tech
+            reason = f"Matched {target_tech.capitalize()} tokens: {matched_str}"
+
         results.append({
             "path": item["path"],
             "confidence": confidence,

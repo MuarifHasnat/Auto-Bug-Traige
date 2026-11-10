@@ -13,6 +13,7 @@ from diagnostics import check_code_error
 from similarity import detect_duplicates
 from sentiment import analyze_sentiment
 from file_locator import locate_suspected_files
+from vision import analyze_screenshot
 
 
 def analyze_report(data):
@@ -23,26 +24,51 @@ def analyze_report(data):
     past_bugs = data.get("past_bugs", [])
     developers = data.get("developers", [])
     attachment = data.get("attachment")
+    screenshot_path = data.get("screenshot_path")
+    gemini_api_key = data.get("gemini_api_key")
+
+    # 0. Vision & OCR Screenshot Intelligence Analysis
+    screenshot_data = None
+    if screenshot_path:
+        screenshot_data = analyze_screenshot(screenshot_path, gemini_api_key)
+
+    ss_text = screenshot_data.get("extracted_text", "") if (screenshot_data and screenshot_data.get("success")) else ""
 
     # 1. Code Diagnosis & Fix suggestion
-    code_help = check_code_error(code_snippet, description, selected_language)
+    code_help = check_code_error(code_snippet, f"{description} {ss_text}", selected_language)
 
     # 2. Feature Categorization
-    combined_text = f"{title} {description} {code_snippet}".lower()
+    combined_text = f"{title} {description} {code_snippet} {ss_text}".lower()
     feature = detect_feature(combined_text)
     code_help["feature"] = feature
-    code_help["attachment_note"] = (
-        f"Attached {attachment['type']}: {attachment['name']}"
-        if attachment
-        else "No attachment was provided."
-    )
+
+    if screenshot_data and screenshot_data.get("success"):
+        method_label = "Gemini AI Vision" if screenshot_data.get("method") == "gemini_vision" else "RapidOCR Neural Scan"
+        err_label = screenshot_data.get("error_name") or "Exception Trace"
+        files_label = f" in {', '.join(screenshot_data.get('suspected_files', [])[:2])}" if screenshot_data.get('suspected_files') else ""
+        code_help["attachment_note"] = f"{method_label}: Identified {err_label}{files_label}"
+        if screenshot_data.get("error_name") and (not code_help.get("error_name") or code_help.get("error_name") == "Analysis complete"):
+            code_help["error_name"] = screenshot_data["error_name"]
+        code_help["screenshot_vision"] = {
+            "method": screenshot_data.get("method"),
+            "error_name": screenshot_data.get("error_name"),
+            "suspected_files": screenshot_data.get("suspected_files", []),
+            "line_numbers": screenshot_data.get("line_numbers", []),
+            "stack_traces": screenshot_data.get("stack_traces", []),
+        }
+    else:
+        code_help["attachment_note"] = (
+            f"Attached {attachment['type']}: {attachment['name']}"
+            if attachment
+            else "No attachment was provided."
+        )
 
     full_text = f"{combined_text} {feature.lower()}"
 
     # 3. Priority Estimation
     priority = calculate_priority(full_text)
     sentiment = analyze_sentiment(f"{title} {description}")
-    if sentiment["blocker_signal"]:
+    if sentiment["blocker_signal"] or (screenshot_data and screenshot_data.get("error_name") and "nullpointer" in str(screenshot_data.get("error_name")).lower()):
         priority = "High"
 
     # 4. Duplicate Detection
@@ -55,7 +81,7 @@ def analyze_report(data):
     assigned_to, assignment_reason = assign_developer(
         developers=developers,
         full_text=full_text,
-        selected_language=selected_language,
+        selected_language=selected_language if selected_language != "auto" else (screenshot_data.get("detected_language") if screenshot_data else "auto"),
         feature=feature,
         is_duplicate=is_duplicate,
     )
@@ -74,7 +100,8 @@ def analyze_report(data):
         code_snippet=code_snippet,
         selected_language=selected_language,
         project_stack=project_stack,
-        source_file_name=source_file_name
+        source_file_name=source_file_name,
+        screenshot_data=screenshot_data
     )
     if suspected_files:
         code_help["suspected_files"] = suspected_files
@@ -92,6 +119,8 @@ def analyze_report(data):
         "status": "Duplicate" if is_duplicate else "Open",
         "code_help": code_help,
     }
+    if screenshot_data and screenshot_data.get("success"):
+        result["screenshot_vision"] = screenshot_data
 
     return result
 
