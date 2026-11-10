@@ -2,9 +2,27 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent"))
+# Add project root and agent directory to sys.path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "agent") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "agent"))
 
-from file_locator import locate_suspected_files, parse_github_slug, index_repository_structure
+try:
+    from agent.file_locator import (
+        CACHE_DIR,
+        index_repository_structure,
+        locate_suspected_files,
+        parse_github_slug,
+    )
+except ImportError:
+    from file_locator import (
+        CACHE_DIR,
+        index_repository_structure,
+        locate_suspected_files,
+        parse_github_slug,
+    )
 
 
 class FileLocatorTests(unittest.TestCase):
@@ -62,7 +80,6 @@ class FileLocatorTests(unittest.TestCase):
 
     def test_index_repository_structure_reads_cached_files_properly(self):
         import json
-        from file_locator import CACHE_DIR
         try:
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             sample_file = CACHE_DIR / "testowner_testrepo.json"

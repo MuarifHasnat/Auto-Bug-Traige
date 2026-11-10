@@ -3,9 +3,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent"))
+# Add project root and agent directory to sys.path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "agent") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "agent"))
 
-from diagnostics import check_code_error
+try:
+    from agent.diagnostics import check_code_error
+    import agent.diagnostics as diagnostics_mod
+except ImportError:
+    from diagnostics import check_code_error
+    import diagnostics as diagnostics_mod
 
 
 class DiagnosticsTest(unittest.TestCase):
@@ -24,7 +34,7 @@ class DiagnosticsTest(unittest.TestCase):
         self.assertEqual("failed", invalid["syntax_status"])
 
     def test_missing_c_compiler_is_reported_as_unavailable(self):
-        with patch("diagnostics.shutil.which", return_value=None):
+        with patch.object(diagnostics_mod.shutil, "which", return_value=None):
             result = check_code_error("int main(void) { return 0; }", "", "C")
 
         self.assertEqual("not_available", result["syntax_status"])

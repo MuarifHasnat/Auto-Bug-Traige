@@ -1,7 +1,20 @@
+import sys
 import unittest
+from pathlib import Path
 
-from sentiment import analyze_sentiment
-from triage import analyze_report
+# Add project root and agent directory to sys.path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "agent") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "agent"))
+
+try:
+    from agent.sentiment import analyze_sentiment
+    from agent.triage import analyze_report
+except ImportError:
+    from sentiment import analyze_sentiment
+    from triage import analyze_report
 
 
 class SentimentTests(unittest.TestCase):

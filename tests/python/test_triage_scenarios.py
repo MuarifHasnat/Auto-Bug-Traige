@@ -2,9 +2,17 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent"))
+# Add project root and agent directory to sys.path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "agent") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "agent"))
 
-from triage import analyze_report
+try:
+    from agent.triage import analyze_report
+except ImportError:
+    from triage import analyze_report
 
 
 class TriageScenarioTests(unittest.TestCase):
