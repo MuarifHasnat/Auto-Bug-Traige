@@ -9,74 +9,74 @@
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
 <div class="flex min-h-screen">
-    <!-- Fixed Left Sidebar (250px) -->
-    <aside class="hidden w-[250px] shrink-0 flex-col bg-[#0F172A] text-white lg:flex border-r border-slate-800 z-20">
+    <!-- Modern Light Glassmorphic Left Sidebar (250px) -->
+    <aside class="hidden w-[250px] shrink-0 flex-col bg-white/95 backdrop-blur-md text-slate-800 lg:flex border-r border-[#E2E8F0] z-20">
         <!-- Logo & AI Badge -->
-        <div class="flex h-[60px] items-center justify-between border-b border-slate-800 px-5">
+        <div class="flex h-[60px] items-center justify-between border-b border-[#E2E8F0] px-5 bg-white">
             <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-xs shadow-md shadow-indigo-600/30">
+                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-black text-xs shadow-md shadow-indigo-600/20">
                     ⚡
                 </div>
-                <span class="text-sm font-extrabold tracking-tight text-white">AutoBug<span class="text-indigo-400">Triage</span></span>
+                <span class="text-sm font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></span>
             </div>
-            <span class="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-300 font-mono-code">
+            <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
                 AI v1.0
             </span>
         </div>
 
         <!-- Project Switcher Box -->
-        <div class="border-b border-slate-800 p-4 bg-slate-950/60">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Workspace</p>
-            <p class="mt-1 truncate font-bold text-white text-xs">{{ session('project_name', 'Software Project') }}</p>
-            <p class="mt-0.5 truncate text-[10px] text-indigo-300 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
-            @include('components.project-switcher', ['variant' => 'dark'])
+        <div class="border-b border-[#E2E8F0] p-4 bg-[#F8FAFC]">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Workspace</p>
+            <p class="mt-1 truncate font-bold text-slate-900 text-xs">{{ session('project_name', 'Software Project') }}</p>
+            <p class="mt-0.5 truncate text-[10px] text-indigo-600 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
+            @include('components.project-switcher', ['variant' => 'light'])
         </div>
 
         <!-- Navigation with Active Indicator Pill -->
         <nav class="flex-1 space-y-1 p-3 text-xs">
-            <a class="relative flex items-center gap-3 rounded-xl bg-indigo-600/20 text-indigo-300 px-3.5 py-2.5 font-bold transition border border-indigo-500/30" href="/dashboard">
-                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-500"></span>
+            <a class="relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 px-3.5 py-2.5 font-bold transition border border-indigo-200/60 shadow-2xs" href="/dashboard">
+                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600"></span>
                 <span class="text-sm">▦</span>
                 <span>Command Center</span>
             </a>
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/workspace">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/workspace">
                 <span class="text-sm">▤</span>
                 <span>Kanban Workspace</span>
             </a>
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/ai-agent">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/ai-agent">
                 <span class="text-sm">⚡</span>
                 <span>AI Triage Studio</span>
             </a>
-            <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/notifications">
+            <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/notifications">
                 <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
-                @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
+                @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white font-bold">{{ $unreadNotificationCount }}</span>@endif
             </a>
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/add-developers">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/add-developers">
                 <span class="text-sm">👥</span>
                 <span>Team & Skills Matrix</span>
             </a>
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="{{ route('workflow.settings') }}">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="{{ route('workflow.settings') }}">
                 <span class="text-sm">⇄</span><span>Workflow Settings</span>
             </a>
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/create-project">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/create-project">
                 <span class="text-sm">⚙</span>
                 <span>New Project Wizard</span>
             </a>
         </nav>
 
         <!-- User Profile Footer -->
-        <div class="border-t border-slate-800 p-4 bg-slate-950/80">
+        <div class="border-t border-[#E2E8F0] p-4 bg-[#F8FAFC]">
             <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600/30 text-indigo-300 text-xs font-bold font-mono-code uppercase border border-indigo-500/30">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 text-xs font-bold font-mono-code uppercase border border-indigo-200">
                     {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="truncate text-xs font-bold text-white">{{ auth()->user()->name }}</p>
-                    <span class="inline-block rounded px-1.5 py-0.2 text-[9px] font-bold bg-blue-500/20 text-blue-300 font-mono-code">
+                    <p class="truncate text-xs font-bold text-slate-900">{{ auth()->user()->name }}</p>
+                    <span class="inline-block rounded px-1.5 py-0.2 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono-code">
                         {{ ucfirst(auth()->user()->role) }}
                     </span>
                 </div>
-                <a href="/logout" title="Sign Out" class="text-slate-400 hover:text-rose-400 p-1">
+                <a href="/logout" title="Sign Out" class="text-slate-400 hover:text-rose-600 p-1 transition">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -221,53 +221,53 @@
                 </div>
             @endif
 
-            <!-- Top Row: 4 Bento KPI Cards -->
+            <!-- Top Row: 4 Interactive Bento KPI Cards with Trends & Direct Filters -->
             <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <!-- 1. Total Issues -->
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs card-hover-lift">
+                <a href="/workspace" class="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition card-hover-lift block">
                     <div class="flex items-center justify-between text-[#64748B]">
-                        <p class="text-xs font-bold uppercase tracking-wider">Total Issues</p>
-                        <span class="text-base">📁</span>
+                        <p class="text-xs font-bold uppercase tracking-wider group-hover:text-indigo-600 transition">Total Issues</p>
+                        <span class="rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5">Sprint Total</span>
                     </div>
                     <p class="mt-3 text-3xl font-extrabold text-[#0F172A] font-mono-code">{{ $stats['total'] }}</p>
-                    <p class="mt-1 text-[11px] text-[#64748B]">Across all active sprints</p>
-                </div>
+                    <p class="mt-1 text-[11px] text-slate-500 group-hover:text-indigo-600 transition">Click to view on board →</p>
+                </a>
 
                 <!-- 2. Open / Active Bugs -->
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs card-hover-lift">
+                <a href="/workspace?status=In+Progress" class="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition card-hover-lift block">
                     <div class="flex items-center justify-between text-[#64748B]">
-                        <p class="text-xs font-bold uppercase tracking-wider">Active Issues</p>
-                        <span class="text-base">⚡</span>
+                        <p class="text-xs font-bold uppercase tracking-wider group-hover:text-indigo-600 transition">Active Issues</p>
+                        <span class="rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5">⚡ In Progress</span>
                     </div>
                     <p class="mt-3 text-3xl font-extrabold text-indigo-600 font-mono-code">{{ $stats['open'] }}</p>
-                    <p class="mt-1 text-[11px] font-semibold text-amber-600">Needs attention</p>
-                </div>
+                    <p class="mt-1 text-[11px] font-semibold text-amber-600 group-hover:underline">Filter active queue →</p>
+                </a>
 
                 <!-- 3. Resolved Bugs -->
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs card-hover-lift">
+                @php
+                    $rate = $stats['total'] > 0 ? round(($stats['resolved'] / $stats['total']) * 100) : 0;
+                @endphp
+                <a href="/workspace?status=Done" class="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition card-hover-lift block">
                     <div class="flex items-center justify-between text-[#64748B]">
-                        <p class="text-xs font-bold uppercase tracking-wider">Resolved</p>
-                        <span class="text-base text-emerald-600">✓</span>
+                        <p class="text-xs font-bold uppercase tracking-wider group-hover:text-emerald-700 transition">Resolved</p>
+                        <span class="rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5">✓ {{ $rate }}%</span>
                     </div>
                     <p class="mt-3 text-3xl font-extrabold text-emerald-600 font-mono-code">{{ $stats['resolved'] }}</p>
-                    @php
-                        $rate = $stats['total'] > 0 ? round(($stats['resolved'] / $stats['total']) * 100) : 0;
-                    @endphp
-                    <p class="mt-1 text-[11px] text-emerald-700 font-semibold font-mono-code">Resolution Rate: {{ $rate }}%</p>
-                </div>
+                    <p class="mt-1 text-[11px] text-emerald-700 font-semibold font-mono-code">View closed tickets →</p>
+                </a>
 
                 <!-- 4. Critical / High Priority -->
-                <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/40 p-5 shadow-xs card-hover-lift relative overflow-hidden">
+                <a href="/workspace?priority=High" class="group rounded-2xl border-2 border-rose-200 bg-rose-50/40 p-5 shadow-xs hover:border-rose-400 hover:shadow-md transition card-hover-lift block relative overflow-hidden">
                     <div class="flex items-center justify-between text-rose-800">
                         <div class="flex items-center gap-1.5">
                             <span class="h-2 w-2 rounded-full bg-rose-600 animate-ping"></span>
                             <p class="text-xs font-bold uppercase tracking-wider">Critical / High</p>
                         </div>
-                        <span class="text-base">🔥</span>
+                        <span class="rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5">🔥 Urgent</span>
                     </div>
                     <p class="mt-3 text-3xl font-extrabold text-rose-700 font-mono-code">{{ $stats['high'] }}</p>
-                    <p class="mt-1 text-[11px] text-rose-800 font-semibold">Immediate attention needed</p>
-                </div>
+                    <p class="mt-1 text-[11px] text-rose-800 font-semibold group-hover:underline">Filter critical issues →</p>
+                </a>
             </div>
 
             <section class="rounded-2xl border border-indigo-100 bg-white p-5 shadow-xs">
@@ -372,10 +372,12 @@
                             @php
                                 $tasks = (int) $developer->active_tasks;
                                 $capacity = (int) ($developer->capacity ?? 5);
-                                $color = $tasks >= $capacity ? 'bg-rose-500' : ($tasks <= 2 ? 'bg-emerald-500' : 'bg-amber-500');
-                                $pill = $tasks >= $capacity ? 'At Capacity' : ($tasks <= 2 ? 'Available' : 'Moderate');
+                                $loadPct = round(($tasks / max(1, $capacity)) * 100);
+                                $color = $loadPct >= 85 ? 'bg-rose-500' : ($loadPct <= 60 ? 'bg-emerald-500' : 'bg-indigo-500');
+                                $pill = $loadPct >= 85 ? 'Overloaded ⚠️' : ($loadPct <= 60 ? 'Available' : 'Optimal');
+                                $pillColor = $loadPct >= 85 ? 'text-rose-700 bg-rose-50' : ($loadPct <= 60 ? 'text-emerald-700 bg-emerald-50' : 'text-indigo-700 bg-indigo-50');
                             @endphp
-                            <div class="rounded-2xl border border-[#E2E8F0] p-3.5 bg-[#F8FAFC]">
+                            <div class="rounded-xl border border-slate-200 p-3.5 bg-[#F8FAFC]">
                                 <div class="flex items-center justify-between text-xs mb-2">
                                     <div class="flex items-center gap-2">
                                         <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600/15 text-[11px] font-bold text-indigo-700 font-mono-code">
@@ -383,13 +385,18 @@
                                         </div>
                                         <span class="font-bold text-[#0F172A]">{{ $developer->name }}</span>
                                     </div>
-                                    <span class="font-mono-code text-[11px] font-bold text-[#64748B]">
-                                        {{ $tasks }} / {{ $capacity }} Active ({{ $pill }})
-                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono-code text-[11px] text-[#64748B]">
+                                            {{ $tasks }}/{{ $capacity }} Tasks
+                                        </span>
+                                        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold {{ $pillColor }}">
+                                            {{ $pill }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="h-2 w-full rounded-full bg-[#E2E8F0] overflow-hidden">
+                                <div class="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                                     <div class="h-2 rounded-full {{ $color }} transition-all duration-500" 
-                                         style="width: {{ min(100, max(8, (int) round($tasks / max(1, $capacity) * 100))) }}%"></div>
+                                         style="width: {{ min(100, max(8, $loadPct)) }}%"></div>
                                 </div>
                             </div>
                         @empty

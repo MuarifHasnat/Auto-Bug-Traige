@@ -9,55 +9,55 @@
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
 <div class="flex min-h-screen">
-    <!-- Left Sidebar (250px) -->
-    <aside class="hidden w-[250px] shrink-0 flex-col bg-[#0F172A] text-white lg:flex border-r border-slate-800 z-20">
+    <!-- Modern Light Glassmorphic Left Sidebar (250px) -->
+    <aside class="hidden w-[250px] shrink-0 flex-col bg-white/95 backdrop-blur-md text-slate-800 lg:flex border-r border-[#E2E8F0] z-20">
         <!-- Brand -->
-        <div class="flex h-[60px] items-center justify-between border-b border-slate-800 px-5">
+        <div class="flex h-[60px] items-center justify-between border-b border-[#E2E8F0] px-5 bg-white">
             <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-xs shadow-md shadow-indigo-600/30">
+                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-black text-xs shadow-md shadow-indigo-600/20">
                     ⚡
                 </div>
-                <span class="text-sm font-extrabold tracking-tight text-white">AutoBug<span class="text-indigo-400">Triage</span></span>
+                <span class="text-sm font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></span>
             </div>
-            <span class="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-300 font-mono-code">
+            <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
                 AI v1.0
             </span>
         </div>
 
         <!-- Project Switcher Box -->
-        <div class="border-b border-slate-800 p-4 bg-slate-950/60">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Workspace</p>
-            <p class="mt-1 truncate font-bold text-white text-xs">{{ session('project_name', 'Software Project') }}</p>
-            <p class="mt-0.5 truncate text-[10px] text-indigo-300 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
-            @include('components.project-switcher', ['variant' => 'dark'])
+        <div class="border-b border-[#E2E8F0] p-4 bg-[#F8FAFC]">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Workspace</p>
+            <p class="mt-1 truncate font-bold text-slate-900 text-xs">{{ session('project_name', 'Software Project') }}</p>
+            <p class="mt-0.5 truncate text-[10px] text-indigo-600 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
+            @include('components.project-switcher', ['variant' => 'light'])
         </div>
 
         <!-- Navigation Links -->
         <nav class="flex-1 space-y-1 p-3 text-xs">
             @if(auth()->user()->role === 'manager')
-                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/dashboard">
+                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/dashboard">
                     <span class="text-sm">▦</span>
                     <span>Command Center</span>
                 </a>
             @endif
 
-            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/workspace">
+            <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/workspace">
                 <span class="text-sm">▤</span>
                 <span>Kanban Workspace</span>
             </a>
-            <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/notifications">
+            <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/notifications">
                 <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
-                @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{{ $unreadNotificationCount }}</span>@endif
+                @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white font-bold">{{ $unreadNotificationCount }}</span>@endif
             </a>
 
-            <a class="relative flex items-center gap-3 rounded-xl bg-indigo-600/20 text-indigo-300 px-3.5 py-2.5 font-bold transition border border-indigo-500/30" href="/ai-agent">
-                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-500"></span>
+            <a class="relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 px-3.5 py-2.5 font-bold transition border border-indigo-200/60 shadow-2xs" href="/ai-agent">
+                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600"></span>
                 <span class="text-sm">⚡</span>
                 <span>AI Triage Studio</span>
             </a>
 
             @if(auth()->user()->role === 'manager')
-                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 transition" href="/add-developers">
+                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/add-developers">
                     <span class="text-sm">👥</span>
                     <span>Team & Skills Matrix</span>
                 </a>
@@ -65,18 +65,18 @@
         </nav>
 
         <!-- User Profile Footer -->
-        <div class="border-t border-slate-800 p-4 bg-slate-950/80">
+        <div class="border-t border-[#E2E8F0] p-4 bg-[#F8FAFC]">
             <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600/30 text-indigo-300 text-xs font-bold font-mono-code uppercase border border-indigo-500/30">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 text-xs font-bold font-mono-code uppercase border border-indigo-200">
                     {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="truncate text-xs font-bold text-white">{{ auth()->user()->name }}</p>
-                    <span class="inline-block rounded px-1.5 py-0.2 text-[9px] font-bold bg-blue-500/20 text-blue-300 font-mono-code">
+                    <p class="truncate text-xs font-bold text-slate-900">{{ auth()->user()->name }}</p>
+                    <span class="inline-block rounded px-1.5 py-0.2 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono-code">
                         {{ ucfirst(auth()->user()->role) }}
                     </span>
                 </div>
-                <a href="/logout" title="Sign Out" class="text-slate-400 hover:text-rose-400 p-1">
+                <a href="/logout" title="Sign Out" class="text-slate-400 hover:text-rose-600 p-1 transition">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -255,7 +255,15 @@
                         <div>
                             <label class="block text-xs font-bold text-[#0F172A] mb-1">Issue Summary / Title</label>
                             <input id="bugTitle" name="title" required maxlength="200" placeholder="e.g. ZeroDivisionError in invoice calculation logic" 
-                                   class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
+                                   class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"
+                                   oninput="checkDuplicateTitle(this.value)">
+                            <div id="duplicateWarning" class="hidden mt-2 rounded-xl border border-amber-300 bg-amber-50/95 p-2.5 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="text-sm shrink-0">⚠️</span>
+                                    <span class="truncate">Similar issue found: <b id="dupBugKey" class="text-amber-950 font-mono"></b> <span id="dupBugTitle" class="text-slate-700 font-medium"></span></span>
+                                </div>
+                                <a id="dupBugLink" href="#" target="_blank" class="ml-2 rounded-lg bg-amber-200/80 hover:bg-amber-300 px-2.5 py-1 font-bold text-amber-950 shrink-0 text-[11px] transition">View ↗</a>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -792,8 +800,37 @@
     }
 
     // ==========================================
-    // Autonomous AI Triage Live Stepper & Terminal
+    // Autonomous AI Triage Live Stepper & Stepper Logic
     // ==========================================
+    const projectBugs = @json($bugs->map(fn($b) => ['id' => $b->id, 'title' => $b->title]));
+    let dupTimeout = null;
+    function checkDuplicateTitle(val) {
+        clearTimeout(dupTimeout);
+        dupTimeout = setTimeout(() => {
+            const warningEl = document.getElementById('duplicateWarning');
+            const clean = (val || '').trim().toLowerCase();
+            if (clean.length < 4 || !projectBugs.length) {
+                if (warningEl) warningEl.classList.add('hidden');
+                return;
+            }
+            const words = clean.split(/\s+/).filter(w => w.length > 2);
+            const match = projectBugs.find(b => {
+                const bTitle = (b.title || '').toLowerCase();
+                if (bTitle.includes(clean) || clean.includes(bTitle)) return true;
+                const matchCount = words.filter(w => bTitle.includes(w)).length;
+                return matchCount >= 2 || (words.length === 1 && matchCount === 1 && clean.length > 5);
+            });
+            if (match && warningEl) {
+                document.getElementById('dupBugKey').innerText = `#ABT-${match.id}`;
+                document.getElementById('dupBugTitle').innerText = `(${match.title})`;
+                document.getElementById('dupBugLink').href = `/bugs/${match.id}`;
+                warningEl.classList.remove('hidden');
+            } else if (warningEl) {
+                warningEl.classList.add('hidden');
+            }
+        }, 200);
+    }
+
     let triageTimer = null;
     let triageStartTime = null;
 
@@ -808,16 +845,16 @@
         document.getElementById('terminalBugTitle').innerText = title || 'Processing Anomaly';
         document.getElementById('terminalOutput').innerHTML = '';
         document.getElementById('triageProgressBar').style.width = '8%';
-        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> RUNNING NEURAL PIPELINE`;
-        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 font-mono-code';
+        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span> RUNNING NEURAL PIPELINE`;
+        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-[11px] font-bold text-indigo-700 font-mono-code';
         document.getElementById('terminalResultCard').classList.add('hidden');
         
         // Reset Steps
         [1, 2, 3, 4].forEach(i => {
             const step = document.getElementById(`step-pill-${i}`);
             if (step) {
-                step.className = 'px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition';
-                step.innerText = `${i}. ${step.dataset.name || 'Stage ' + i}`;
+                step.className = 'px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5';
+                step.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">${i}.</span> <span>${step.dataset.name || 'Stage ' + i}</span>`;
             }
         });
         setStepActive(1);
@@ -840,15 +877,16 @@
     function setStepActive(stepNum) {
         const step = document.getElementById(`step-pill-${stepNum}`);
         if (step) {
-            step.className = 'px-2.5 py-1.5 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 font-bold transition animate-pulse';
+            step.className = 'px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 border-2 border-indigo-400 font-bold transition flex items-center justify-center gap-1.5 shadow-2xs';
+            step.innerHTML = `<span class="h-3 w-3 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></span> <span>${step.dataset.name || 'Stage ' + stepNum}</span>`;
         }
     }
 
     function setStepDone(stepNum) {
         const step = document.getElementById(`step-pill-${stepNum}`);
         if (step) {
-            step.className = 'px-2.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold transition';
-            step.innerText = `✓ ${step.dataset.name || 'Step ' + stepNum}`;
+            step.className = 'px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold transition flex items-center justify-center gap-1.5';
+            step.innerHTML = `<span>✓</span> <span>${step.dataset.name || 'Step ' + stepNum}</span>`;
         }
     }
 
@@ -958,14 +996,17 @@
             appendTerminalLog('[DISPATCH]', `Assigned to: ${assignee} (Based on skills & active tasks balance)`, 'text-emerald-400 font-bold');
 
             // Status Pill Complete
-            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> TRIAGE COMPLETED`;
-            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 font-mono-code';
+            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-600"></span> TRIAGE COMPLETED`;
+            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700 font-mono-code';
 
             // Show Result Card
             document.getElementById('terminalResultKey').innerText = `#ABT-${bugId}`;
+            const confScore = Math.max(88, 98 - Math.min(simScore, 10));
+            const confEl = document.getElementById('resConfidence');
+            if (confEl) confEl.innerText = `${confScore}% Match`;
             document.getElementById('resAssignee').innerText = assignee;
             document.getElementById('resPriority').innerText = priority + ' Priority';
-            document.getElementById('resSimilarity').innerText = simScore + '% (' + (simScore > 70 ? 'Duplicate' : 'Unique') + ')';
+            document.getElementById('resSimilarity').innerText = simScore > 70 ? 'Duplicate' : 'Unique Issue';
             document.getElementById('resCulprit').innerText = suspected;
             document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
             document.getElementById('terminalResultCard').classList.remove('hidden');
@@ -973,8 +1014,8 @@
         } catch (err) {
             clearInterval(triageTimer);
             appendTerminalLog('[ERROR]', err.message || 'Triage failed.', 'text-rose-400 font-bold');
-            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> FAILED`;
-            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-2.5 py-0.5 text-[10px] font-bold text-rose-300 font-mono-code';
+            document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span> FAILED`;
+            document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-[11px] font-bold text-rose-700 font-mono-code';
             setTimeout(() => {
                 alert('Triage error: ' + err.message);
                 closeTriageModal();
@@ -1016,13 +1057,16 @@
         setStepDone(4);
         clearInterval(triageTimer);
 
-        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> REPLAY COMPLETE`;
-        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 font-mono-code';
+        document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-600"></span> REPLAY COMPLETE`;
+        document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700 font-mono-code';
 
         document.getElementById('terminalResultKey').innerText = `#ABT-${bugId}`;
+        const confScore = Math.max(88, 98 - Math.min(ai.similarity_score || 0, 10));
+        const confEl = document.getElementById('resConfidence');
+        if (confEl) confEl.innerText = `${confScore}% Match`;
         document.getElementById('resAssignee').innerText = '{{ session("ai_result.recommended_assignee", "Developer") }}';
         document.getElementById('resPriority').innerText = (ai.priority || 'Medium') + ' Priority';
-        document.getElementById('resSimilarity').innerText = (ai.similarity_score || 0) + '% Match';
+        document.getElementById('resSimilarity').innerText = (ai.similarity_score || 0) > 70 ? 'Duplicate' : 'Unique Issue';
         document.getElementById('resCulprit').innerText = susp;
         document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
         document.getElementById('terminalResultCard').classList.remove('hidden');
@@ -1030,104 +1074,117 @@
     @endif
 </script>
 
-    <!-- Autonomous AI Triage Live Terminal HUD Modal -->
-    <div id="triageTerminalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-        <div class="relative w-full max-w-2xl rounded-3xl border border-slate-700/80 bg-[#0F172A] p-5 sm:p-6 shadow-2xl text-white overflow-hidden flex flex-col space-y-4">
+    <!-- Autonomous AI Triage Live Pipeline HUD Modal (Light Glassmorphic Stepper) -->
+    <div id="triageTerminalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+        <div class="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/95 backdrop-blur-xl p-5 sm:p-6 shadow-2xl text-slate-900 overflow-hidden flex flex-col space-y-4">
             <!-- Window Top Chrome -->
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
                 <div class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
-                    <span class="h-3 w-3 rounded-full bg-amber-500 inline-block"></span>
-                    <span class="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
-                    <span class="ml-2 text-xs font-bold font-mono-code text-slate-300">
+                    <span class="h-3 w-3 rounded-full bg-rose-400 inline-block"></span>
+                    <span class="h-3 w-3 rounded-full bg-amber-400 inline-block"></span>
+                    <span class="h-3 w-3 rounded-full bg-emerald-400 inline-block"></span>
+                    <span class="ml-2 text-xs font-bold font-mono-code text-slate-800">
                         ⚡ AutoBugTriage Neural Core v2.4
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="terminalTimer" class="font-mono-code text-xs text-indigo-400 font-bold">[ 0.00s ]</span>
-                    <div id="terminalStatusPill" class="flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 font-mono-code">
-                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="terminalTimer" class="font-mono-code text-xs text-indigo-600 font-bold">[ 0.00s ]</span>
+                    <div id="terminalStatusPill" class="flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-[11px] font-bold text-indigo-700 font-mono-code">
+                        <span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
                         RUNNING NEURAL PIPELINE
                     </div>
                 </div>
             </div>
 
             <!-- Target Anomaly Banner -->
-            <div class="rounded-2xl border border-slate-800 bg-[#1E293B]/60 p-3 flex items-center justify-between">
+            <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/40 p-3.5 flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono-code">TARGET ANOMALY</span>
-                    <p id="terminalBugTitle" class="text-xs font-bold text-white truncate mt-0.5">Payment checkout 401 error</p>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono-code">TARGET ANOMALY</span>
+                    <p id="terminalBugTitle" class="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5">Payment checkout 401 error</p>
                 </div>
-                <span class="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono-code font-bold px-2 py-0.5 shrink-0">
+                <span class="rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-mono-code font-bold px-2.5 py-1 shrink-0">
                     4-PHASE INFERENCE
                 </span>
             </div>
 
-            <!-- 4-Phase Stepper Pills -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px] font-mono-code">
-                <div id="step-pill-1" data-name="Ingestion" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 font-bold transition">
+            <!-- 4-Phase Stepper Pills (Light Grid) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                <div id="step-pill-1" data-name="Ingestion" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
                     1. Ingestion
                 </div>
-                <div id="step-pill-2" data-name="NLP & Vector" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                <div id="step-pill-2" data-name="NLP & Vector" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
                     2. NLP & Vector
                 </div>
-                <div id="step-pill-3" data-name="AST & GitHub" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                <div id="step-pill-3" data-name="AST & GitHub" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
                     3. AST & GitHub
                 </div>
-                <div id="step-pill-4" data-name="Dispatch" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/80 font-bold transition">
+                <div id="step-pill-4" data-name="Dispatch" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
                     4. Dispatch
                 </div>
             </div>
 
             <!-- Progress Bar -->
-            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                <div id="triageProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-1.5 rounded-full transition-all duration-300" style="width: 5%"></div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div id="triageProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: 5%"></div>
             </div>
 
-            <!-- Live Streaming Console Logs -->
-            <div id="terminalOutput" class="rounded-2xl border border-slate-800 bg-[#090D16] p-4 font-mono-code text-xs space-y-1.5 max-h-[190px] sm:max-h-[220px] overflow-y-auto custom-scroll shadow-inner">
-                <!-- Log items appended dynamically -->
-            </div>
-
-            <!-- Result Card (shown on completion) -->
-            <div id="terminalResultCard" class="hidden rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-black text-xs">✓</span>
-                        <span class="text-xs font-extrabold text-emerald-400">Autonomous Triage Successful</span>
-                    </div>
-                    <span id="terminalResultKey" class="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-mono-code font-bold px-2 py-0.5">
-                        #ABT-104
+            <!-- Collapsible Raw Console Logs Accordion -->
+            <details class="group rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+                <summary class="flex cursor-pointer items-center justify-between px-3.5 py-2 text-xs font-mono font-bold text-slate-600 hover:text-indigo-600 select-none bg-slate-100/60">
+                    <span class="flex items-center gap-2">
+                        <span class="text-indigo-600 font-bold">&gt;_</span>
+                        <span>View Raw Console Logs</span>
                     </span>
+                    <span class="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div id="terminalOutput" class="p-3.5 bg-slate-950 font-mono-code text-[11px] space-y-1.5 max-h-[160px] overflow-y-auto custom-scroll text-slate-300">
+                    <!-- Log items appended dynamically -->
+                </div>
+            </details>
+
+            <!-- Result Card (shown on completion with Signature Confidence Badge) -->
+            <div id="terminalResultCard" class="hidden rounded-2xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50/70 via-white to-indigo-50/70 p-4 space-y-3 shadow-sm">
+                <!-- Signature Confidence Badge -->
+                <div class="rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 p-0.5 shadow-sm">
+                    <div class="rounded-[10px] bg-white p-3 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">🎯</span>
+                            <div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600">AI Confidence Match</span>
+                                <p class="text-xs sm:text-sm font-extrabold text-[#0F172A]">
+                                    <span id="resConfidence">94% Match</span> — Assigned to <span id="resAssignee" class="text-indigo-600">Alice Dev</span>
+                                </p>
+                            </div>
+                        </div>
+                        <span id="terminalResultKey" class="rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-xs px-2.5 py-1">
+                            #ABT-104
+                        </span>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                        <span class="text-[9px] text-slate-400 block font-mono-code">ASSIGNED TO</span>
-                        <span id="resAssignee" class="font-bold text-white text-[11px] truncate block mt-0.5">Alice Dev</span>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">SEVERITY PRIORITY</span>
+                        <span id="resPriority" class="font-extrabold text-rose-600 text-[11px] truncate block mt-0.5">High Priority</span>
                     </div>
-                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                        <span class="text-[9px] text-slate-400 block font-mono-code">SEVERITY</span>
-                        <span id="resPriority" class="font-bold text-rose-400 text-[11px] truncate block mt-0.5">High Priority</span>
+                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">DUPLICATE CHECK</span>
+                        <span id="resSimilarity" class="font-extrabold text-emerald-600 text-[11px] truncate block mt-0.5">Unique Issue</span>
                     </div>
-                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                        <span class="text-[9px] text-slate-400 block font-mono-code">SIMILARITY</span>
-                        <span id="resSimilarity" class="font-bold text-emerald-400 text-[11px] truncate block mt-0.5">0.12 (Unique)</span>
-                    </div>
-                    <div class="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                        <span class="text-[9px] text-slate-400 block font-mono-code">CULPRIT FILE</span>
-                        <span id="resCulprit" class="font-bold text-sky-400 text-[11px] truncate block mt-0.5">PaymentService.php</span>
+                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
+                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">CULPRIT FILE</span>
+                        <span id="resCulprit" class="font-mono font-bold text-indigo-700 text-[11px] truncate block mt-0.5">PaymentService.php</span>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
-                    <button type="button" onclick="closeTriageModal()" class="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition">
-                        Submit Another
+                <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-200/80">
+                    <button type="button" onclick="closeTriageModal()" class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 transition shadow-2xs">
+                        + Submit Another
                     </button>
-                    <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition">
-                        Kanban Board ▤
+                    <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 transition shadow-2xs">
+                        ✓ View on Kanban
                     </a>
-                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 px-4 py-1.5 text-xs font-extrabold text-white shadow-md shadow-indigo-600/30 transition hover:scale-[1.02]">
+                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-indigo-600/25 transition hover:scale-[1.02]">
                         Open Issue & Fix Guidance ➔
                     </a>
                 </div>

@@ -30,8 +30,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/workflow', [BugController::class, 'saveWorkflow'])->name('workflow.save');
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
     Route::get('/notifications', [BugController::class, 'notificationsPage'])->name('notifications.index');
-    Route::post('/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
-    Route::post('/notifications/{id}/read', [BugController::class, 'markNotificationRead'])->name('notifications.read');
+    Route::match(['get', 'post'], '/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
+    Route::match(['get', 'post'], '/notifications/{id}/read', [BugController::class, 'markNotificationRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [BugController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
     Route::post('/api/bugs/store', [BugController::class, 'store']);
     Route::post('/api/bugs/override', [BugController::class, 'override']);

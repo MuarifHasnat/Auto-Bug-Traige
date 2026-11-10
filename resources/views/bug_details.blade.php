@@ -230,11 +230,13 @@
                         <!-- Submitted Code Snippet (if any) -->
                         @if(!empty($codeHelp['fixed_code']))
                             <div class="pt-2">
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-xs font-bold uppercase text-[#64748B]">Submitted Code Reference</span>
-                                    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('codeBlock').innerText); alert('Code copied to clipboard!');" class="text-[11px] font-bold text-indigo-600 hover:underline">Copy Code</button>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-[#64748B]">Submitted Code Reference</span>
+                                    <button type="button" onclick="copyCodeSnippet(this, 'codeBlock')" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-bold text-indigo-600 transition shadow-2xs">
+                                        <span class="copy-icon">📋</span> <span class="copy-text">Copy Fix</span>
+                                    </button>
                                 </div>
-                                <pre id="codeBlock" class="rounded-2xl bg-slate-950 p-4 text-xs font-mono-code text-emerald-400 overflow-x-auto"><code>{{ $codeHelp['fixed_code'] }}</code></pre>
+                                <pre id="codeBlock" class="rounded-2xl bg-slate-950 p-4 text-xs font-mono-code text-emerald-400 overflow-x-auto border border-slate-800"><code>{{ $codeHelp['fixed_code'] }}</code></pre>
                             </div>
                         @endif
                     </section>
@@ -250,24 +252,35 @@
                     <!-- Clarification Requests from Developers -->
                     <div class="space-y-3">
                         @foreach($clarifications as $req)
-                            <div class="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-2 text-xs">
+                            <div class="rounded-2xl border {{ $req->answer ? 'border-slate-200 bg-[#F8FAFC]' : 'border-amber-300 bg-amber-50/90 shadow-sm' }} p-4 space-y-3 text-xs">
                                 <div class="flex items-center justify-between">
-                                    <span class="font-bold text-amber-950">❓ Clarification Requested by {{ $req->requester_name }}</span>
-                                    <span class="text-[10px] text-amber-700">{{ \Carbon\Carbon::parse($req->created_at)->diffForHumans() }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold {{ $req->answer ? 'text-slate-800' : 'text-amber-950' }}">❓ Clarification Requested by {{ $req->requester_name }}</span>
+                                        @if(!$req->answer)
+                                            <span class="rounded-full bg-amber-200 text-amber-900 px-2 py-0.5 text-[10px] font-extrabold flex items-center gap-1">
+                                                <span>⏳</span> Needs Info
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[10px] text-slate-500">{{ \Carbon\Carbon::parse($req->created_at)->diffForHumans() }}</span>
                                 </div>
-                                <p class="text-slate-800">{{ $req->question }}</p>
+                                <p class="text-slate-800 leading-relaxed font-medium bg-white/70 p-2.5 rounded-xl border border-amber-200/60">{{ $req->question }}</p>
 
                                 @if($req->answer)
-                                    <div class="mt-2 rounded-xl bg-white border border-amber-200 p-3">
-                                        <p class="font-bold text-emerald-800 text-[11px]">✓ Answered by {{ $req->answerer_name }}:</p>
-                                        <p class="mt-1 text-slate-700">{{ $req->answer }}</p>
+                                    <div class="mt-2 rounded-xl bg-white border border-emerald-200 p-3 shadow-2xs">
+                                        <p class="font-bold text-emerald-800 text-[11px] flex items-center gap-1.5">
+                                            <span>✓</span> Answered by {{ $req->answerer_name }}:
+                                        </p>
+                                        <p class="mt-1 text-slate-700 leading-relaxed">{{ $req->answer }}</p>
                                     </div>
                                 @elseif(auth()->id() === $bug->reporter_id || auth()->user()->role === 'manager')
                                     <form action="{{ route('bugs.clarifications.answer', [], false) }}" method="POST" class="mt-2 space-y-2">
                                         @csrf
                                         <input type="hidden" name="request_id" value="{{ $req->id }}">
-                                        <textarea name="answer" required rows="2" placeholder="Answer the developer's question…" class="w-full rounded-xl border border-amber-200 bg-white p-2.5 text-xs outline-none focus:border-amber-500"></textarea>
-                                        <button type="submit" class="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500 transition">Submit Answer</button>
+                                        <textarea name="answer" required rows="2" placeholder="Answer the developer's question…" class="w-full rounded-xl border border-amber-300 bg-white p-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"></textarea>
+                                        <button type="submit" class="rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-4 py-2 text-xs font-bold text-white transition shadow-sm flex items-center gap-1.5">
+                                            <span>✓</span> Reply & Resolve
+                                        </button>
                                     </form>
                                 @else
                                     <p class="text-[11px] text-amber-800 italic">Waiting for reporter's response…</p>
@@ -316,8 +329,8 @@
                 </section>
             </div>
 
-            <!-- Right 35% (col-span-4): Status Advance, Assignee, AI Rationale & Timeline -->
-            <div class="lg:col-span-4 space-y-6">
+            <!-- Right 35% (col-span-4): Status Advance, Assignee, AI Rationale & Timeline (Sticky) -->
+            <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
                 
                 <!-- 1. Quick Status Advance Widget -->
                 <section class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xs space-y-3">
@@ -412,6 +425,25 @@
             </div>
         </div>
     </main>
+
+    <script>
+        function copyCodeSnippet(btn, elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            navigator.clipboard.writeText(el.innerText).then(() => {
+                const text = btn.querySelector('.copy-text');
+                const icon = btn.querySelector('.copy-icon');
+                if (text) text.innerText = 'Copied!';
+                if (icon) icon.innerText = '✓';
+                btn.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-300');
+                setTimeout(() => {
+                    if (text) text.innerText = 'Copy Fix';
+                    if (icon) icon.innerText = '📋';
+                    btn.classList.remove('bg-emerald-50', 'text-emerald-700', 'border-emerald-300');
+                }, 2000);
+            });
+        }
+    </script>
 </body>
 </html>
 
