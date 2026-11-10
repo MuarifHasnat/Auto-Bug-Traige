@@ -1089,7 +1089,7 @@ class BugController extends Controller
         $this->setCurrentProject($request, $project);
         $notification->markAsRead();
         $bugId = (int) ($notification->data['bug_id'] ?? 0);
-        return redirect($bugId ? '/workspace#bug-'.$bugId : '/notifications');
+        return redirect($bugId ? route('bugs.show', $bugId, false) : '/notifications');
     }
 
     public function markNotificationRead(string $id): RedirectResponse

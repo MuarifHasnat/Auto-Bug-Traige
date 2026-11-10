@@ -1094,6 +1094,20 @@
                 window.location.reload();
             }
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#bug-')) {
+                const bugId = hash.replace('#bug-', '');
+                if (bugId) {
+                    openDrawer(bugId);
+                    const card = document.getElementById('bug-' + bugId);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html>
