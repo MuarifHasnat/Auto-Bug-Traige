@@ -9,10 +9,7 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "agent") not in sys.path:
     sys.path.insert(0, str(_ROOT / "agent"))
 
-try:
-    from agent.triage import analyze_report
-except ImportError:
-    from triage import analyze_report
+from agent.triage import analyze_report
 
 
 class TriageScenarioTests(unittest.TestCase):
@@ -60,7 +57,7 @@ class TriageScenarioTests(unittest.TestCase):
                 self.assertEqual(high_priority, result["priority"] == "High")
                 self.assertEqual(duplicate_of is not None, result["is_duplicate"])
                 self.assertEqual(duplicate_of, result["duplicate_of"])
-                if developers == [] or (developers and developers[0].get("active_tasks", 0) >= developers[0].get("capacity", 5)):
+                if developers == [] or (developers and int(developers[0].get("active_tasks", 0)) >= int(developers[0].get("capacity", 5))):
                     self.assertEqual("Unassigned", result["assigned_to"])
 
     def test_resolved_fix_history_can_break_a_skill_score_tie(self):

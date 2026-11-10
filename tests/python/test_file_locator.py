@@ -9,20 +9,12 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "agent") not in sys.path:
     sys.path.insert(0, str(_ROOT / "agent"))
 
-try:
-    from agent.file_locator import (
-        CACHE_DIR,
-        index_repository_structure,
-        locate_suspected_files,
-        parse_github_slug,
-    )
-except ImportError:
-    from file_locator import (
-        CACHE_DIR,
-        index_repository_structure,
-        locate_suspected_files,
-        parse_github_slug,
-    )
+from agent.file_locator import (
+    CACHE_DIR,
+    index_repository_structure,
+    locate_suspected_files,
+    parse_github_slug,
+)
 
 
 class FileLocatorTests(unittest.TestCase):

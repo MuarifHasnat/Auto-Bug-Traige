@@ -10,12 +10,8 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "agent") not in sys.path:
     sys.path.insert(0, str(_ROOT / "agent"))
 
-try:
-    from agent.diagnostics import check_code_error
-    import agent.diagnostics as diagnostics_mod
-except ImportError:
-    from diagnostics import check_code_error
-    import diagnostics as diagnostics_mod
+import agent.diagnostics as diagnostics_mod
+from agent.diagnostics import check_code_error
 
 
 class DiagnosticsTest(unittest.TestCase):

@@ -9,12 +9,8 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "agent") not in sys.path:
     sys.path.insert(0, str(_ROOT / "agent"))
 
-try:
-    from agent.sentiment import analyze_sentiment
-    from agent.triage import analyze_report
-except ImportError:
-    from sentiment import analyze_sentiment
-    from triage import analyze_report
+from agent.sentiment import analyze_sentiment
+from agent.triage import analyze_report
 
 
 class SentimentTests(unittest.TestCase):
