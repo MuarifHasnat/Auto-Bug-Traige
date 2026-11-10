@@ -475,6 +475,7 @@ class BugController extends Controller
             'triageMetric', 'projects'
         ) + [
             'currentProjectId' => $projectId,
+            'projectRepo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),
         ]);
     }
 

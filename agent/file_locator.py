@@ -61,11 +61,18 @@ IGNORED_FILE_NAMES = {
     '.gitignore', '.gitattributes', '.editorconfig', '.dockerignore', 'LICENSE', 'composer.lock', 'package-lock.json'
 }
 
+IGNORED_ASSET_EXTENSIONS = (
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg',
+    '.woff', '.woff2', '.ttf', '.eot', '.otf',
+    '.mp4', '.mp3', '.pdf', '.zip', '.tar', '.gz', '.bin', '.exe',
+    '.lock'
+)
+
 FEATURE_KEYWORD_MAP = {
-    'payments': ['payment', 'checkout', 'invoice', 'billing', 'stripe', 'order', 'cart', 'transaction', 'gateway', 'pay'],
-    'authentication': ['auth', 'login', 'signup', 'user', 'session', 'token', 'password', 'member', 'permission', 'role'],
+    'payments': ['payment', 'checkout', 'invoice', 'billing', 'stripe', 'order', 'cart', 'transaction', 'gateway', 'pay', 'order'],
+    'authentication': ['auth', 'login', 'signup', 'signin', 'register', 'user', 'session', 'token', 'password', 'member', 'permission', 'role', 'credential', 'oauth', 'jwt'],
     'database': ['database', 'migration', 'seeder', 'model', 'query', 'schema', 'sqlite', 'pgsql', 'table', 'sql', 'dao', 'entity'],
-    'frontend': ['view', 'blade', 'component', 'css', 'ui', 'dashboard', 'workspace', 'modal', 'header', 'card', 'activity', 'fragment', 'layout'],
+    'frontend': ['view', 'blade', 'component', 'css', 'ui', 'dashboard', 'workspace', 'modal', 'header', 'card', 'activity', 'fragment', 'layout', 'template', 'screen', 'page', 'form'],
     'api': ['controller', 'route', 'api', 'request', 'response', 'resource', 'middleware', 'handler', 'service', 'retrofit', 'endpoint'],
     'reporting': ['report', 'export', 'pdf', 'csv', 'stats', 'analytics', 'print'],
 }
@@ -528,6 +535,9 @@ def locate_suspected_files(
         elif target_tech == 'java':
             repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
         # If no specific tree matches and compat_files was empty, keep existing repo_files so it never empties out
+
+    # Filter out non-code media and binary assets
+    repo_files = [f for f in repo_files if not f.lower().endswith(IGNORED_ASSET_EXTENSIONS)]
 
     # Inject screenshot-discovered files if not already in repository file tree
     for s_file in ss_files:

@@ -1,12 +1,12 @@
 import re
 
 FEATURE_MAP = {
-    "Authentication": ["login", "logout", "password", "auth", "authentication", "authorization", "session", "token"],
-    "Payments": ["payment", "invoice", "billing", "discount", "transaction"],
-    "Database": ["sql", "database", "query", "migration", "postgres", "mysql"],
-    "API": ["api", "http", "request", "response", "endpoint", "json"],
-    "Frontend": ["button", "form", "css", "react", "vue", "html", "render"],
-    "Performance": ["slow", "timeout", "memory", "performance", "latency"],
+    "Authentication": ["login", "logout", "password", "auth", "authentication", "authorization", "session", "token", "signin", "signup", "credential", "register", "oauth", "jwt", "pass"],
+    "Payments": ["payment", "invoice", "billing", "discount", "transaction", "checkout", "stripe", "cart", "pay", "order"],
+    "Database": ["sql", "database", "query", "migration", "postgres", "mysql", "sqlite", "model", "schema", "table"],
+    "API": ["api", "http", "request", "response", "endpoint", "json", "rest", "route", "controller", "fetch", "axios"],
+    "Frontend": ["button", "form", "css", "react", "vue", "html", "render", "ui", "view", "component", "screen", "modal", "layout"],
+    "Performance": ["slow", "timeout", "memory", "performance", "latency", "lag", "freeze"],
 }
 
 DANGER_WORDS = [

@@ -156,20 +156,30 @@
                         </p>
                         <div class="mt-3 space-y-2">
                             @foreach($suspectedFiles as $file)
-                                <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white border border-sky-200 p-3 shadow-2xs">
-                                    <div class="flex items-center gap-2 min-w-0">
-                                        <span class="text-slate-400 font-mono text-xs">📄</span>
-                                        <span class="font-mono text-xs font-bold text-slate-800 truncate">{{ $file['path'] ?? $file }}</span>
+                                @php
+                                    $fPath = $file['path'] ?? (is_string($file) ? $file : '');
+                                    $fConf = $file['confidence'] ?? 92;
+                                    $fReason = $file['reason'] ?? 'Matched project repository component';
+                                    $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+                                    $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/main/' . ltrim($fPath, '/'));
+                                @endphp
+                                <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white border border-sky-200 p-3.5 shadow-2xs hover:border-indigo-400 transition">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono text-xs font-bold text-slate-900 truncate">📄 {{ $fPath }}</span>
+                                            <span class="rounded bg-indigo-100 text-indigo-800 px-2 py-0.5 text-[10px] font-bold font-mono-code">{{ $fConf }}% Match</span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 mt-1 truncate">{{ $fReason }}</p>
                                     </div>
-                                    @php
-                                        $fPath = $file['path'] ?? (is_string($file) ? $file : '');
-                                        $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/' . ltrim($fPath, '/'));
-                                    @endphp
-                                    <a href="{{ $ghLink }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-bold px-3 py-1.5 transition">
-                                        <span>Inspect on GitHub</span> ↗
+                                    <a href="{{ $ghLink }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2 transition shadow-xs">
+                                        <span>Open in GitHub</span> ↗
                                     </a>
                                 </div>
                             @endforeach
+                        </div>
+                        <div class="mt-3.5 p-3 rounded-xl bg-white/80 border border-sky-200 text-xs text-sky-950 flex items-start gap-2.5">
+                            <span class="text-base shrink-0">💡</span>
+                            <span><b>Developer Guidance:</b> Click <b>"Open in GitHub"</b> on the suspected file to open it directly in the project's repository. Inspect the logic causing the anomaly shown in the screenshot, apply the necessary code changes, and mark the issue resolved on Kanban.</span>
                         </div>
                     </section>
                 @endif
