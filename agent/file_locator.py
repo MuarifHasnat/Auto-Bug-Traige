@@ -68,6 +68,53 @@ IGNORED_ASSET_EXTENSIONS = (
     '.lock'
 )
 
+IGNORED_TEST_AND_BUILD_EXTENSIONS = (
+    '.pro', '.properties', '.toml', '.jar', '.lock', '.bat', '.cmd', '.exe',
+    '.bin', '.md', '.txt'
+)
+
+IGNORED_PATH_SEGMENTS = {
+    'test', 'tests', 'androidtest', 'testfixtures', '.gradle', 'gradle'
+}
+
+ABBREVIATION_EXPANSIONS = {
+    'req': ['request', 'requests'],
+    'res': ['response', 'responses', 'resource'],
+    'auth': ['authentication', 'authorization', 'login', 'signin'],
+    'btn': ['button'],
+    'nav': ['navigation', 'navigate', 'navigator'],
+    'vm': ['viewmodel'],
+    'scr': ['screen'],
+    'equip': ['equipment'],
+    'stud': ['student', 'students'],
+    'comp': ['computer', 'component'],
+    'admin': ['administrator', 'administration'],
+    'sub': ['submit', 'submitted', 'submission'],
+    'crush': ['crash'],
+    'err': ['error'],
+    'cfg': ['config', 'configuration'],
+    'conf': ['config', 'configuration'],
+    'repo': ['repository'],
+}
+
+
+def extract_file_path_tokens(fpath: str) -> set[str]:
+    """
+    Extracts individual words from a file path, including splitting camelCase and PascalCase.
+    (e.g., 'BorrowRequestScreen.kt' -> {'borrow', 'request', 'screen', 'borrowrequestscreen'}).
+    """
+    p = Path(fpath)
+    stem = p.stem
+    words = re.findall(r'[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z][a-z0-9]|\b)', stem)
+    tokens = {w.lower() for w in words if len(w) >= 3}
+    tokens.add(stem.lower())
+    for part in p.parts[:-1]:
+        part_words = re.findall(r'[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z][a-z0-9]|\b)', part)
+        for w in part_words:
+            if len(w) >= 3:
+                tokens.add(w.lower())
+    return tokens
+
 FEATURE_KEYWORD_MAP = {
     'payments': ['payment', 'checkout', 'invoice', 'billing', 'stripe', 'order', 'cart', 'transaction', 'gateway', 'pay', 'order'],
     'authentication': ['auth', 'login', 'signup', 'signin', 'register', 'user', 'session', 'token', 'password', 'member', 'permission', 'role', 'credential', 'oauth', 'jwt'],
@@ -521,41 +568,80 @@ def locate_suspected_files(
     if repo_files is None:
         repo_files = []
 
-    # Filter out files incompatible with detected technology
-    if target_tech not in ['php', 'auto']:
+    # Ensure repo_files contains files compatible with detected technology
+    if target_tech == 'kotlin':
+        compat_files = [f for f in repo_files if f.lower().endswith(('.kt', '.kts')) or (f.lower().endswith('.xml') and 'res/layout' in f.lower())]
+        repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
+    elif target_tech == 'python':
+        compat_files = [f for f in repo_files if f.lower().endswith('.py')]
+        repo_files = compat_files if compat_files else list(PYTHON_DEFAULT_TREE)
+    elif target_tech in ['typescript', 'javascript']:
+        compat_files = [f for f in repo_files if f.lower().endswith(('.ts', '.tsx', '.js', '.jsx'))]
+        repo_files = compat_files if compat_files else list(TYPESCRIPT_DEFAULT_TREE)
+    elif target_tech == 'java':
+        compat_files = [f for f in repo_files if f.lower().endswith('.java')]
+        repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
+    elif target_tech not in ['php', 'auto']:
         compat_files = [f for f in repo_files if not f.endswith(('.blade.php', '.php'))]
         if compat_files:
             repo_files = compat_files
-        elif target_tech == 'kotlin':
-            repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
-        elif target_tech == 'python':
-            repo_files = list(PYTHON_DEFAULT_TREE)
-        elif target_tech in ['typescript', 'javascript']:
-            repo_files = list(TYPESCRIPT_DEFAULT_TREE)
-        elif target_tech == 'java':
-            repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
-        # If no specific tree matches and compat_files was empty, keep existing repo_files so it never empties out
 
     # Filter out non-code media and binary assets
     repo_files = [f for f in repo_files if not f.lower().endswith(IGNORED_ASSET_EXTENSIONS)]
 
+    # Separate production application files from test suites and build scripts
+    prod_files = []
+    other_files = []
+    for f in repo_files:
+        fl = f.lower()
+        if fl.endswith(IGNORED_TEST_AND_BUILD_EXTENSIONS) or Path(f).name.lower() in ('gradlew', 'license'):
+            continue
+        parts = [p.lower() for p in Path(f).parts]
+        if any(seg in parts for seg in IGNORED_PATH_SEGMENTS) or re.search(r'test\.(kt|java|py|ts|js|php)$', fl):
+            other_files.append(f)
+        else:
+            prod_files.append(f)
+
+    # Prioritize production application code over tests for bug culprit isolation
+    active_repo_files = prod_files if prod_files else (other_files or repo_files)
+
+    # Detect target tech from repository files if still auto
+    if target_tech == 'auto' and active_repo_files:
+        ext_counts: Dict[str, int] = {}
+        for f in active_repo_files:
+            ext = Path(f).suffix.lower()
+            if ext:
+                ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        if ext_counts:
+            top_ext = max(ext_counts, key=ext_counts.get)
+            if top_ext in ('.kt', '.kts'):
+                target_tech = 'kotlin'
+            elif top_ext in ('.php',):
+                target_tech = 'php'
+            elif top_ext in ('.ts', '.tsx', '.js', '.jsx'):
+                target_tech = 'typescript'
+            elif top_ext in ('.py',):
+                target_tech = 'python'
+            elif top_ext in ('.java',):
+                target_tech = 'java'
+
     # Inject screenshot-discovered files if not already in repository file tree
     for s_file in ss_files:
         s_base = Path(s_file).name.lower()
-        if not any(Path(r).name.lower() == s_base for r in repo_files):
+        if not any(Path(r).name.lower() == s_base for r in active_repo_files):
             if target_tech == 'kotlin':
-                repo_files.insert(0, f"app/src/main/java/com/example/app/{Path(s_file).name}")
+                active_repo_files.insert(0, f"app/src/main/java/com/example/app/{Path(s_file).name}")
             elif target_tech == 'python':
-                repo_files.insert(0, f"app/{Path(s_file).name}")
+                active_repo_files.insert(0, f"app/{Path(s_file).name}")
             elif target_tech in ['typescript', 'javascript']:
-                repo_files.insert(0, f"src/{Path(s_file).name}")
+                active_repo_files.insert(0, f"src/{Path(s_file).name}")
             else:
-                repo_files.insert(0, s_file)
+                active_repo_files.insert(0, s_file)
 
     # If source file was explicitly uploaded, boost or prioritize it
     priority_file = None
     if source_file_name:
-        for fpath in repo_files:
+        for fpath in active_repo_files:
             if fpath.lower().endswith(source_file_name.lower()):
                 priority_file = fpath
                 break
@@ -572,19 +658,30 @@ def locate_suspected_files(
     stop_words = {'the', 'and', 'for', 'with', 'this', 'that', 'when', 'does', 'not', 'have', 'from', 'what', 'page', 'error', 'bug', 'code'}
     query_keywords = raw_tokens - stop_words
 
-    file_scores: List[FileCandidateScore] = []
-    for fpath in repo_files:
-        fpath_lower = fpath.lower()
-        path_tokens = set(re.findall(r'[a-zA-Z0-9]{3,}', fpath_lower))
-        
-        # Plural normalization
-        normalized_tokens = set(path_tokens)
-        for t in path_tokens:
-            if t.endswith('s') and len(t) > 3:
-                normalized_tokens.add(t[:-1])
+    # Expand abbreviations and domain synonyms (e.g. req -> request, sub -> submit)
+    expanded_keywords = set(query_keywords)
+    for qk in list(query_keywords):
+        if qk in ABBREVIATION_EXPANSIONS:
+            expanded_keywords.update(ABBREVIATION_EXPANSIONS[qk])
+    query_keywords = expanded_keywords
 
-        matches = normalized_tokens.intersection(query_keywords)
-        score = len(matches) * 20
+    file_scores: List[FileCandidateScore] = []
+    for fpath in active_repo_files:
+        fpath_lower = fpath.lower()
+        path_tokens = extract_file_path_tokens(fpath)
+        
+        matches = set()
+        score = 0
+        for q in query_keywords:
+            if q in path_tokens:
+                score += 30
+                matches.add(q)
+            elif any(t.startswith(q) or q.startswith(t) for t in path_tokens if len(t) >= 4 and len(q) >= 4):
+                score += 20
+                matches.add(q)
+            elif len(q) >= 4 and q in fpath_lower:
+                score += 12
+                matches.add(q)
 
         # High-priority Vision & OCR match from screenshot
         is_screenshot_match = False
@@ -599,11 +696,22 @@ def locate_suspected_files(
                 matches.add(f"screenshot:{Path(s_file).name}")
                 break
 
+        # Architectural Layer Affinity Boost
+        if any(w in query_keywords for w in ['screen', 'ui', 'button', 'click', 'view', 'layout', 'display', 'open', 'freeze', 'activity', 'fragment']):
+            if re.search(r'activity|fragment|component|screen|page|layout|view|blade|widget|modal', fpath, re.I):
+                score += 25
+        if any(w in query_keywords for w in ['database', 'query', 'migration', 'table', 'column', 'sql', 'dao', 'entity']):
+            if re.search(r'model|entity|dao|schema|migration|record|table', fpath, re.I):
+                score += 20
+        if any(w in query_keywords for w in ['service', 'payment', 'token', 'request', 'response', 'timeout', 'network', 'gateway', 'auth', 'login', 'submit', 'borrow']):
+            if re.search(r'service|repository|client|api|helper|util|provider|interactor|usecase|controller|viewmodel|model', fpath, re.I):
+                score += 20
+
         # Technology-specific file type bonus
         if target_tech == 'kotlin':
-            if fpath_lower.endswith('.kt') or fpath_lower.endswith('.kts'):
+            if fpath_lower.endswith('.kt'):
                 score += 25
-            if any(k in fpath_lower for k in ['activity', 'viewmodel', 'fragment', 'service', 'repository']):
+            if any(k in fpath_lower for k in ['screen', 'activity', 'viewmodel', 'fragment', 'repository']):
                 score += 15
         elif target_tech == 'python':
             if fpath_lower.endswith('.py'):
@@ -634,27 +742,16 @@ def locate_suspected_files(
                 score += 25
         elif target_tech == 'php':
             if 'controller' in fpath_lower:
-                score += 15
+                score += 20
             if 'model' in fpath_lower or 'database' in fpath_lower:
-                score += 10
+                score += 15
             if 'blade' in fpath_lower or 'view' in fpath_lower:
-                score += 10
+                score += 15
 
         if priority_file and fpath == priority_file:
             score += 100
 
-        # Architectural Layer Affinity Boost
-        if any(w in combined_text for w in ['screen', 'ui', 'button', 'click', 'view', 'layout', 'display', 'freeze', 'activity', 'fragment']):
-            if re.search(r'activity|fragment|component|screen|page|layout|view|blade|widget|modal', fpath, re.I):
-                score += 15
-        if any(w in combined_text for w in ['database', 'query', 'migration', 'table', 'column', 'sql', 'dao', 'entity']):
-            if re.search(r'model|entity|dao|schema|migration|record|table', fpath, re.I):
-                score += 15
-        if any(w in combined_text for w in ['service', 'payment', 'token', 'request', 'response', 'timeout', 'network', 'gateway', 'auth', 'login']):
-            if re.search(r'service|repository|client|api|helper|util|provider|interactor|usecase|controller', fpath, re.I):
-                score += 15
-
-        if score > 0 or len(repo_files) <= limit:
+        if score > 0 or len(active_repo_files) <= limit:
             file_scores.append({
                 "path": fpath,
                 "score": score,
@@ -670,7 +767,7 @@ def locate_suspected_files(
             "matched_terms": ["context"],
             "is_screenshot_match": False,
             "matched_ss_name": None
-        } for f in repo_files[:limit]]
+        } for f in active_repo_files[:limit]]
 
     file_scores.sort(key=lambda x: x["score"], reverse=True)
     top_candidates = file_scores[:limit]
@@ -711,3 +808,25 @@ if __name__ == "__main__":
         target_repo = sys.argv[2] if len(sys.argv) > 2 else ""
         res = index_repository_structure(target_repo, force=True)
         print(json.dumps(res))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--locate":
+        payload_arg = sys.argv[2] if len(sys.argv) > 2 else "{}"
+        try:
+            if Path(payload_arg).is_file():
+                with open(payload_arg, "r", encoding="utf-8-sig") as f:
+                    pdata = json.load(f)
+            else:
+                pdata = json.loads(payload_arg)
+        except Exception:
+            pdata = {}
+        located = locate_suspected_files(
+            title=pdata.get("title", ""),
+            description=pdata.get("description", ""),
+            feature=pdata.get("feature", "General"),
+            github_repo=pdata.get("github_repo"),
+            code_snippet=pdata.get("code_snippet", ""),
+            selected_language=pdata.get("selected_language", "auto"),
+            project_stack=pdata.get("project_stack", ""),
+            source_file_name=pdata.get("source_file_name", ""),
+        )
+        print(json.dumps(located))
+        sys.exit(0)

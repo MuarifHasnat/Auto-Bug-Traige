@@ -458,6 +458,22 @@ class BugController extends Controller
         $this->ensureProjectWorkflow($projectId);
         $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->firstOrFail();
         $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
+        $projectRepo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
+
+        // Dynamically resolve culprit files if missing or empty
+        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
+        if (empty($existingFiles) && !empty($projectRepo)) {
+            $resolvedFiles = $this->resolveSuspectedFilesForBug($bug, $projectRepo);
+            if (!empty($resolvedFiles)) {
+                $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
+                $bug->triage['suspected_files'] = $resolvedFiles;
+                DB::table('bugs')->where('id', $bug->id)->update([
+                    'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
         $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
         $activities = DB::table('bug_activities')->where('project_id', $projectId)->where('bug_id', $id)->orderByDesc('created_at')->orderByDesc('id')->get();
         $clarifications = DB::table('bug_clarification_requests')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
@@ -475,7 +491,7 @@ class BugController extends Controller
             'triageMetric', 'projects'
         ) + [
             'currentProjectId' => $projectId,
-            'projectRepo' => DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo'),
+            'projectRepo' => $projectRepo,
         ]);
     }
 
@@ -493,11 +509,61 @@ class BugController extends Controller
         $projectId = $this->currentProjectId();
         $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->firstOrFail();
         $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
+        $projectRepo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
+
+        // Dynamically resolve culprit files if missing or empty
+        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
+        if (empty($existingFiles) && !empty($projectRepo)) {
+            $resolvedFiles = $this->resolveSuspectedFilesForBug($bug, $projectRepo);
+            if (!empty($resolvedFiles)) {
+                $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
+                $bug->triage['suspected_files'] = $resolvedFiles;
+                DB::table('bugs')->where('id', $bug->id)->update([
+                    'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
         $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
         $activities = DB::table('bug_activities')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
         $clarifications = DB::table('bug_clarification_requests')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
 
         return view('bug_report_print', compact('bug', 'comments', 'activities', 'clarifications'));
+    }
+
+    protected function resolveSuspectedFilesForBug(object $bug, ?string $githubRepo): array
+    {
+        if (empty($githubRepo)) {
+            return [];
+        }
+        $payloadPath = storage_path('app/resolve_' . uniqid('', true) . '.json');
+        try {
+            $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            file_put_contents($payloadPath, json_encode([
+                'title' => $bug->title,
+                'description' => $bug->description,
+                'feature' => $bug->detected_feature ?? 'General',
+                'github_repo' => $githubRepo,
+                'code_snippet' => '',
+                'selected_language' => 'auto',
+                'project_stack' => DB::table('projects')->where('id', $bug->project_id)->value('stack') ?: '',
+                'source_file_name' => $bug->source_file_name ?? '',
+            ], JSON_THROW_ON_ERROR));
+
+            $result = Process::run([$python, base_path('agent/file_locator.py'), '--locate', $payloadPath]);
+            if ($result->successful()) {
+                $decoded = json_decode(trim($result->output()), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    return $decoded;
+                }
+            }
+        } catch (\Throwable) {
+            // Silently ignore dynamic locator failures
+        } finally {
+            @unlink($payloadPath);
+        }
+        return [];
     }
 
     public function dashboardPage(Request $request): View
