@@ -104,11 +104,14 @@
                     <span class="text-indigo-600">Kanban Board</span>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
+                    <a href="/ai-agent" class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-1.5 shadow-xs transition">
+                        <span>⚡ + Report Bug</span>
+                    </a>
                     @include('components.project-switcher', ['variant' => 'mobile'])
-                    <div class="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
+                    <div class="hidden sm:flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
                         <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span class="font-mono-code">Python Triage Agent: Ready</span>
+                        <span class="font-mono-code">AI Agent Ready</span>
                     </div>
                     <a href="/logout" class="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
                         Log out
@@ -160,6 +163,56 @@
                                 class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition">
                             <span>👤 Show Only Assigned to Me ({{ $myAssignedCount }})</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Quick-Start & Feature Tips Banner (Collapsible) -->
+                <div id="quickTipsBanner" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                    <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleQuickTips()">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 font-bold text-sm">💡</span>
+                            <div>
+                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide (সহজে ব্যবহার নির্দেশিকা)</h3>
+                                <p class="text-[11px] text-[#64748B]">বোর্ডের মূল ফিচারগুলো একনজরে দেখে নিন কিভাবে কাজ করে</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="quickTipsToggleText" class="text-[11px] font-bold text-indigo-600">Hide Guide ▴</span>
+                        </div>
+                    </div>
+
+                    <div id="quickTipsContent" class="mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-indigo-600">🖱️</span>
+                                <span>১. ড্র্যাগ অ্যান্ড ড্রপ</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো বাগের কার্ড টেনে অন্য কলামে নিয়ে ছেড়ে দিলেই স্ট্যাটাস সাথে সাথে আপডেট হয়ে যাবে।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-purple-600">🔍</span>
+                                <span>২. ক্লিক করে ড্রয়ার প্রিভিউ</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো কার্ডে ক্লিক করলে ডানে ড্রয়ার ওপেন হবে—যেখানে AI ডায়াগনস্টিক, রুট কজ ও কমেন্টস পাবেন।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-sky-600">📄</span>
+                                <span>৩. ডেডিকেটেড পেজ ও গিটহাব</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ড্রয়ারের "Open in Full Page" বাটনে ক্লিক করলে পুরো পেজে গিটহাবের ফাইল লিংকসহ কোড দেখা যাবে।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-emerald-600">⚡</span>
+                                <span>৪. নতুন বাগ সাবমিট</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">উপরের "+ Report Bug" বাটনে চাপলে AI স্টুডিও ওপেন হবে, যা স্বয়ংক্রিয়ভাবে ইঞ্জিনিয়ার অ্যাসাইন করে দেবে।</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1095,7 +1148,31 @@
             }
         }
 
+        function toggleQuickTips() {
+            const content = document.getElementById('quickTipsContent');
+            const text = document.getElementById('quickTipsToggleText');
+            if (!content || !text) return;
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                text.textContent = 'Hide Guide ▴';
+                localStorage.setItem('abt_show_guide', '1');
+            } else {
+                content.classList.add('hidden');
+                text.textContent = 'Show Guide ▾';
+                localStorage.setItem('abt_show_guide', '0');
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('abt_show_guide') === '0') {
+                const content = document.getElementById('quickTipsContent');
+                const text = document.getElementById('quickTipsToggleText');
+                if (content && text) {
+                    content.classList.add('hidden');
+                    text.textContent = 'Show Guide ▾';
+                }
+            }
+
             const hash = window.location.hash;
             if (hash && hash.startsWith('#bug-')) {
                 const bugId = hash.replace('#bug-', '');

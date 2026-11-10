@@ -206,6 +206,40 @@
                     </div>
                 </div>
             @else
+                <!-- Friendly 3-Step Process Stepper for Users & Testers -->
+                <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-sky-50/70 p-4 shadow-xs">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">ℹ</span>
+                            <h3 class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wider">How AI Bug Triage Works (কিভাবে সহজে ব্যবহার করবেন)</h3>
+                        </div>
+                        <span class="text-[11px] font-semibold text-indigo-600">Zero Configuration • Fully Automated</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
+                            <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
+                                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
+                                <span>১. বাগ ও সিম্পটম লিখুন</span>
+                            </div>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">বাগের শিরোনাম ও বিবরণ দিন অথবা নিচের ১-ক্লিক QA টেমপ্লেট বেছে নিন। এরর স্ক্রিনশট থাকলে পেস্ট করুন (<kbd class="rounded bg-slate-100 px-1 font-mono text-[10px]">Ctrl+V</kbd>)।</p>
+                        </div>
+                        <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
+                            <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
+                                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
+                                <span>২. এআই কোড ও ফাইল অ্যানালাইসিস</span>
+                            </div>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">এজেন্ট কোড সিনট্যাক্স চেক করবে, গিটহাব রিপোজিটরির ফাইল স্ট্রাকচার স্ক্যান করে সম্ভাব্য ফাইল খুঁজে বের করবে এবং ডুপ্লিকেট বাগ পরীক্ষা করবে।</p>
+                        </div>
+                        <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
+                            <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
+                                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">3</span>
+                                <span>৩. অটো-অ্যাসাইন ও কানবান ট্র্যাকিং</span>
+                            </div>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">ইঞ্জিনিয়ারদের স্কিল (Kotlin, PHP, Python) অনুযায়ী উপযুক্ত ডেভেলপারকে স্বয়ংক্রিয়ভাবে অ্যাসাইন করে কানবান বোর্ডে কার্ড তৈরি করে দেবে।</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Split-Screen IDE Workbench: 45% Left / 55% Right -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 

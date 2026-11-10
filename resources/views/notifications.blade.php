@@ -23,8 +23,8 @@
                         <p class="mt-1 text-sm text-slate-600">{{ $data['message'] ?? '' }}</p>
                         <p class="mt-2 text-[11px] text-slate-400">{{ $data['actor_name'] ?? 'A teammate' }} · {{ $notification->created_at->diffForHumans() }} · #ABT-{{ $data['bug_id'] ?? '' }}</p></div>
                     <div class="flex shrink-0 gap-2">
-                        <form action="{{ route('notifications.open', $notification->id, false) }}" method="POST">@csrf<button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Open bug</button></form>
-                        @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id, false) }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold">Read</button></form>@endunless
+                        <form action="{{ route('notifications.open', $notification->id, false) }}" method="POST">@csrf<button class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 text-xs font-bold text-white transition shadow-xs flex items-center gap-1.5"><span>View Bug Details</span> ➔</button></form>
+                        @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id, false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold transition">Mark Read</button></form>@endunless
                     </div>
                 </div>
             </article>
