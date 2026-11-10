@@ -654,6 +654,12 @@ class BugController extends Controller
 
         $payloadPath = tempnam(storage_path('app'), 'triage_payload_');
         if ($payloadPath === false) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Could not prepare the report for triage.',
+                ], 500);
+            }
             return back()->withErrors(['bug' => 'Could not prepare the report for triage.']);
         }
 
@@ -679,11 +685,23 @@ class BugController extends Controller
         $triageDurationMs = (int) round((microtime(true) - $triageStartedAt) * 1000);
 
         if (!$result->successful()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI triage failed: '.$result->errorOutput(),
+                ], 422);
+            }
             return back()->withErrors(['bug' => 'AI triage failed: '.$result->errorOutput()]);
         }
 
         $aiResult = json_decode($result->output(), true);
         if (!is_array($aiResult)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI triage returned an invalid response: '.$result->output(),
+                ], 422);
+            }
             return back()->withErrors(['bug' => 'AI triage returned an invalid response.']);
         }
 

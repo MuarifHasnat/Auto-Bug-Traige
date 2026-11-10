@@ -2,15 +2,46 @@ import os
 import re
 import urllib.request
 import json
+import tempfile
 from pathlib import Path
 from urllib.parse import quote
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-CACHE_DIR = Path(__file__).resolve().parent / ".repo_cache"
+
+def _resolve_cache_dir():
+    # 1. Try Laravel storage/app/.repo_cache
+    storage_cache = Path(__file__).resolve().parents[1] / "storage" / "app" / ".repo_cache"
+    try:
+        storage_cache.mkdir(parents=True, exist_ok=True)
+        return storage_cache
+    except Exception:
+        pass
+
+    # 2. Try agent/.repo_cache
+    local_cache = Path(__file__).resolve().parent / ".repo_cache"
+    try:
+        local_cache.mkdir(parents=True, exist_ok=True)
+        return local_cache
+    except Exception:
+        pass
+
+    # 3. Fallback to system temp directory
+    temp_dir = Path(tempfile.gettempdir()) / "abt_repo_cache"
+    try:
+        temp_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    return temp_dir
+
+CACHE_DIR = _resolve_cache_dir()
 
 IGNORED_DIRS = {
     '.git', 'vendor', 'node_modules', 'storage', '__pycache__', '.vscode',
     'dist', 'build', '.idea', 'coverage', '.gradle'
+}
+
+IGNORED_FILE_NAMES = {
+    '.gitignore', '.gitattributes', '.editorconfig', '.dockerignore', 'LICENSE', 'composer.lock', 'package-lock.json'
 }
 
 FEATURE_KEYWORD_MAP = {
@@ -134,7 +165,10 @@ def index_repository_structure(github_repo, force=False):
     if not slug:
         return {"success": False, "error": "Invalid GitHub repository link."}
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     cache_file = CACHE_DIR / f"{slug.replace('/', '_')}.json"
 
     if not force and cache_file.exists():
@@ -157,7 +191,7 @@ def index_repository_structure(github_repo, force=False):
     try:
         repo_meta_url = f"https://api.github.com/repos/{slug}"
         req = urllib.request.Request(repo_meta_url, headers=gh_headers)
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=1.8) as resp:
             meta = json.loads(resp.read().decode())
             default_branch = meta.get("default_branch") or "main"
     except Exception:
@@ -171,10 +205,16 @@ def index_repository_structure(github_repo, force=False):
         try:
             tree_url = f"https://api.github.com/repos/{slug}/git/trees/{quote(b, safe='')}?recursive=1"
             req = urllib.request.Request(tree_url, headers=gh_headers)
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
                 payload = json.loads(resp.read().decode())
-                files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
-                if files:
+                raw_files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
+                # Filter out junk/ignored files from GitHub
+                clean_files = [
+                    f for f in raw_files
+                    if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git'])
+                ]
+                if clean_files:
+                    files = clean_files
                     active_branch = b
                     break
         except Exception:

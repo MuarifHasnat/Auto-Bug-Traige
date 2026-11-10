@@ -18,8 +18,8 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 COPY . .
 RUN composer dump-autoload --no-dev --optimize \
     && php artisan package:discover --ansi
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R ug+rwx storage bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache agent \
+    && chmod -R ug+rwx storage bootstrap/cache agent
 
 COPY docker/entrypoint.sh /usr/local/bin/laravel-entrypoint
 RUN chmod +x /usr/local/bin/laravel-entrypoint

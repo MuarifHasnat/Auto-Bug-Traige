@@ -61,10 +61,23 @@ class FileLocatorTests(unittest.TestCase):
         self.assertIn("Invalid", invalid_res["error"])
 
     def test_index_repository_structure_reads_cached_files_properly(self):
-        # Already cached from our live fetch
-        res = index_repository_structure("https://github.com/MuarifHasnat/Auto-Bug-Traige", force=False)
+        import json
+        from file_locator import CACHE_DIR
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            sample_file = CACHE_DIR / "testowner_testrepo.json"
+            with open(sample_file, "w", encoding="utf-8") as cf:
+                json.dump({
+                    "success": True,
+                    "total_files": 12,
+                    "layers": {"views_ui": ["MainActivity.kt"]}
+                }, cf)
+        except Exception:
+            pass
+
+        res = index_repository_structure("testowner/testrepo", force=False)
         self.assertTrue(res["success"])
-        self.assertGreater(res["total_files"], 0)
+        self.assertEqual(res["total_files"], 12)
         self.assertIn("layers", res)
         self.assertIn("views_ui", res["layers"])
 

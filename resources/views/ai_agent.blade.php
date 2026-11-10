@@ -860,11 +860,23 @@
             },
             body: formData
         }).then(async res => {
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || 'Server error occurred during triage.');
+            const contentType = res.headers.get('content-type') || '';
+            if (res.redirected || !contentType.includes('application/json')) {
+                const text = await res.text();
+                if (text.includes('login') || text.includes('Login') || res.status === 401) {
+                    throw new Error('Your session has expired. Please refresh the page and log in again.');
+                }
+                const match = text.match(/<div class="[^"]*alert[^"]*">([\s\S]*?)<\/div>/i);
+                if (match) {
+                    throw new Error(match[1].replace(/<[^>]+>/g, '').trim());
+                }
+                throw new Error('Server returned an unexpected response. Please refresh and try again.');
             }
-            return res.json();
+            const data = await res.json();
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || 'Server error occurred during triage.');
+            }
+            return data;
         });
 
         // Step 2: NLP & Vector Similarity
