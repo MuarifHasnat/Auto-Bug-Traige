@@ -18,11 +18,16 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
     if not developers:
         return assigned_to, reason
 
+    # Defensive normalization so None values never cause AttributeError
+    selected_language = (selected_language or "auto").strip().lower()
+    feature = (feature or "General").strip()
+    full_text = (full_text or "").strip()
+
     language_key = {
         "c++": "cpp",
         "javascript": "javascript",
         "typescript": "typescript",
-    }.get(selected_language.lower(), selected_language.lower())
+    }.get(selected_language, selected_language)
 
     available = [
         dev for dev in developers
@@ -45,11 +50,11 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
 
     language_for_history = language_key.lower()
     for dev in available:
-        dev_skills = dev.get("skills", "").lower().split()
+        dev_skills = (dev.get("skills") or "").lower().split()
         active_tasks = int(dev.get("active_tasks", 0) or 0)
         capacity = int(dev.get("capacity", 5) or 5)
-        resolved_features = [item.lower() for item in dev.get("resolved_features", [])]
-        resolved_languages = [item.lower() for item in dev.get("resolved_languages", [])]
+        resolved_features = [str(item).lower() for item in (dev.get("resolved_features") or []) if item]
+        resolved_languages = [str(item).lower() for item in (dev.get("resolved_languages") or []) if item]
         feature_history = min(3, resolved_features.count(feature.lower()))
         language_history = min(2, resolved_languages.count(language_for_history))
 

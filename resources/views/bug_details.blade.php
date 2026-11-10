@@ -182,6 +182,33 @@
                             <span><b>Developer Guidance:</b> Click <b>"Open in GitHub"</b> on the suspected file to open it directly in the project's repository. Inspect the logic causing the anomaly shown in the screenshot, apply the necessary code changes, and mark the issue resolved on Kanban.</span>
                         </div>
                     </section>
+                @else
+                    @php
+                        $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+                        $repoUrl = 'https://github.com/' . $baseSlug;
+                    @endphp
+                    <section class="rounded-3xl border border-sky-200 bg-sky-50/50 p-6 shadow-xs">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">🔍</span>
+                            <h2 class="text-sm font-bold text-sky-950">Project Repository & Developer Guidance</h2>
+                        </div>
+                        <p class="text-xs text-sky-800 leading-relaxed">
+                            Explore the project's GitHub repository components to inspect code associated with {{ $bug->detected_feature ?? 'this feature' }}:
+                        </p>
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white border border-sky-200 p-3.5 shadow-2xs">
+                            <div class="min-w-0 flex-1">
+                                <span class="font-mono text-xs font-bold text-slate-900">📦 {{ $baseSlug }}</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Feature Component: {{ $bug->detected_feature ?? 'General' }}</p>
+                            </div>
+                            <a href="{{ $repoUrl }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2 transition shadow-xs">
+                                <span>Open in GitHub</span> ↗
+                            </a>
+                        </div>
+                        <div class="mt-3.5 p-3 rounded-xl bg-white/80 border border-sky-200 text-xs text-sky-950 flex items-start gap-2.5">
+                            <span class="text-base shrink-0">💡</span>
+                            <span><b>Developer Guidance:</b> Click <b>"Open in GitHub"</b> to view the repository, locate the relevant view/controller for {{ $bug->detected_feature ?? 'this component' }}, make the necessary code fixes, and move the task to Done.</span>
+                        </div>
+                    </section>
                 @endif
 
                 <!-- 3. AI Code Diagnostics & Fix Recommendations -->
@@ -220,6 +247,20 @@
                                             <p class="mt-1 text-slate-600">{{ $suggestion['detail'] ?? '' }}</p>
                                         </div>
                                     @endforeach
+                                </div>
+                            </div>
+                        @else
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-2">
+                                <p class="text-xs font-bold text-amber-950">Developer Action Recommendations:</p>
+                                <div class="space-y-2">
+                                    <div class="rounded-xl bg-white border border-amber-200 p-3 text-xs">
+                                        <p class="font-bold text-slate-800">1. Inspect Repository Component</p>
+                                        <p class="mt-1 text-slate-600">Open the repository in GitHub to review event handlers, request validation, and view templates for {{ $bug->detected_feature ?? 'this feature' }}.</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white border border-amber-200 p-3 text-xs">
+                                        <p class="font-bold text-slate-800">2. Check Network & Exception Logs</p>
+                                        <p class="mt-1 text-slate-600">Inspect server logs and browser network requests during {{ strtolower($bug->title) }} to verify endpoint responses and exception traces.</p>
+                                    </div>
                                 </div>
                             </div>
                         @endif

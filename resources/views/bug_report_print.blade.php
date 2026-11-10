@@ -45,7 +45,43 @@
             <b>Suggested fixes (review before applying)</b><ul>
             @foreach($bug->triage['code_help']['fix_suggestions'] as $suggestion)<li><b>{{ $suggestion['title'] ?? 'Suggestion' }}:</b> {{ $suggestion['detail'] ?? '' }}</li>@endforeach
             </ul>
+        @else
+            <b>Developer action recommendations</b><ul>
+                <li><b>Inspect Repository Component:</b> Open the relevant GitHub source files to verify logic handling {{ $bug->detected_feature ?? 'this feature' }}.</li>
+                <li><b>Check Logs & Network:</b> Inspect server error logs and browser console network calls to locate runtime exceptions.</li>
+            </ul>
         @endif
+    </div>
+
+    @php
+        $suspectedFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
+        $projectRepo = \Illuminate\Support\Facades\DB::table('projects')->where('id', $bug->project_id)->value('github_repo');
+        $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+    @endphp
+    <h2>Suspected Culprit Files (GitHub Root Cause Locator)</h2>
+    <div class="box">
+        @if(!empty($suspectedFiles))
+            <ul style="margin: 0; padding-left: 20px;">
+                @foreach($suspectedFiles as $file)
+                    @php
+                        $fPath = $file['path'] ?? (is_string($file) ? $file : '');
+                        $fConf = $file['confidence'] ?? 92;
+                        $fReason = $file['reason'] ?? 'Matched project repository component';
+                        $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/main/' . ltrim($fPath, '/'));
+                    @endphp
+                    <li style="margin-bottom: 8px;">
+                        <b>📄 {{ $fPath }}</b> ({{ $fConf }}% Match) — {{ $fReason }}<br>
+                        <a href="{{ $ghLink }}" target="_blank" style="color: #2563eb; text-decoration: underline; font-size: 12px;">Open in GitHub ↗ ({{ $ghLink }})</a>
+                    </li>
+                @endforeach
+            </ul>
+        @else
+            @php
+                $repoUrl = 'https://github.com/' . $baseSlug;
+            @endphp
+            <p><b>Target Repository:</b> <a href="{{ $repoUrl }}" target="_blank" style="color: #2563eb; text-decoration: underline;">{{ $repoUrl }} ↗</a></p>
+        @endif
+        <p class="muted" style="margin-top: 10px; margin-bottom: 0;"><b>💡 Developer Guidance:</b> Open the suspected files or repository in GitHub, inspect the code causing the anomaly, implement fixes, and mark the issue resolved on Kanban.</p>
     </div>
     @if(!empty($bug->triage['code_help']['fixed_code']))
         <h2>Submitted code (unchanged)</h2><pre>{{ $bug->triage['code_help']['fixed_code'] }}</pre>

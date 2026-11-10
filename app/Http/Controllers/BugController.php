@@ -765,7 +765,7 @@ class BugController extends Controller
                 'screenshot_path' => $screenshotPath,
                 'source_file_path' => $sourceFilePath,
                 'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
-                'detected_feature' => $aiResult['feature'] ?? null,
+                'detected_feature' => $aiResult['feature'] ?? ($aiResult['code_help']['feature'] ?? 'General'),
                 'triage_result' => json_encode($aiResult, JSON_THROW_ON_ERROR),
                 'created_at' => now(),
                 'updated_at' => now(),

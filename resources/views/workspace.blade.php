@@ -741,10 +741,16 @@
             try {
                 const suggestions = JSON.parse(data.getAttribute('data-fix-suggestions') || '[]');
                 if (suggestions.length === 0) {
-                    const empty = document.createElement('li');
-                    empty.className = 'text-slate-700';
-                    empty.textContent = 'No specific fix suggestion was identified. The submitted code remains unchanged.';
-                    suggestionsList.appendChild(empty);
+                    const defaultSuggestions = [
+                        { title: '1. Inspect Repository Files', detail: 'Open culprit files on GitHub to inspect event listeners, templates, and route controllers.' },
+                        { title: '2. Check Logs & Network Calls', detail: 'Verify browser console network errors and backend exception logs to isolate failure traces.' }
+                    ];
+                    defaultSuggestions.forEach(s => {
+                        const item = document.createElement('li');
+                        item.className = 'rounded-lg border border-amber-200 bg-white/80 p-2.5';
+                        item.innerHTML = `<p class="font-bold">${s.title}</p><p class="mt-1">${s.detail}</p>`;
+                        suggestionsList.appendChild(item);
+                    });
                 }
                 suggestions.forEach((suggestion) => {
                     const item = document.createElement('li');
@@ -792,20 +798,31 @@
                         const filePath = typeof f === 'string' ? f : (f.path || '');
                         left.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">📄</span><span class="font-mono text-[11px] font-semibold text-slate-800 truncate">${filePath}</span>`;
                         item.appendChild(left);
-                        if (f && f.github_url) {
+                        let ghUrl = (f && f.github_url) ? f.github_url : null;
+                        if (!ghUrl && filePath) {
+                            ghUrl = `https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/${filePath.replace(/^\//, '')}`;
+                        }
+                        if (ghUrl) {
                             const link = document.createElement('a');
-                            link.href = f.github_url;
+                            link.href = ghUrl;
                             link.target = '_blank';
                             link.rel = 'noreferrer noopener';
                             link.className = 'inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition';
-                            link.innerHTML = `<span>View on GitHub</span> ↗`;
+                            link.innerHTML = `<span>Open in GitHub</span> ↗`;
                             item.appendChild(link);
                         }
                         suspectedList.appendChild(item);
                     });
                     suspectedSection.classList.remove('hidden');
                 } else {
-                    suspectedSection.classList.add('hidden');
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between gap-2 rounded-lg bg-white border border-sky-200 px-2.5 py-1.5 text-xs';
+                    item.innerHTML = `<span class="text-slate-600 text-[11px]">Inspect project repository components:</span>
+                        <a href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition">
+                            <span>Open in GitHub</span> ↗
+                        </a>`;
+                    suspectedList.appendChild(item);
+                    suspectedSection.classList.remove('hidden');
                 }
             }
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No submitted code provided.';

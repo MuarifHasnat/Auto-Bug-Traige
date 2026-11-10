@@ -74,6 +74,24 @@ class TriageScenarioTests(unittest.TestCase):
         result = self.triage("Slow page", "Performance latency makes the page slow")
         self.assertEqual("Performance", result["code_help"]["feature"])
 
+    def test_triage_resilience_with_none_values_and_screenshot(self):
+        # Scenario matching user issue #ABT-65: 'submit req not open', 'crush', selected_language None
+        result = analyze_report({
+            "title": "submit req not open",
+            "description": "crush",
+            "code_snippet": "",
+            "selected_language": None,
+            "developers": self.developers,
+            "past_bugs": [],
+            "screenshot_path": None,
+        })
+        self.assertIsNotNone(result)
+        self.assertIn("assigned_to", result)
+        self.assertNotEqual("Unassigned", result["assigned_to"])
+        self.assertGreater(len(result.get("suspected_files", [])), 0)
+        self.assertTrue(result["code_help"].get("suggested_fix_available"))
+        self.assertGreater(len(result["code_help"].get("fix_suggestions", [])), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
