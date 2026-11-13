@@ -58,10 +58,11 @@
                 <details class="group relative">
                     <summary class="min-h-10 cursor-pointer list-none rounded px-2 py-2 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600">More <span aria-hidden="true" class="ml-1 group-open:inline-block group-open:rotate-180">⌄</span></summary>
                     <div class="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#comparison">What it does</a>
                         <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#roles">For teams</a>
-                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#locator">GitHub file hints</a>
-                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#setup-heading">Setup steps</a>
-                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#data-policy">Scope &amp; data</a>
+                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#requirements">Setup requirements</a>
+                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#faq">FAQ</a>
+                        <a class="block rounded-lg px-3 py-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#data-policy">Privacy &amp; data</a>
                     </div>
                 </details>
             </nav>
@@ -93,151 +94,74 @@
                 <a href="#features" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Features</a>
                 <a href="#workflow" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Workflow</a>
                 <a href="#demo" class="shrink-0 rounded-lg bg-amber-50 px-3 py-2 text-amber-900 hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Demo</a>
+                <a href="#comparison" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">What it does</a>
                 <a href="#roles" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">For teams</a>
-                <a href="#locator" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">GitHub hints</a>
-                <a href="#setup-heading" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Setup</a>
-                <a href="#data-policy" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Scope &amp; data</a>
+                <a href="#requirements" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Requirements</a>
+                <a href="#faq" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">FAQ</a>
+                <a href="#data-policy" class="shrink-0 rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600">Privacy &amp; data</a>
             </div>
         </nav>
     </header>
 
     <!-- Main Content -->
     <main>
-        <!-- Hero Section -->
-        <section class="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <!-- Announcement Chip -->
-                <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs mb-6">
-                    <span class="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
-                    <span>AI-assisted bug triage</span>
-                    <span class="text-indigo-300">•</span>
-                    <span class="text-indigo-900 font-extrabold">For QA and engineering teams</span>
+        <!-- Jira-inspired product hero -->
+        <section class="bg-white pb-16 pt-10 sm:pb-20 sm:pt-16">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+                    <div class="lg:col-span-7">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-800">
+                            <span class="h-2 w-2 rounded-full bg-blue-600" aria-hidden="true"></span>
+                            Bug triage for QA and engineering teams
+                        </div>
+                        <h1 class="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-[-0.04em] text-slate-950 sm:text-5xl lg:text-[4.25rem]">
+                            Turn bug reports into <span class="text-blue-700">clear next steps.</span>
+                        </h1>
+                        <p class="mt-6 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
+                            Give developers the reproduction details, priority, likely code area, and owner they need to start investigating.
+                        </p>
+                        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                            <a href="/signup" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-blue-700 px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">
+                                Create workspace <span aria-hidden="true">→</span>
+                            </a>
+                            <a href="#demo" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-7 py-3 text-sm font-bold text-slate-900 transition hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">
+                                Explore the sample <span aria-hidden="true">↗</span>
+                            </a>
+                        </div>
+                        <p class="mt-4 text-xs text-slate-600">Managers create projects. Developers and testers can sign up and join a team.</p>
+                    </div>
+
+                    <aside aria-label="Example triage result" class="relative lg:col-span-5">
+                        <div class="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-100 via-indigo-50 to-sky-100 blur-xl" aria-hidden="true"></div>
+                        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-sm text-white" aria-hidden="true">⚡</span>
+                                    <div><p class="text-xs font-extrabold text-slate-900">Triage overview</p><p class="text-[10px] text-slate-500">Illustrative sample · ABT-104</p></div>
+                                </div>
+                                <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-200">Needs review</span>
+                            </div>
+                            <div class="space-y-4 bg-slate-50/80 p-5">
+                                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                    <div class="flex items-center justify-between gap-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bug report</p><span class="rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-800">High priority</span></div>
+                                    <h2 class="mt-2 text-sm font-extrabold text-slate-950">Checkout fails after token refresh</h2>
+                                    <p class="mt-1.5 text-xs leading-relaxed text-slate-600">Payment confirmation freezes and returns a 401 error. Reproduction notes and screenshot are attached.</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="rounded-2xl border border-slate-200 bg-white p-3.5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Likely file</p><code class="mt-2 block break-all text-[10px] font-semibold text-blue-800">PaymentService.php</code></div>
+                                    <div class="rounded-2xl border border-slate-200 bg-white p-3.5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Suggested owner</p><p class="mt-2 text-xs font-extrabold text-slate-900">Payments team</p><p class="mt-0.5 text-[10px] text-slate-500">Skill and workload match</p></div>
+                                </div>
+                                <p class="px-1 text-[10px] leading-relaxed text-slate-500">Example output only. File hints and assignment suggestions need human review.</p>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
 
-                <!-- Main Headline -->
-                <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#0F172A] tracking-tight max-w-4xl mx-auto leading-[1.1]">
-                    Turn bug reports into
-                    <span class="block bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 bg-clip-text text-transparent">clear next steps.</span>
-                </h1>
-
-                <!-- Subtitle -->
-                <p class="mt-5 text-sm sm:text-base lg:text-lg text-[#64748B] max-w-2xl mx-auto leading-relaxed">
-                    QA reports an issue in plain language. Developers get its priority, likely code area, and a clear owner in one place.
-                </p>
-
-                <!-- Dual CTAs & Trust Badges -->
-                <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <a href="/signup" class="w-full min-h-12 sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-700 to-blue-700 px-6 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-indigo-600/30 hover:from-indigo-800 hover:to-blue-800 transition hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-indigo-700 focus-visible:ring-offset-2">
-                        <span>Create workspace</span>
-                        <span>→</span>
-                    </a>
-                    <a href="#demo" class="w-full min-h-12 sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-[#CBD5E1] bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] hover:bg-[#F8FAFC] transition shadow-xs focus-visible:ring-2 focus-visible:ring-indigo-700">
-                        <span>Explore the sample</span><span aria-hidden="true">↗</span>
-                    </a>
-                </div>
-
-                <!-- Concrete product outcomes -->
-                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
-                        <div class="text-lg sm:text-xl font-black text-indigo-700">Repro steps</div>
-                        <div class="text-xs font-bold text-slate-600 mt-0.5">QA evidence in one report</div>
-                    </div>
-                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
-                        <div class="text-lg sm:text-xl font-black text-emerald-700">Syntax checks</div>
-                        <div class="text-xs font-bold text-slate-600 mt-0.5">When a checker is available</div>
-                    </div>
-                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
-                        <div class="text-lg sm:text-xl font-black text-blue-700">Likely files</div>
-                        <div class="text-xs font-bold text-slate-600 mt-0.5">Hints from a linked repository</div>
-                    </div>
-                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
-                        <div class="text-lg sm:text-xl font-black text-purple-700">Clear owner</div>
-                        <div class="text-xs font-bold text-slate-600 mt-0.5">Skill and workload context</div>
-                    </div>
-                </div>
-
-                <!-- Hero Product Visual Mockup -->
-                <div class="mt-14 max-w-5xl mx-auto rounded-3xl border border-[#CBD5E1] bg-white p-2.5 sm:p-4 shadow-2xl glow-effect text-left">
-                    <!-- Window chrome -->
-                    <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-3 px-2">
-                        <div class="flex items-center gap-2">
-                            <span class="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
-                            <span class="h-3 w-3 rounded-full bg-amber-500 inline-block"></span>
-                            <span class="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
-                            <span class="ml-2 text-xs font-bold text-[#64748B] font-mono-code">Illustrative triage preview · #ABT-104</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Example triage output
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- 3-Column Triage Preview Card -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 sm:p-4 bg-[#F8FAFC] rounded-2xl mt-3">
-                        <!-- Col 1: QA Submission -->
-                        <div class="rounded-xl border border-[#E2E8F0] bg-white p-4 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono-code">1. Tester Report (QA)</span>
-                                <span class="rounded bg-slate-100 text-[10px] font-bold px-1.5 py-0.5 text-slate-600">Black-Box</span>
-                            </div>
-                            <h4 class="text-xs font-bold text-[#0F172A]">OAuth token refresh failure on cart checkout</h4>
-                            <p class="text-[11px] text-[#64748B] leading-relaxed">
-                                Tester clicked "Confirm Payment". Screen froze with 401 error. Screenshot attached with console log.
-                            </p>
-                            <div class="rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 p-2 text-center">
-                                <span class="text-xs">📸</span>
-                                <span class="text-[10px] font-bold text-indigo-700 ml-1">checkout-error-401.png</span>
-                            </div>
-                        </div>
-
-                        <!-- Col 2: AI Autonomous Analysis -->
-                        <div class="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 space-y-2.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-indigo-600 font-mono-code">2. AI Diagnostics</span>
-                                <span class="rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5">High / Blocker</span>
-                            </div>
-                            <div class="space-y-1.5 text-[11px]">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-slate-500">Duplicate Check:</span>
-                                    <span class="font-mono-code font-bold text-emerald-600">Score 0.12 (Unique)</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-slate-500">Syntax Scanner:</span>
-                                    <span class="font-bold text-indigo-600">Verified Exception Pattern</span>
-                                </div>
-                                <div class="rounded-lg bg-sky-50 border border-sky-200 p-2 mt-2">
-                                    <div class="text-[10px] font-bold text-sky-800 flex items-center gap-1">
-                                        <span>🔍 Suspected GitHub Culprit:</span>
-                                    </div>
-                                    <span class="font-mono-code text-[10px] font-bold text-sky-900 block truncate mt-0.5">
-                                        app/Services/PaymentService.php
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Col 3: Smart Assignment -->
-                        <div class="rounded-xl border border-[#E2E8F0] bg-white p-4 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono-code">3. Developer Dispatch</span>
-                                <span class="rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5">Assigned</span>
-                            </div>
-                            <div class="flex items-center gap-2.5">
-                                <div class="h-8 w-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center font-bold text-xs text-indigo-700">
-                                    AL
-                                </div>
-                                <div>
-                                    <div class="text-xs font-bold text-[#0F172A]">Alice Developer</div>
-                                    <div class="text-[10px] text-[#64748B]">Backend · Payments · Auth</div>
-                                </div>
-                            </div>
-                            <div class="rounded-lg bg-slate-50 border border-slate-200 p-2 text-[10px] text-slate-600 leading-relaxed">
-                                <span class="font-bold text-slate-800">Rationale:</span> Matched domain tags 'auth', 'payment', 'token' with Alice's stack. Workload: 1 active task.
-                            </div>
-                        </div>
-                    </div>
+                <div class="mt-14 grid grid-cols-2 gap-3 border-t border-slate-200 pt-6 md:grid-cols-4 md:gap-5">
+                    <div class="rounded-2xl bg-slate-50 px-4 py-4"><p class="text-sm font-extrabold text-blue-800">Repro steps</p><p class="mt-1 text-xs text-slate-600">QA evidence in one report</p></div>
+                    <div class="rounded-2xl bg-slate-50 px-4 py-4"><p class="text-sm font-extrabold text-emerald-800">Syntax clues</p><p class="mt-1 text-xs text-slate-600">When a checker is available</p></div>
+                    <div class="rounded-2xl bg-slate-50 px-4 py-4"><p class="text-sm font-extrabold text-indigo-800">Likely files</p><p class="mt-1 text-xs text-slate-600">Hints from a linked repository</p></div>
+                    <div class="rounded-2xl bg-slate-50 px-4 py-4"><p class="text-sm font-extrabold text-violet-800">Clear owner</p><p class="mt-1 text-xs text-slate-600">Skill and workload context</p></div>
                 </div>
             </div>
         </section>
@@ -258,6 +182,28 @@
                     <li class="rounded-2xl border border-slate-200 bg-slate-50 p-4"><span class="text-xs font-bold text-indigo-700">03 · TEAM</span><p class="mt-1 text-sm font-semibold text-slate-900">Add developers and testers, then start filing or reviewing reports.</p></li>
                 </ol>
                 <p class="mt-3 text-xs leading-relaxed text-slate-600">Developers and testers can also create an account; a manager must add them to a project before they can access its workspace.</p>
+                <div id="requirements" class="mt-8 scroll-mt-28 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-7">
+                    <div class="max-w-2xl">
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-800">Before you start</p>
+                        <h3 class="mt-2 text-xl font-extrabold tracking-tight text-slate-950">Setup requirements</h3>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-600">A manager can start without connecting GitHub. Linking a repository adds file-path clues to triage.</p>
+                    </div>
+                    <div class="mt-5 grid gap-3 md:grid-cols-3">
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <h4 class="text-sm font-extrabold text-slate-900">Application</h4>
+                            <p class="mt-2 text-xs leading-relaxed text-slate-600">PHP 8.2+, Laravel 12, Python 3, a database, and configured file storage. Use the included setup guide for local or hosted deployment.</p>
+                        </article>
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <h4 class="text-sm font-extrabold text-slate-900">Supported checks</h4>
+                            <p class="mt-2 text-xs leading-relaxed text-slate-600">Python, PHP, JavaScript, TypeScript, C, C++, Java, Kotlin, and SQLite SQL. Matching parsers or compilers must be installed for each check.</p>
+                        </article>
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <h4 class="text-sm font-extrabold text-slate-900">Repository access</h4>
+                            <p class="mt-2 text-xs leading-relaxed text-slate-600">GitHub is optional. Public repository paths can be looked up; private repositories need a server-side GitHub token configured by the operator.</p>
+                        </article>
+                    </div>
+                    <p class="mt-4 text-xs leading-relaxed text-slate-500">SQL checks validate SQLite syntax only. Missing language tools make that language check unavailable; the app reports when a checker is missing.</p>
+                </div>
             </div>
         </section>
 
@@ -419,6 +365,37 @@
             </div>
         </section>
 
+        <!-- Clear feature scope and limitations -->
+        <section id="comparison" aria-labelledby="comparison-heading" class="scroll-mt-24 border-y border-slate-200 bg-white py-16 sm:py-20">
+            <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+                <div class="max-w-3xl">
+                    <p class="text-xs font-bold uppercase tracking-wider text-blue-800">Clear expectations</p>
+                    <h2 id="comparison-heading" class="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Helpful triage, with human review</h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">See what the current product can help your team do—and where a person still needs to make the call.</p>
+                </div>
+                <div class="mt-7 grid gap-4 md:grid-cols-2">
+                    <article class="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6">
+                        <h3 class="flex items-center gap-2 text-base font-extrabold text-slate-950"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-sm text-white" aria-hidden="true">✓</span> What it helps with</h3>
+                        <ul class="mt-4 space-y-3 text-sm leading-relaxed text-slate-700">
+                            <li>Collect reproduction steps and screenshots in a shared bug report.</li>
+                            <li>Suggest a priority and surface reports that may be duplicates.</li>
+                            <li>Run available syntax checks and show likely repository file paths.</li>
+                            <li>Recommend an owner using team skills and current workload.</li>
+                        </ul>
+                    </article>
+                    <article class="rounded-3xl border border-amber-200 bg-amber-50/60 p-6">
+                        <h3 class="flex items-center gap-2 text-base font-extrabold text-slate-950"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-amber-700 text-sm text-white" aria-hidden="true">!</span> What it does not guarantee</h3>
+                        <ul class="mt-4 space-y-3 text-sm leading-relaxed text-slate-700">
+                            <li>It does not prove root cause or confirm a suspected file is faulty.</li>
+                            <li>It does not execute submitted code or verify runtime behavior, security, or business logic.</li>
+                            <li>It does not automatically delete duplicate reports or apply suggested code fixes.</li>
+                            <li>Its checks depend on installed language tools and configured repository access.</li>
+                        </ul>
+                    </article>
+                </div>
+            </div>
+        </section>
+
         <!-- Role-Based Workflows -->
         <section id="roles" class="py-20 bg-white border-y border-[#E2E8F0]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -427,8 +404,9 @@
                         TAILORED EXPERIENCES
                     </span>
                     <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">
-                        Designed for Every Role on the Team
+                        One workflow, three clear roles
                     </h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">Each person sees the work they need to move a bug from report to resolution.</p>
                 </div>
 
                 <div class="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -438,14 +416,14 @@
                             <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 font-black">👑</span>
                             <div>
                                 <h3 class="text-sm font-extrabold text-[#0F172A]">Engineering Manager</h3>
-                                <p class="text-[11px] text-[#64748B]">Command Center & Strategy</p>
+                                <p class="text-[11px] text-[#64748B]">Set up the project and team</p>
                             </div>
                         </div>
                         <ul class="space-y-2 text-xs text-[#475569]">
-                            <li class="flex items-start gap-2"><span>•</span> Create projects & configure GitHub repositories.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Add developers with domain skill taxonomy.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Monitor team workload & override AI assignments.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Review duplicate detections & triage metrics.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Create a project and optionally connect its repository.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Add developers and testers to the project.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Review suggested priority, duplicates, and assignments.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Track the team queue and change assignments when needed.</li>
                         </ul>
                     </div>
 
@@ -455,14 +433,14 @@
                             <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700 font-black">💻</span>
                             <div>
                                 <h3 class="text-sm font-extrabold text-[#0F172A]">Software Developer</h3>
-                                <p class="text-[11px] text-[#64748B]">Fix with Context & Clarity</p>
+                                <p class="text-[11px] text-[#64748B]">Investigate assigned issues</p>
                             </div>
                         </div>
                         <ul class="space-y-2 text-xs text-[#475569]">
-                            <li class="flex items-start gap-2"><span>•</span> Focused queue of issues assigned directly to them.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Dedicated issue details page (`/bugs/{id}`) with screenshot.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Direct links to suspect GitHub culprit files.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Clarification Q&A thread with QA tester.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Review assigned issues with reproduction details and screenshots.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Check syntax output and repository file hints where available.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Ask the reporter for clarification in the issue thread.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Update issue status as investigation progresses.</li>
                         </ul>
                     </div>
 
@@ -472,14 +450,14 @@
                             <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-black">🧪</span>
                             <div>
                                 <h3 class="text-sm font-extrabold text-[#0F172A]">QA Black-Box Tester</h3>
-                                <p class="text-[11px] text-[#64748B]">Zero-Friction Bug Filing</p>
+                                <p class="text-[11px] text-[#64748B]">Report with useful evidence</p>
                             </div>
                         </div>
                         <ul class="space-y-2 text-xs text-[#475569]">
-                            <li class="flex items-start gap-2"><span>•</span> Report bugs in plain natural language.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Drag-and-drop or paste screenshots (<kbd class="font-mono-code bg-white px-1 py-0.5 rounded border border-slate-200">Ctrl+V</kbd>).</li>
-                            <li class="flex items-start gap-2"><span>•</span> Receive instant AI confirmation & syntax feedback.</li>
-                            <li class="flex items-start gap-2"><span>•</span> Answer developer clarification requests.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Describe the issue in plain language with reproduction steps.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Attach or paste a screenshot as evidence.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Review the triage summary and status updates.</li>
+                            <li class="flex items-start gap-2"><span>•</span> Answer developer questions in the issue thread.</li>
                         </ul>
                     </div>
                 </div>
@@ -490,25 +468,61 @@
         <section id="data-policy" aria-labelledby="scope-heading" class="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="max-w-3xl">
-                    <p class="text-xs font-bold uppercase tracking-wider text-indigo-700">Scope and data</p>
-                    <h2 id="scope-heading" class="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Know what the prototype does</h2>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-700">Triage results are suggestions for people to review. Syntax checks cannot confirm program logic, security, or runtime behavior; submitted programs are not executed.</p>
+                    <p class="text-xs font-bold uppercase tracking-wider text-indigo-700">Trust and data</p>
+                    <h2 id="scope-heading" class="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Understand how your information is handled</h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-700">AutoBugTriage is a prototype. Triage suggestions need human review and are not a substitute for debugging, security review, or tests.</p>
                 </div>
                 <div class="mt-7 grid gap-4 lg:grid-cols-2">
                     <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <h3 class="text-base font-bold text-slate-900">Language checks</h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">The configured checks cover Python, PHP, JavaScript, TypeScript, C, C++, Java, Kotlin, and SQL (SQLite dialect). The required local parser or compiler must be installed; otherwise that check may be unavailable.</p>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">SQL checks use SQLite syntax and do not validate other database dialects or schema behavior.</p>
+                        <h3 class="text-base font-bold text-slate-900">Where data is processed</h3>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-700">Account details and bug reports are stored in the configured app database. Screenshots and uploaded files use the configured file storage. Report text and code are passed to the local Python triage process.</p>
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <h3 class="text-base font-bold text-slate-900">GitHub access</h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">A repository link is optional. Without one, the app cannot suggest repository files. Public repository paths can be indexed without a GitHub login. Private repositories require an operator-configured server-side GitHub token.</p>
+                        <h3 class="text-base font-bold text-slate-900">External services</h3>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-700">Repository paths are requested from GitHub when lookup is used. If Gemini vision is configured by the operator, screenshots are sent to Google for image analysis. Do not submit secrets or sensitive production data.</p>
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2">
-                        <h3 class="text-base font-bold text-slate-900">Privacy and data handling</h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">Account details and bug reports are stored in the app database; uploaded source files and screenshots are stored on the configured file storage. Report text and code are passed to the app’s local Python triage process. If the operator configures Gemini vision, screenshots are sent to Google for image analysis. Repository paths are requested from GitHub when repository lookup is used.</p>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">The deployment operator controls storage, backups, and retention. This project does not currently publish a separate formal privacy policy or retention schedule. Do not submit secrets or sensitive production data.</p>
+                        <h3 class="text-base font-bold text-slate-900">Prototype limitations</h3>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-700">The operator controls storage, backups, and retention. A separate formal privacy policy, retention schedule, and public uptime commitment are not currently published. The app does not run submitted code, and syntax checks cannot confirm logic, security, or runtime behavior.</p>
                     </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Frequently asked questions -->
+        <section id="faq" aria-labelledby="faq-heading" class="scroll-mt-24 bg-white py-16 sm:py-20">
+            <div class="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[.8fr_1.2fr] lg:px-8">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-blue-800">FAQ</p>
+                    <h2 id="faq-heading" class="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Common questions</h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">Need more detail? See the setup guide or open an issue on GitHub.</p>
+                    <a href="https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex min-h-10 items-center font-bold text-blue-800 hover:text-blue-950 focus-visible:ring-2 focus-visible:ring-blue-700">Read the setup guide <span class="ml-1" aria-hidden="true">↗</span></a>
+                </div>
+                <div class="divide-y divide-slate-200 border-y border-slate-200">
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Can developers and testers create their own accounts?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">Yes. They can sign up with their role, then a manager must add their account to a project before they can access its work.</p>
+                    </details>
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Do I need to connect GitHub?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">No. GitHub is optional. Linking a repository enables file-path hints; private repositories need a server-side token configured by the app operator.</p>
+                    </details>
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Which languages can be checked?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">Python, PHP, JavaScript, TypeScript, C, C++, Java, Kotlin, and SQLite SQL. The matching parser or compiler must be installed; SQL checks do not validate other database dialects.</p>
+                    </details>
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Are AI triage results always correct?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">No. Priority, duplicate, file, and owner results are suggestions. Review them with the report and project context before acting.</p>
+                    </details>
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Does the app execute submitted code?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">No. It runs available syntax and static checks only. It does not test runtime behavior or prove that the code is safe or logically correct.</p>
+                    </details>
+                    <details class="group py-4">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-700"><span>Where can I learn about data handling?</span><span class="text-xl text-blue-700 transition group-open:rotate-45" aria-hidden="true">+</span></summary>
+                        <p class="mt-3 pr-8 text-sm leading-relaxed text-slate-600">The <a href="#data-policy" class="font-semibold text-blue-800 underline underline-offset-2">Trust and data section</a> describes what is stored and which external services may receive information.</p>
+                    </details>
                 </div>
             </div>
         </section>
@@ -539,29 +553,47 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-[#E2E8F0] py-12">
-        <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-xs">
-                    ⚡
-                </div>
+    <footer class="border-t border-slate-200 bg-slate-950 text-white">
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
                 <div>
-                    <span class="text-sm font-extrabold text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></span>
-                    <span class="text-xs text-[#64748B] block">Smart Bug Triage System (SBTS)</span>
+                    <a href="/" class="inline-flex items-center gap-2.5 rounded focus-visible:ring-2 focus-visible:ring-white">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white" aria-hidden="true">⚡</span>
+                        <span class="text-base font-extrabold">AutoBug<span class="text-blue-300">Triage</span></span>
+                    </a>
+                    <p class="mt-4 max-w-xs text-sm leading-relaxed text-slate-300">A practical bug handoff workspace for QA and engineering teams.</p>
+                    <p class="mt-3 text-xs text-slate-400">Prototype · No public uptime commitment</p>
                 </div>
+                <nav aria-label="Product links">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Product</h2>
+                    <ul class="mt-4 space-y-3 text-sm font-medium text-slate-200">
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#features">Features</a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#workflow">Workflow demo</a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#comparison">What it does</a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#requirements">Setup requirements</a></li>
+                    </ul>
+                </nav>
+                <nav aria-label="Resources">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Resources</h2>
+                    <ul class="mt-4 space-y-3 text-sm font-medium text-slate-200">
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/README.md" target="_blank" rel="noopener noreferrer">Documentation <span aria-hidden="true">↗</span></a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/issues" target="_blank" rel="noopener noreferrer">Contact / feedback <span aria-hidden="true">↗</span></a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/commits/main" target="_blank" rel="noopener noreferrer">Version history <span aria-hidden="true">↗</span></a></li>
+                    </ul>
+                </nav>
+                <nav aria-label="Trust and help">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Trust &amp; help</h2>
+                    <ul class="mt-4 space-y-3 text-sm font-medium text-slate-200">
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#data-policy">Privacy &amp; data handling</a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#faq">Frequently asked questions</a></li>
+                        <li><a class="rounded hover:text-white focus-visible:ring-2 focus-visible:ring-white" href="#roles">For managers, developers &amp; testers</a></li>
+                    </ul>
+                </nav>
             </div>
-
-            <nav aria-label="Footer links" class="flex flex-wrap gap-x-5 gap-y-3 text-sm font-semibold text-slate-700">
-                <a class="rounded hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/README.md" target="_blank" rel="noopener noreferrer">Documentation ↗</a>
-                <a class="rounded hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-                <a class="rounded hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/issues" target="_blank" rel="noopener noreferrer">Contact / feedback ↗</a>
-                <a class="rounded hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="#data-policy">Privacy &amp; data handling</a>
-                <a class="rounded hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600" href="https://github.com/MuarifHasnat/Auto-Bug-Traige/commits/main" target="_blank" rel="noopener noreferrer">Version &amp; updates ↗</a>
-            </nav>
-
-            <div class="text-xs text-slate-600 sm:text-right">
-                <p>Prototype · No public uptime commitment</p>
-                <p class="mt-1">© {{ date('Y') }} AutoBugTriage</p>
+            <div class="mt-10 flex flex-col gap-2 border-t border-slate-800 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+                <p>© {{ date('Y') }} AutoBugTriage. Product preview.</p>
+                <p>Review triage suggestions before taking action.</p>
             </div>
         </div>
     </footer>
