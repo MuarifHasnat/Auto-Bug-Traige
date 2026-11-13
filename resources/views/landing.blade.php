@@ -10,37 +10,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        html { scroll-padding-top: 5rem; }
-        body { background: #f7f8fc; }
-        .hero-glow { background: radial-gradient(ellipse at 78% 12%, rgba(129, 140, 248, .2), transparent 34%), radial-gradient(ellipse at 8% 34%, rgba(56, 189, 248, .12), transparent 30%); }
-        .hero-grid { background-image: linear-gradient(rgba(99,102,241,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,.035) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 88%); }
-        .glow-effect { box-shadow: 0 28px 90px -34px rgba(49, 46, 129, .34), 0 0 0 1px rgba(99, 102, 241, .08); }
+        .glow-effect {
+            box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.25);
+        }
         .gradient-border {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(14, 165, 233, 0.1));
         }
-        .preview-float { animation: preview-float 7s ease-in-out infinite; }
-        .soft-pulse { animation: soft-pulse 2.8s ease-in-out infinite; }
-        .hero-layout { display: flex; flex-direction: column; }
-        .hero-layout > :nth-child(1) { order: 1; }
-        .hero-layout > :nth-child(2) { order: 2; }
-        .hero-layout > :nth-child(3) { order: 3; }
-        .hero-layout > :nth-child(4) { order: 4; }
-        .hero-layout > :nth-child(6) { order: 5; }
-        .hero-layout > :nth-child(5) { order: 6; }
-        @keyframes preview-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        @keyframes soft-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.18); } 50% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } }
-        #features .grid > div, #roles .grid > div, #demo .grid > div { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
-        #features .grid > div:hover, #roles .grid > div:hover, #demo .grid > div:hover { transform: translateY(-5px); border-color: rgba(129,140,248,.55); box-shadow: 0 18px 45px -25px rgba(49,46,129,.35); }
-        @media (min-width: 1024px) {
-            .hero-layout { display: grid; grid-template-columns: minmax(0,.92fr) minmax(0,1.08fr); column-gap: 3.25rem; align-items: center; text-align: left; }
-            .hero-layout > :nth-child(1) { grid-column: 1; grid-row: 1; }
-            .hero-layout > :nth-child(2) { grid-column: 1; grid-row: 2; max-width: 100%; margin-left: 0; margin-right: 0; font-size: clamp(3rem, 4vw, 4.3rem); line-height: 1.04; letter-spacing: -.055em; }
-            .hero-layout > :nth-child(3) { grid-column: 1; grid-row: 3; margin-left: 0; margin-right: 0; }
-            .hero-layout > :nth-child(4) { grid-column: 1; grid-row: 4; justify-content: flex-start; flex-wrap: wrap; }
-            .hero-layout > :nth-child(5) { grid-column: 1 / -1; grid-row: 5; width: 100%; max-width: none; margin-top: 2rem; }
-            .hero-layout > :nth-child(6) { grid-column: 2; grid-row: 1 / 5; width: 100%; margin-top: 0; }
-        }
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
     </style>
 </head>
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] bg-dot-grid selection:bg-indigo-500 selection:text-white font-sans antialiased">
@@ -99,14 +74,11 @@
     <!-- Main Content -->
     <main>
         <!-- Hero Section -->
-        <section class="relative isolate pt-12 pb-16 sm:pt-16 sm:pb-20 overflow-hidden hero-glow">
-            <div class="pointer-events-none absolute inset-0 -z-10 hero-grid"></div>
-            <div class="pointer-events-none absolute -right-40 top-20 -z-10 h-96 w-96 rounded-full bg-indigo-300/20 blur-3xl"></div>
-            <div class="pointer-events-none absolute -left-40 bottom-8 -z-10 h-80 w-80 rounded-full bg-sky-300/20 blur-3xl"></div>
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center hero-layout">
+        <section class="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 <!-- Announcement Chip -->
-                <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/80 px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-indigo-700 shadow-sm backdrop-blur mb-6">
-                    <span class="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse soft-pulse"></span>
+                <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs mb-6">
+                    <span class="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
                     <span>Empirical AI Research Prototype</span>
                     <span class="text-indigo-300">•</span>
                     <span class="text-indigo-900 font-extrabold">Autonomous Bug Triage & Root Cause Intelligence</span>
@@ -143,27 +115,27 @@
                 </div>
 
                 <!-- Metrics Strip -->
-                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 max-w-4xl mx-auto rounded-3xl border border-white bg-white/75 p-2 shadow-lg shadow-slate-200/60 backdrop-blur">
-                    <div class="p-4 rounded-2xl bg-white/50 text-center transition hover:bg-indigo-50/70">
+                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
                         <div class="text-2xl font-black text-indigo-600 font-mono-code">100%</div>
                         <div class="text-xs font-bold text-[#64748B] mt-0.5">Project Tenant Isolation</div>
                     </div>
-                    <div class="p-4 rounded-2xl bg-white/50 text-center transition hover:bg-emerald-50/70">
+                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
                         <div class="text-2xl font-black text-emerald-600 font-mono-code">Sub-Sec</div>
                         <div class="text-xs font-bold text-[#64748B] mt-0.5">Zero-Shot AI Inference</div>
                     </div>
-                    <div class="p-4 rounded-2xl bg-white/50 text-center transition hover:bg-blue-50/70">
+                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
                         <div class="text-2xl font-black text-blue-600 font-mono-code">AST + Repo</div>
                         <div class="text-xs font-bold text-[#64748B] mt-0.5">GitHub Culprit Locator</div>
                     </div>
-                    <div class="p-4 rounded-2xl bg-white/50 text-center transition hover:bg-purple-50/70">
+                    <div class="p-4 rounded-2xl border border-[#E2E8F0] bg-white/60 backdrop-blur-sm text-center">
                         <div class="text-2xl font-black text-purple-600 font-mono-code">Balance</div>
                         <div class="text-xs font-bold text-[#64748B] mt-0.5">Workload-Aware Dispatch</div>
                     </div>
                 </div>
 
                 <!-- Hero Product Visual Mockup -->
-                <div class="mt-14 max-w-5xl mx-auto rounded-3xl border border-white bg-white/80 p-2.5 sm:p-4 shadow-2xl glow-effect text-left backdrop-blur-xl preview-float">
+                <div class="mt-14 max-w-5xl mx-auto rounded-3xl border border-[#CBD5E1] bg-white p-2.5 sm:p-4 shadow-2xl glow-effect text-left">
                     <!-- Window chrome -->
                     <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-3 px-2">
                         <div class="flex items-center gap-2">
