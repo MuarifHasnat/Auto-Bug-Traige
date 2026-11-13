@@ -159,16 +159,45 @@
                 </div>
             </div>
 
+            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
+                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
+                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
+                    @endif
+                </div>
+                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
+                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
+                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
+                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
+                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
+                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
+                </form>
+            </section>
+
             <!-- 4-Step Quick Workflow Guide for Team & Managers -->
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                <div class="flex items-center justify-between mb-3">
+            <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <div class="flex items-center gap-2">
                         <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
-                        <h3 class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wider">Smart Bug Tracker: দ্রুত কাজের ৪টি ধাপ (Quick Workflow)</h3>
+                        <span>Smart Bug Tracker · দ্রুত কাজের ৪টি ধাপ (Quick Workflow)</span>
                     </div>
-                    <span class="text-[11px] font-semibold text-indigo-600">Complete AI-Driven Workflow</span>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
+                </summary>
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
@@ -201,7 +230,7 @@
                         <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">কানবান বোর্ডে কার্ড ড্র্যাগ করে স্ট্যাটাস চেঞ্জ করুন, ফিক্স প্রিভিউ দেখুন এবং টিম আলোচনা চালান।</p>
                     </a>
                 </div>
-            </div>
+            </details>
 
             <!-- Empty Project State with Clear Guide Buttons (if 0 bugs in project) -->
             @if($stats['total'] === 0)
@@ -225,7 +254,7 @@
             @endif
 
             <!-- Top Row: 4 Interactive Bento KPI Cards with Trends & Direct Filters -->
-            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
                 <!-- 1. Total Issues -->
                 <a href="/workspace" class="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition card-hover-lift block">
                     <div class="flex items-center justify-between text-[#64748B]">
@@ -246,6 +275,16 @@
                     <p class="mt-1 text-[11px] font-semibold text-amber-600 group-hover:underline">Filter active queue →</p>
                 </a>
 
+                <a href="/workspace" class="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-amber-300 hover:shadow-md transition card-hover-lift block">
+                    <div class="flex items-center justify-between text-[#64748B]"><p class="text-xs font-bold uppercase tracking-wider">Unresolved</p><span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Needs a decision</span></div>
+                    <p class="mt-3 text-3xl font-extrabold text-amber-600 font-mono-code">{{ $stats['unresolved'] }}</p><p class="mt-1 text-[11px] text-slate-500">All issues not in a done status</p>
+                </a>
+
+                <a href="/workspace" class="group rounded-2xl border border-rose-200 bg-rose-50/50 p-5 shadow-xs hover:border-rose-400 hover:shadow-md transition card-hover-lift block">
+                    <div class="flex items-center justify-between text-rose-800"><p class="text-xs font-bold uppercase tracking-wider">Overdue</p><span class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold">7+ days open</span></div>
+                    <p class="mt-3 text-3xl font-extrabold text-rose-700 font-mono-code">{{ $stats['overdue'] }}</p><p class="mt-1 text-[11px] text-rose-800">Unresolved reports older than 7 days</p>
+                </a>
+
                 <!-- 3. Resolved Bugs -->
                 @php
                     $rate = $stats['total'] > 0 ? round(($stats['resolved'] / $stats['total']) * 100) : 0;
@@ -259,18 +298,63 @@
                     <p class="mt-1 text-[11px] text-emerald-700 font-semibold font-mono-code">View closed tickets →</p>
                 </a>
 
-                <!-- 4. Critical / High Priority -->
+                <!-- High Priority -->
                 <a href="/workspace?priority=High" class="group rounded-2xl border-2 border-rose-200 bg-rose-50/40 p-5 shadow-xs hover:border-rose-400 hover:shadow-md transition card-hover-lift block relative overflow-hidden">
                     <div class="flex items-center justify-between text-rose-800">
                         <div class="flex items-center gap-1.5">
                             <span class="h-2 w-2 rounded-full bg-rose-600 animate-ping"></span>
-                            <p class="text-xs font-bold uppercase tracking-wider">Critical / High</p>
+                            <p class="text-xs font-bold uppercase tracking-wider">High priority</p>
                         </div>
                         <span class="rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5">🔥 Urgent</span>
                     </div>
                     <p class="mt-3 text-3xl font-extrabold text-rose-700 font-mono-code">{{ $stats['high'] }}</p>
                     <p class="mt-1 text-[11px] text-rose-800 font-semibold group-hover:underline">Filter critical issues →</p>
                 </a>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs xl:col-span-5" aria-labelledby="bug-trend-title">
+                    <div class="mb-3 flex items-start justify-between gap-3"><div><h2 id="bug-trend-title" class="text-sm font-bold text-slate-900">Bug ingestion & resolution trend</h2><p class="mt-1 text-xs text-slate-500">Daily reports and resolutions · last 7 days</p></div><span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">Project data</span></div>
+                    <div class="overflow-hidden">
+                        <svg viewBox="0 0 700 210" role="img" aria-label="Daily bug reports and resolved bugs over the last seven days" class="h-52 w-full">
+                            <defs><linearGradient id="createdFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#6557E8" stop-opacity=".22"/><stop offset="100%" stop-color="#6557E8" stop-opacity="0"/></linearGradient></defs>
+                            @foreach([34, 77, 120, 164] as $gridY)<line x1="28" y1="{{ $gridY }}" x2="670" y2="{{ $gridY }}" stroke="#E8EDF5" stroke-dasharray="4 6"/>@endforeach
+                            @if($stats['total'] > 0)
+                                <path d="{{ $trendCreatedPath }} L670 164 L28 164 Z" fill="url(#createdFill)"/>
+                                <path d="{{ $trendCreatedPath }}" fill="none" stroke="#6254E8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="{{ $trendResolvedPath }}" fill="none" stroke="#42A5E8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                @foreach($trendCoordinates as $point)<circle cx="{{ $point['x'] }}" cy="{{ $point['created_y'] }}" r="4" fill="#6254E8"/><circle cx="{{ $point['x'] }}" cy="{{ $point['resolved_y'] }}" r="4" fill="#42A5E8"/>@endforeach
+                            @else
+                                <text x="350" y="102" text-anchor="middle" fill="#64748B" font-size="14">Reports will appear here as bugs are added</text>
+                            @endif
+                            @foreach($bugTrend as $index => $day)<text x="{{ 28 + ($index * 107) }}" y="194" text-anchor="middle" fill="#64748B" font-size="12">{{ $day['label'] }}</text>@endforeach
+                        </svg>
+                    </div>
+                    <div class="mt-1 flex flex-wrap gap-4 text-[11px] font-semibold text-slate-600"><span class="inline-flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-indigo-600"></i> Bugs reported</span><span class="inline-flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-sky-500"></i> Bugs resolved</span></div>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs xl:col-span-3" aria-labelledby="triage-summary-title">
+                    <div class="mb-4"><h2 id="triage-summary-title" class="text-sm font-bold text-slate-900">Bug priority summary</h2><p class="mt-1 text-xs text-slate-500">Current issue distribution</p></div>
+                    <div class="space-y-4">
+                        @foreach([['High', 'bg-rose-500', 'text-rose-700'], ['Medium', 'bg-amber-400', 'text-amber-700'], ['Low', 'bg-sky-500', 'text-sky-700']] as [$priority, $dotColor, $textColor])
+                            @php $count = (int) ($priorityCounts[$priority] ?? 0); $percent = $stats['total'] ? (int) round($count / $stats['total'] * 100) : 0; @endphp
+                            <div><div class="mb-1.5 flex items-center justify-between text-xs"><span class="inline-flex items-center gap-2 font-semibold text-slate-700"><i class="h-2.5 w-2.5 rounded-full {{ $dotColor }}"></i>{{ $priority }}</span><span class="font-bold {{ $textColor }}">{{ $count }} <span class="font-medium text-slate-400">({{ $percent }}%)</span></span></div><div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full {{ $dotColor }}" style="width: {{ $percent }}%"></div></div></div>
+                        @endforeach
+                    </div>
+                    <div class="mt-5 border-t border-slate-100 pt-3"><p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">AI reviews waiting</p><p class="mt-1 text-2xl font-extrabold text-indigo-700">{{ $triageReviewQueue->count() }}</p><p class="text-[11px] text-slate-500">Duplicate and assignment suggestions</p></div>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs xl:col-span-4" aria-labelledby="workload-title">
+                    <div class="mb-4 flex items-center justify-between gap-2"><div><h2 id="workload-title" class="text-sm font-bold text-slate-900">Team workload allocation</h2><p class="mt-1 text-xs text-slate-500">Active assigned bugs by developer</p></div><a href="/add-developers" class="text-[11px] font-bold text-indigo-700 hover:underline">Manage →</a></div>
+                    <div class="space-y-3">
+                        @forelse($developers as $developer)
+                            @php $tasks = (int) ($liveWorkloads[$developer->name] ?? 0); $capacity = (int) ($developer->capacity ?? 5); $loadPct = min(100, (int) round($tasks / max(1, $capacity) * 100)); $barColor = $loadPct >= 85 ? 'bg-rose-500' : 'bg-gradient-to-r from-indigo-700 to-violet-500'; @endphp
+                            <div><div class="mb-1 flex items-center justify-between gap-2 text-xs"><span class="truncate font-semibold text-slate-800">{{ $developer->name }}</span><span class="shrink-0 text-[10px] font-semibold text-slate-500">{{ $tasks }} / {{ $capacity }}</span></div><div class="h-2.5 overflow-hidden rounded-full bg-violet-50"><div class="h-full rounded-full {{ $barColor }}" style="width: {{ $loadPct }}%" aria-label="{{ $loadPct }} percent of capacity"></div></div></div>
+                        @empty
+                            <div class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-xs text-slate-500">Add developers to see project workload.</div>
+                        @endforelse
+                    </div>
+                </section>
             </div>
 
             <section class="rounded-2xl border border-indigo-100 bg-white p-5 shadow-xs">
@@ -287,12 +371,11 @@
             </section>
 
             <!-- Bottom Row: 60% / 40% Split View -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Left 60% (col-span-7): Recent Issues Activity Table -->
-                <section class="lg:col-span-7 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xs">
+            <div class="grid grid-cols-1 gap-6">
+                <section class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xs">
                     <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-4 mb-4">
                         <div class="flex items-center gap-2">
-                            <h2 class="text-sm font-bold text-[#0F172A]">Recent Issues Activity Feed</h2>
+                            <h2 class="text-sm font-bold text-[#0F172A]">Recent high-impact bugs</h2>
                             <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold font-mono-code text-slate-600">
                                 {{ $recentBugs->count() }}
                             </span>
@@ -322,7 +405,7 @@
                                     @endphp
                                     <tr class="hover:bg-[#F8FAFC] transition">
                                         <td class="py-3 font-mono-code font-bold text-indigo-600">
-                                            #ABT-{{ $bug->id }}
+                                            <a href="{{ route('bugs.show', $bug->id) }}" class="hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500">#ABT-{{ $bug->id }}</a>
                                         </td>
                                         <td class="py-3 font-semibold text-[#0F172A] max-w-[200px] truncate" title="{{ $bug->title }}">
                                             {{ $bug->title }}
@@ -360,52 +443,42 @@
                         </table>
                     </div>
                 </section>
+            </div>
 
-                <!-- Right 40% (col-span-5): Team Workload & Bottleneck Widget -->
-                <section class="lg:col-span-5 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xs">
-                    <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-4 mb-4">
-                        <h2 class="text-sm font-bold text-[#0F172A]">Team Workload & Capacity</h2>
-                        <a href="/add-developers" class="text-xs font-bold text-indigo-600 hover:underline">
-                            Manage Team
-                        </a>
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <section class="rounded-3xl border border-amber-200 bg-white p-6 shadow-xs" aria-labelledby="triage-review-title">
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+                        <div><div class="flex items-center gap-2"><h2 id="triage-review-title" class="text-sm font-bold text-slate-900">Triage review queue</h2><span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">{{ $triageReviewQueue->count() }} pending</span></div><p class="mt-1 text-xs text-slate-500">Review AI duplicate flags and developer assignment suggestions.</p></div>
+                        <a href="/workspace" class="text-xs font-bold text-indigo-700 hover:underline">Open board →</a>
                     </div>
-
-                    <div class="space-y-4">
-                        @forelse($developers as $developer)
-                            @php
-                                $tasks = (int) $developer->active_tasks;
-                                $capacity = (int) ($developer->capacity ?? 5);
-                                $loadPct = round(($tasks / max(1, $capacity)) * 100);
-                                $color = $loadPct >= 85 ? 'bg-rose-500' : ($loadPct <= 60 ? 'bg-emerald-500' : 'bg-indigo-500');
-                                $pill = $loadPct >= 85 ? 'Overloaded ⚠️' : ($loadPct <= 60 ? 'Available' : 'Optimal');
-                                $pillColor = $loadPct >= 85 ? 'text-rose-700 bg-rose-50' : ($loadPct <= 60 ? 'text-emerald-700 bg-emerald-50' : 'text-indigo-700 bg-indigo-50');
-                            @endphp
-                            <div class="rounded-xl border border-slate-200 p-3.5 bg-[#F8FAFC]">
-                                <div class="flex items-center justify-between text-xs mb-2">
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600/15 text-[11px] font-bold text-indigo-700 font-mono-code">
-                                            {{ strtoupper(substr($developer->name, 0, 1)) }}
-                                        </div>
-                                        <span class="font-bold text-[#0F172A]">{{ $developer->name }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-mono-code text-[11px] text-[#64748B]">
-                                            {{ $tasks }}/{{ $capacity }} Tasks
-                                        </span>
-                                        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold {{ $pillColor }}">
-                                            {{ $pill }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                                    <div class="h-2 rounded-full {{ $color }} transition-all duration-500" 
-                                         style="width: {{ min(100, max(8, $loadPct)) }}%"></div>
-                                </div>
-                            </div>
+                    <div class="space-y-2">
+                        @forelse($triageReviewQueue as $item)
+                            <a href="{{ route('bugs.show', $item->id) }}" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 hover:border-indigo-300 hover:bg-indigo-50/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <div class="min-w-0"><p class="truncate text-xs font-bold text-slate-900">#ABT-{{ $item->id }} · {{ $item->title }}</p><div class="mt-1 flex flex-wrap gap-1.5">
+                                    @if($item->predicted_duplicate)<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">Duplicate suggestion · {{ number_format((float) $item->duplicate_similarity_score, 0) }}% match</span>@endif
+                                    @if($item->recommended_assignee && !$item->assignment_feedback)<span class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">Suggested owner: {{ $item->recommended_assignee }}</span>@endif
+                                </div></div><span class="shrink-0 text-[11px] font-semibold text-indigo-700">Review →</span>
+                            </a>
                         @empty
-                            <p class="text-xs text-slate-400 italic py-6 text-center">No developers registered in this project.</p>
+                            <div class="rounded-xl border border-dashed border-slate-300 px-4 py-7 text-center"><p class="text-sm font-semibold text-slate-800">Nothing needs review</p><p class="mt-1 text-xs text-slate-500">New triage suggestions will appear here.</p></div>
                         @endforelse
                     </div>
+                </section>
+
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs" aria-labelledby="project-activity-title">
+                    <div class="mb-4 flex items-center justify-between border-b border-slate-200 pb-4"><div><h2 id="project-activity-title" class="text-sm font-bold text-slate-900">Project activity</h2><p class="mt-1 text-xs text-slate-500">Recent bug creation, assignment, and status changes.</p></div><span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Latest {{ $projectActivity->count() }}</span></div>
+                    <ol class="space-y-3">
+                        @forelse($projectActivity as $activity)
+                            <li class="flex gap-3 text-xs">
+                                <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>
+                                <div class="min-w-0 flex-1"><p class="text-slate-700"><span class="font-bold text-slate-900">{{ $activity->actor_name }}</span> {{ str_replace('_', ' ', $activity->event_type) }} <a href="{{ route('bugs.show', $activity->bug_id) }}" class="font-semibold text-indigo-700 hover:underline">#ABT-{{ $activity->bug_id }} · {{ $activity->title }}</a></p>
+                                    @if($activity->from_value || $activity->to_value)<p class="mt-0.5 truncate text-[11px] text-slate-500">{{ $activity->from_value ?: '—' }} → {{ $activity->to_value ?: '—' }}</p>@endif
+                                </div><time class="shrink-0 text-[10px] text-slate-500" datetime="{{ $activity->created_at }}">{{ \Illuminate\Support\Carbon::parse($activity->created_at)->diffForHumans() }}</time>
+                            </li>
+                        @empty
+                            <li class="rounded-xl border border-dashed border-slate-300 px-4 py-7 text-center"><p class="text-sm font-semibold text-slate-800">No activity yet</p><p class="mt-1 text-xs text-slate-500">Project changes will be listed here.</p></li>
+                        @endforelse
+                    </ol>
                 </section>
             </div>
 

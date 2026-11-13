@@ -615,18 +615,88 @@ class BugController extends Controller
     {
         abort_unless(Auth::user()?->role === 'manager', 403);
 
-        $projectId = $this->currentProjectId();
+        $currentProjectId = $this->currentProjectId();
+        $projects = $this->accessibleProjects();
+        $filters = $request->validate([
+            'project_id' => ['nullable', 'integer'],
+            'priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
+            'status' => ['nullable', 'string', 'max:80'],
+            'assignee' => ['nullable', 'string', 'max:100'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'account_search' => ['nullable', 'string', 'max:100'],
+            'account_role' => ['nullable', 'in:all,manager,developer,tester'],
+        ]);
+        $projectId = $currentProjectId;
+        if (!empty($filters['project_id'])) {
+            $selectedProject = $projects->firstWhere('id', (int) $filters['project_id']);
+            abort_unless($selectedProject, 403, 'You are not assigned to that project.');
+            $projectId = (int) $selectedProject->id;
+            $this->setCurrentProject($request, $selectedProject);
+        }
         $workflowStatuses = $this->ensureProjectWorkflow($projectId);
         $doneStatuses = $workflowStatuses->where('is_done', true)->pluck('name')->all();
         $activeStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
         $stats = [
             'total' => DB::table('bugs')->where('project_id', $projectId)->count(),
             'open' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $activeStatuses)->count(),
+            'unresolved' => DB::table('bugs')->where('project_id', $projectId)->whereNotIn('status', $doneStatuses)->count(),
             'resolved' => DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $doneStatuses)->count(),
             'high' => DB::table('bugs')->where('project_id', $projectId)->where('priority', 'High')->count(),
+            // This prototype has no due-date field; flag unresolved reports untouched for 7+ days.
+            'overdue' => DB::table('bugs')->where('project_id', $projectId)->whereNotIn('status', $doneStatuses)->where('created_at', '<', now()->subDays(7))->count(),
         ];
-        $recentBugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(8)->get();
+        $bugQuery = DB::table('bugs')->where('project_id', $projectId);
+        if (!empty($filters['priority'])) $bugQuery->where('priority', $filters['priority']);
+        if (!empty($filters['status'])) {
+            abort_unless($workflowStatuses->contains('name', $filters['status']), 422, 'Choose a status from this project workflow.');
+            $bugQuery->where('status', $filters['status']);
+        }
+        if (!empty($filters['assignee'])) $bugQuery->where('assigned_to', $filters['assignee'] === 'Unassigned' ? null : $filters['assignee']);
+        if (!empty($filters['date_from'])) $bugQuery->whereDate('created_at', '>=', $filters['date_from']);
+        if (!empty($filters['date_to'])) $bugQuery->whereDate('created_at', '<=', $filters['date_to']);
+        $recentBugs = (clone $bugQuery)->orderByRaw("CASE priority WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 ELSE 2 END")
+            ->orderByDesc('created_at')->orderByDesc('id')->limit(8)->get();
         $developers = DB::table('developers')->where('project_id', $projectId)->orderByDesc('active_tasks')->limit(6)->get();
+        $liveWorkloads = DB::table('bugs')->where('project_id', $projectId)->whereIn('status', $activeStatuses)
+            ->whereRaw('is_duplicate = false')->whereNotNull('assigned_to')->select('assigned_to', DB::raw('COUNT(*) as task_count'))
+            ->groupBy('assigned_to')->pluck('task_count', 'assigned_to')->all();
+        $developers = $developers->sortByDesc(fn ($developer) => $liveWorkloads[$developer->name] ?? 0)->values();
+        $availableStatuses = $workflowStatuses->pluck('name');
+        $availableAssignees = DB::table('bugs')->where('project_id', $projectId)->whereNotNull('assigned_to')->distinct()->orderBy('assigned_to')->pluck('assigned_to');
+        $trendStart = now()->subDays(6)->startOfDay();
+        $createdTrend = DB::table('bugs')->where('project_id', $projectId)->where('created_at', '>=', $trendStart)
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')->groupByRaw('DATE(created_at)')->pluck('total', 'day');
+        $resolvedTrend = DB::table('bug_activities')->where('project_id', $projectId)->where('event_type', 'status_changed')
+            ->whereIn('to_value', $doneStatuses)->where('created_at', '>=', $trendStart)
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')->groupByRaw('DATE(created_at)')->pluck('total', 'day');
+        $bugTrend = collect(range(0, 6))->map(function ($offset) use ($trendStart, $createdTrend, $resolvedTrend) {
+            $day = $trendStart->copy()->addDays($offset);
+            $key = $day->toDateString();
+            return ['label' => $day->format('D'), 'date' => $day->format('M j'), 'created' => (int) ($createdTrend[$key] ?? 0), 'resolved' => (int) ($resolvedTrend[$key] ?? 0)];
+        });
+        $trendMax = max(1, (int) $bugTrend->max(fn ($day) => max($day['created'], $day['resolved'])));
+        $trendCoordinates = $bugTrend->values()->map(function ($day, $index) use ($trendMax) {
+            $x = 28 + ($index * 107);
+            return ['x' => $x, 'created_y' => 164 - (int) round(($day['created'] / $trendMax) * 130), 'resolved_y' => 164 - (int) round(($day['resolved'] / $trendMax) * 130)];
+        });
+        $trendCreatedPath = $trendCoordinates->map(fn ($point, $index) => ($index === 0 ? 'M' : 'L').$point['x'].' '.$point['created_y'])->implode(' ');
+        $trendResolvedPath = $trendCoordinates->map(fn ($point, $index) => ($index === 0 ? 'M' : 'L').$point['x'].' '.$point['resolved_y'])->implode(' ');
+        $priorityCounts = DB::table('bugs')->where('project_id', $projectId)->select('priority', DB::raw('COUNT(*) as total'))->groupBy('priority')->pluck('total', 'priority');
+        $projectActivity = DB::table('bug_activities')->join('bugs', 'bugs.id', '=', 'bug_activities.bug_id')
+            ->where('bug_activities.project_id', $projectId)->orderByDesc('bug_activities.created_at')->orderByDesc('bug_activities.id')
+            ->limit(12)->get(['bug_activities.id', 'bug_activities.bug_id', 'bugs.title', 'bug_activities.actor_name', 'bug_activities.event_type', 'bug_activities.from_value', 'bug_activities.to_value', 'bug_activities.created_at']);
+        $triageReviewQueue = DB::table('bug_triage_metrics')->join('bugs', function ($join) {
+            $join->on('bugs.id', '=', 'bug_triage_metrics.bug_id')->on('bugs.project_id', '=', 'bug_triage_metrics.project_id');
+        })->where('bug_triage_metrics.project_id', $projectId)
+            ->where(function ($query) {
+                $query->where(function ($duplicate) {
+                    $duplicate->where('bug_triage_metrics.predicted_duplicate', true)->whereNull('bug_triage_metrics.actual_duplicate');
+                })->orWhere(function ($assignment) {
+                    $assignment->whereNotNull('bug_triage_metrics.recommended_assignee')->whereNull('bug_triage_metrics.assignment_feedback');
+                });
+            })->orderByDesc('bug_triage_metrics.created_at')->limit(8)
+            ->get(['bugs.id', 'bugs.title', 'bugs.status', 'bugs.assigned_to', 'bugs.recommended_assignee', 'bug_triage_metrics.predicted_duplicate', 'bug_triage_metrics.duplicate_similarity_score', 'bug_triage_metrics.assignment_feedback']);
         $metricRows = DB::table('bug_triage_metrics')->where('project_id', $projectId)->get();
         $reviewedAssignments = $metricRows->whereIn('assignment_feedback', ['accepted', 'rejected']);
         $reviewedDuplicates = $metricRows->whereNotNull('actual_duplicate');
@@ -644,11 +714,6 @@ class BugController extends Controller
             'duplicate_recall_percent' => ($truePositives + $falseNegatives) ? (int) round($truePositives / ($truePositives + $falseNegatives) * 100) : null,
         ];
 
-        $projects = $this->accessibleProjects();
-        $filters = $request->validate([
-            'account_search' => ['nullable', 'string', 'max:100'],
-            'account_role' => ['nullable', 'in:all,manager,developer,tester'],
-        ]);
         $accountSearch = trim($filters['account_search'] ?? '');
         $accountRole = $filters['account_role'] ?? 'all';
         $participantIds = $this->projectParticipantIds($projectId);
@@ -672,7 +737,7 @@ class BugController extends Controller
             ->pluck('active_tasks', 'name')
             ->all();
 
-        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts', 'triageEvaluation', 'devWorkloads') + [
+        return view('dashboard', compact('stats', 'recentBugs', 'developers', 'projects', 'accounts', 'accountSearch', 'accountRole', 'totalAccounts', 'triageEvaluation', 'devWorkloads', 'filters', 'availableStatuses', 'availableAssignees', 'projectActivity', 'triageReviewQueue', 'liveWorkloads', 'bugTrend', 'trendMax', 'trendCoordinates', 'trendCreatedPath', 'trendResolvedPath', 'priorityCounts') + [
             'currentProjectId' => $projectId,
         ]);
     }
@@ -697,13 +762,18 @@ class BugController extends Controller
                     return $bug;
                 });
         }
+        $myReports = Auth::user()->role === 'tester'
+            ? DB::table('bugs')->where('project_id', $projectId)->where('reporter_id', Auth::id())
+                ->orderByDesc('updated_at')->orderByDesc('id')->limit(8)
+                ->get(['id', 'title', 'status', 'priority', 'assigned_to', 'triage_state', 'updated_at'])
+            : collect();
         $mode = Auth::user()->role === 'developer' ? 'developer' : 'tester';
 
         $projects = $this->accessibleProjects();
         $currentProject = DB::table('projects')->where('id', $projectId)->first();
         $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
-        return view('ai_agent', compact('bugs', 'assignedBugs', 'mode', 'projects') + [
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects') + [
             'currentProjectId' => $projectId,
             'currentProject' => $currentProject,
             'projectGithubRepo' => $projectGithubRepo,
@@ -717,6 +787,9 @@ class BugController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],
             'description' => ['required', 'string', 'max:5000'],
+            'expected_result' => ['nullable', 'string', 'max:2000'],
+            'reproduction_steps' => ['nullable', 'array', 'max:12'],
+            'reproduction_steps.*' => ['nullable', 'string', 'max:500'],
             'issue_type' => ['required', Rule::in(['Bug', 'Task', 'Story', 'Improvement'])],
             'labels' => ['nullable', 'string', 'max:500'],
             'language' => ['nullable', 'string', 'in:auto,PHP,C++,C,Python,JavaScript,TypeScript,Java,Kotlin,SQL'],
@@ -724,6 +797,15 @@ class BugController extends Controller
             'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'source_file' => ['nullable', 'file', 'mimes:txt,php,blade.php,cpp,c,h,hpp,py,js,ts,java,kt,kts,sql,json,xml,css,html', 'max:5120'],
         ]);
+
+        $reportSections = [];
+        $reproductionSteps = array_values(array_filter(array_map('trim', $data['reproduction_steps'] ?? [])));
+        if ($reproductionSteps) {
+            $reportSections[] = "Steps to reproduce:\n".collect($reproductionSteps)->values()->map(fn ($step, $index) => ($index + 1).'. '.$step)->implode("\n");
+        }
+        if (!empty($data['expected_result'])) $reportSections[] = "Expected behavior:\n".trim($data['expected_result']);
+        $reportSections[] = "Observed behavior:\n".trim($data['description']);
+        $data['description'] = implode("\n\n", $reportSections);
 
         $sourceFilePath = $request->file('source_file')?->store('bug-reports/source', 'local');
         $screenshotPath = $request->file('screenshot')?->store('bug-reports/screenshots', 'local');
@@ -864,6 +946,7 @@ class BugController extends Controller
                 'description' => $data['description'],
                 'priority' => $priority,
                 'status' => $status,
+                'triage_state' => 'complete',
                 'issue_type' => $data['issue_type'],
                 'labels' => json_encode($labels, JSON_THROW_ON_ERROR),
                 'assigned_to' => $assignedTo,
@@ -920,6 +1003,8 @@ class BugController extends Controller
                 'success' => true,
                 'bug_id' => $bugId,
                 'assigned_to' => $assignedTo,
+                'status' => $status,
+                'triage_state' => 'complete',
                 'ai_result' => $aiResult,
                 'redirect_url' => '/bugs/' . $bugId,
                 'message' => 'Bug analyzed and added to the workspace.',
