@@ -10,6 +10,7 @@ Route::get('/login', [BugController::class, 'loginPage'])->name('login');
 Route::post('/login', [BugController::class, 'handleLogin']);
 
 Route::middleware('auth')->group(function () {
+    Route::get('/pending-access', [BugController::class, 'pendingAccessPage'])->name('pending-access');
     Route::get('/create-project', [BugController::class, 'createProjectPage']);
     Route::post('/create-project', [BugController::class, 'handleCreateProject']);
     Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');

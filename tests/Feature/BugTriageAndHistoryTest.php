@@ -49,7 +49,7 @@ class BugTriageAndHistoryTest extends TestCase
                 'code_snippet' => '<?php echo "sample";',
             ])
             ->assertRedirect('/ai-agent')
-            ->assertSessionHas('ai_result');
+            ->assertSessionHas('success');
 
         $bug = DB::table('bugs')->where('project_id', $projectId)->where('title', 'Checkout fails')->first();
         $this->assertNotNull($bug);
@@ -57,6 +57,7 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertSame('High', $bug->priority);
         $this->assertSame('To Do', $bug->status);
         $this->assertSame('Bug', $bug->issue_type);
+        $this->assertSame('complete', $bug->triage_state);
         $this->assertSame(['api', 'checkout'], json_decode($bug->labels, true));
         $this->assertDatabaseHas('bug_triage_metrics', [
             'bug_id' => $bug->id,

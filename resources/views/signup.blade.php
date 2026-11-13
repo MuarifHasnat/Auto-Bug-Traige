@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager Sign Up · AutoBugTriage AI</title>
+    <title>Create an Account · AutoBugTriage AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
@@ -33,18 +33,18 @@
             </div>
         </div>
 
-        <!-- Clean Manager Signup Card -->
+        <!-- Role-based signup card -->
         <div class="rounded-3xl border border-[#E2E8F0] bg-white p-6 sm:p-8 shadow-sm">
             <div class="mb-3 inline-flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-200/80 px-3 py-1 text-xs font-bold text-indigo-700">
-                <span>🛡️</span>
-                <span>Manager Portal — Create Organization Workspace</span>
+                <span>👥</span>
+                <span>Create an account — choose your role</span>
             </div>
 
             <h1 class="text-2xl font-extrabold tracking-tight text-[#0F172A]">
                 Create your workspace
             </h1>
             <p class="mt-1 text-xs text-[#64748B] leading-relaxed">
-                Register as an engineering manager to initiate projects, configure team skills, and launch automated bug triage.
+                Managers create workspaces. Developers and testers can create an account, then join a project through their manager.
             </p>
 
             @if($errors->any())
@@ -57,7 +57,17 @@
             <form action="/signup" method="POST" class="mt-5 space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="signupName">Manager Full Name</label>
+                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="signupRole">I’m signing up as</label>
+                    <select id="signupRole" name="role" required class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs sm:text-sm text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
+                        <option value="manager" @selected(old('role', 'manager') === 'manager')>Manager · create a workspace</option>
+                        <option value="developer" @selected(old('role') === 'developer')>Developer · join a team</option>
+                        <option value="tester" @selected(old('role') === 'tester')>QA tester · join a team</option>
+                    </select>
+                    <p id="signupRoleHint" class="mt-1.5 text-[11px] leading-relaxed text-[#64748B]">Create a workspace, then invite your developers and testers.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="signupName">Full name</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,7 +80,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="signupEmail">Official Work Email</label>
+                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="signupEmail">Email address</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,8 +103,9 @@
                             </span>
                             <input type="password" id="signupPass" name="password" required minlength="8" placeholder="••••••••" 
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-10 pr-8 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
-                            <button type="button" onclick="togglePass('signupPass')" aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
-                                👁
+                            <button type="button" data-password-target="signupPass" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+                                <svg data-eye-visible class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7z"/><circle cx="12" cy="12" r="3" stroke-width="1.8"/></svg>
+                                <svg data-eye-hidden class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.25 0 9.75 7 9.75 7a16.7 16.7 0 0 1-3.1 3.9M6.2 6.2C3.7 8 2.25 12 2.25 12s3.5 7 9.75 7a10.8 10.8 0 0 0 4-.75"/></svg>
                             </button>
                         </div>
                     </div>
@@ -109,15 +120,16 @@
                             </span>
                             <input type="password" id="signupConfirmPass" name="password_confirmation" required minlength="8" placeholder="••••••••" 
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-10 pr-8 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
-                            <button type="button" onclick="togglePass('signupConfirmPass')" aria-label="Toggle password confirmation visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
-                                👁
+                            <button type="button" data-password-target="signupConfirmPass" aria-label="Show password confirmation" aria-pressed="false" class="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+                                <svg data-eye-visible class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7z"/><circle cx="12" cy="12" r="3" stroke-width="1.8"/></svg>
+                                <svg data-eye-hidden class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.25 0 9.75 7 9.75 7a16.7 16.7 0 0 1-3.1 3.9M6.2 6.2C3.7 8 2.25 12 2.25 12s3.5 7 9.75 7a10.8 10.8 0 0 0 4-.75"/></svg>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <button type="submit" class="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-3 px-4 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
-                    <span>Launch Organization Workspace</span>
+                    <span id="signupSubmitText">Launch Organization Workspace</span>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                     </svg>
@@ -135,10 +147,40 @@
     </div>
 
     <script>
-        function togglePass(id) {
-            const input = document.getElementById(id);
-            input.type = input.type === 'password' ? 'text' : 'password';
+        const signupRole = document.getElementById('signupRole');
+        const signupRoleHint = document.getElementById('signupRoleHint');
+        const signupSubmitText = document.getElementById('signupSubmitText');
+
+        function updateSignupRoleCopy() {
+            if (signupRole.value === 'manager') {
+                signupRoleHint.textContent = 'Create a workspace, then invite your developers and testers.';
+                signupSubmitText.textContent = 'Launch Organization Workspace';
+            } else if (signupRole.value === 'developer') {
+                signupRoleHint.textContent = 'Create your account, then ask your project manager to add this email to a project.';
+                signupSubmitText.textContent = 'Create developer account';
+            } else {
+                signupRoleHint.textContent = 'Create your account, then ask your project manager to add this email to a project.';
+                signupSubmitText.textContent = 'Create tester account';
+            }
         }
+
+        signupRole.addEventListener('change', updateSignupRoleCopy);
+        updateSignupRoleCopy();
+
+        document.querySelectorAll('[data-password-target]').forEach((button) => {
+            const input = document.getElementById(button.dataset.passwordTarget);
+            if (!input) return;
+
+            button.addEventListener('click', () => {
+                const isRevealed = input.type === 'password';
+                input.type = isRevealed ? 'text' : 'password';
+                button.setAttribute('aria-pressed', String(isRevealed));
+                const label = button.dataset.passwordTarget === 'signupConfirmPass' ? 'password confirmation' : 'password';
+                button.setAttribute('aria-label', `${isRevealed ? 'Hide' : 'Show'} ${label}`);
+                button.querySelector('[data-eye-visible]').classList.toggle('hidden', isRevealed);
+                button.querySelector('[data-eye-hidden]').classList.toggle('hidden', !isRevealed);
+            });
+        });
     </script>
 </body>
 </html>

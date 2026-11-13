@@ -1,3 +1,9 @@
+FROM node:22-alpine AS frontend-assets
+WORKDIR /app
+COPY package.json package-lock.json vite.config.js ./
+COPY resources ./resources
+RUN npm ci && npm run build
+
 FROM php:8.2-apache
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -16,6 +22,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
 COPY . .
+COPY --from=frontend-assets /app/public/build ./public/build
 RUN composer dump-autoload --no-dev --optimize \
     && php artisan package:discover --ansi
 RUN chown -R www-data:www-data storage bootstrap/cache agent \

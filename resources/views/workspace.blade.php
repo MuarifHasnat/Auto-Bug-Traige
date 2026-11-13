@@ -6,6 +6,8 @@
     <title>{{ session('project_name', 'Workspace') }} · Kanban Board</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
+    @vite('resources/js/app.js')
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
     <div class="flex min-h-screen">
@@ -662,6 +664,7 @@
     </div>
 
     <script>
+        window.liveProjectId = @json($currentProjectId);
         function openDrawer(bugId) {
             const container = document.getElementById('drawer-data-' + bugId);
             if (!container) return;
@@ -1217,6 +1220,28 @@
                     }
                 }
             }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          if (window.Echo && window.liveProjectId) {
+            window.Echo.private(`project.${window.liveProjectId}`).listen('.bug.updated', (update) => {
+                let toast = document.getElementById('liveBugUpdateToast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'liveBugUpdateToast';
+                    toast.className = 'fixed bottom-5 right-5 z-[100] max-w-sm rounded-xl border border-indigo-200 bg-white p-4 text-sm shadow-xl';
+                    document.body.appendChild(toast);
+                }
+                const message = document.createElement('p');
+                message.className = 'font-semibold text-slate-800';
+                message.textContent = `Issue #ABT-${update.bug_id} updated: ${update.summary}`;
+                const refresh = document.createElement('button');
+                refresh.type = 'button'; refresh.className = 'mt-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white';
+                refresh.textContent = 'Refresh workspace'; refresh.onclick = () => window.location.reload();
+                toast.replaceChildren(message, refresh);
+            });
+          }
         });
     </script>
 </body>

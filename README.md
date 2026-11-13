@@ -56,7 +56,7 @@ Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run
 
 After configuring the local database, run `php artisan migrate --seed`. This creates a demo project, manager, tester, two developers, sample triaged bugs and activity history. Seeding is safe to repeat and does not clear existing tables; it is disabled when `APP_ENV=production`.
 
-All demo accounts use the password `12345678`:
+Seeded demo accounts are for local development only. They are not created in production. To explore the product without signing in, use the interactive sample on the landing page.
 
 | Role | Email |
 | --- | --- |
@@ -64,7 +64,7 @@ All demo accounts use the password `12345678`:
 | Tester | `demo-tester@example.test` |
 | Developer | `demo.alice@example.test` or `demo.bob@example.test` |
 
-The tester can submit a report, developers can review and update assigned bugs, and the manager can manage the project and reassign bugs.
+In a local seeded environment, the tester can submit a report, developers can review and update assigned bugs, and the manager can manage the project and reassign bugs. Never reuse seeded demo credentials for real accounts.
 
 ### Automated checks
 

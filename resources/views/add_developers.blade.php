@@ -55,110 +55,10 @@
             </div>
         @endif
 
-        <!-- 35% / 65% Two-Column Architecture -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="grid grid-cols-1 gap-6 items-start">
             
-            <!-- Left Column (35% / col-span-4): Add Member Form with Categorized Skill Pills & Password Gen -->
-            <div class="lg:col-span-4 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm sticky top-6">
-                <div class="flex items-center gap-2.5 border-b border-[#E2E8F0] pb-4 mb-4">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-bold text-base border border-indigo-100">
-                        👤
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-[#0F172A]">Add Team Account</h2>
-                        <p class="text-xs text-[#64748B]">Create login credentials for Tester or Developer.</p>
-                    </div>
-                </div>
-
-                <form action="/team-members" method="POST" class="space-y-4">
-                    @csrf
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F172A] mb-1">Full Name</label>
-                        <input type="text" name="name" required placeholder="e.g. Tanvir Hasan" 
-                               class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F172A] mb-1">Email Address</label>
-                        <input type="email" id="newMemberEmail" name="email" required placeholder="member@company.com" 
-                               class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F172A] mb-1">Assigned Role</label>
-                        <select id="roleSelect" name="role" required onchange="handleRoleChange(this.value)" 
-                                class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                            <option value="developer">Developer (Fix Issues & AI Suggestions)</option>
-                            <option value="tester">QA Tester (Submit Reports & Triage)</option>
-                        </select>
-                    </div>
-
-                    <!-- Dynamic Skill Box with Categorized Skill Pills -->
-                    <div id="skillsFieldGroup" class="transition-all duration-300">
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="block text-xs font-bold text-[#0F172A]">Technical Skills (AI Matching)</label>
-                            <span class="text-[10px] text-indigo-600 font-mono-code font-semibold">Click pills to add</span>
-                        </div>
-                        <input type="text" id="skillsInput" name="skills" placeholder="e.g. php laravel auth mysql backend" 
-                               class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white font-mono-code">
-                        
-                        <!-- Categorized Smart Skill Pills -->
-                        <div class="mt-2.5 space-y-1.5 bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0] text-[11px]">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="font-bold text-[#64748B] text-[10px] uppercase">Backend:</span>
-                                <button type="button" onclick="appendSkill('php')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ PHP</button>
-                                <button type="button" onclick="appendSkill('laravel')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Laravel</button>
-                                <button type="button" onclick="appendSkill('python')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Python</button>
-                                <button type="button" onclick="appendSkill('nodejs')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Node.js</button>
-                            </div>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="font-bold text-[#64748B] text-[10px] uppercase">Frontend:</span>
-                                <button type="button" onclick="appendSkill('react')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ React</button>
-                                <button type="button" onclick="appendSkill('vue')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Vue</button>
-                                <button type="button" onclick="appendSkill('tailwind')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Tailwind</button>
-                                <button type="button" onclick="appendSkill('typescript')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ TypeScript</button>
-                            </div>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="font-bold text-[#64748B] text-[10px] uppercase">DB & DevOps:</span>
-                                <button type="button" onclick="appendSkill('mysql')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ MySQL</button>
-                                <button type="button" onclick="appendSkill('postgresql')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ PostgreSQL</button>
-                                <button type="button" onclick="appendSkill('docker')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Docker</button>
-                                <button type="button" onclick="appendSkill('redis')" class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300">+ Redis</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="capacityFieldGroup" class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-                        <label for="memberCapacity" class="block text-xs font-bold text-[#0F172A]">Maximum active issues</label>
-                        <input type="number" id="memberCapacity" name="capacity" min="1" max="100" value="5" class="mt-1.5 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs">
-                        <p class="mt-1 text-[10px] text-slate-500">Automatic assignment stops at this limit and leaves extra work unassigned.</p>
-                    </div>
-
-                    <!-- Password with 1-Click Auto Generator -->
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="block text-xs font-bold text-[#0F172A]">Password</label>
-                            <button type="button" onclick="generatePassword()" class="text-[11px] font-bold text-indigo-600 hover:underline">
-                                ⚡ Auto-Generate Password
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="password" id="memberPass" name="password" required minlength="8" placeholder="••••••••" 
-                                   class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                            <input type="password" id="memberConfirmPass" name="password_confirmation" required minlength="8" placeholder="Confirm ••••" 
-                                   class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                        </div>
-                        <p id="generatedNotice" class="text-[10px] text-emerald-600 font-mono-code font-bold mt-1 hidden"></p>
-                    </div>
-
-                    <button type="submit" class="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 py-2.5 px-4 text-xs font-bold text-slate-950 shadow-sm transition active:scale-[0.99]">
-                        <span>+ Add Team Account</span>
-                    </button>
-                </form>
-            </div>
-
             <!-- Right Column (65% / col-span-8): AI Assignment Training Matrix & Workload Cards -->
-            <div class="lg:col-span-8 space-y-6">
+            <div class="lg:col-span-12 space-y-6">
                 <section class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -167,19 +67,27 @@
                         </div>
                         <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">{{ $registeredAccounts->count() }} registered accounts</span>
                     </div>
-                    <form action="/team-members" method="POST" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <form id="existingAccountForm" action="/team-members" method="POST" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                         @csrf
-                        <label class="sr-only" for="existingTeamAccount">Select registered account</label>
-                        <select id="existingTeamAccount" name="email" required class="min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
-                            <option value="">Select a registered account…</option>
+                        <div class="relative">
+                            <label class="sr-only" for="teamAccountSearch">Search by name or Gmail</label>
+                            <input id="teamAccountSearch" type="search" autocomplete="off" placeholder="Search team accounts by name or email…" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
+                            <input id="selectedTeamEmail" type="hidden" name="email" required>
+                            <div id="teamAccountResults" class="absolute z-20 mt-1 hidden max-h-64 w-full overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-xl" role="listbox" aria-label="Registered team accounts">
                             @foreach($registeredAccounts as $account)
-                                <option value="{{ $account->email }}" @disabled(in_array($account->id, $assignedAccountIds, true))>
-                                    {{ $account->name }} · {{ $account->email }} · {{ $account->role === 'tester' ? 'QA Tester' : 'Developer' }}{{ in_array($account->id, $assignedAccountIds, true) ? ' (already in this project)' : '' }}
-                                </option>
+                                <button type="button" role="option" data-name="{{ strtolower($account->name) }}" data-email="{{ strtolower($account->email) }}" data-account-email="{{ $account->email }}" data-assigned="{{ in_array($account->id, $assignedAccountIds, true) ? 'true' : 'false' }}" class="team-account-option flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50" @disabled(in_array($account->id, $assignedAccountIds, true))>
+                                    <span class="min-w-0"><span class="block truncate text-xs font-semibold text-[#0F172A]">{{ $account->name }}</span><span class="block truncate text-[11px] text-slate-500">{{ $account->email }}</span></span>
+                                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold {{ $account->role === 'developer' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' }}">{{ $account->role === 'tester' ? 'QA Tester' : 'Developer' }}{{ in_array($account->id, $assignedAccountIds, true) ? ' · Added' : '' }}</span>
+                                </button>
                             @endforeach
-                        </select>
-                        <input type="text" name="skills" maxlength="255" placeholder="Developer skills (optional)" class="min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
-                        <button type="submit" @disabled($registeredAccounts->every(fn ($account) => in_array($account->id, $assignedAccountIds, true))) class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Add to project</button>
+                                <p id="teamAccountNoResults" class="hidden px-3 py-3 text-xs text-slate-500">No account matches that name or email.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <input id="selectedTeamLabel" type="text" readonly placeholder="No account selected" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-slate-50 px-3.5 py-2.5 text-xs text-slate-600">
+                            <input type="hidden" name="skills" value="">
+                        </div>
+                        <button id="addExistingAccountButton" type="submit" disabled class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Add to project</button>
                     </form>
                     @if($registeredAccounts->isEmpty())
                         <p class="mt-3 text-xs text-slate-500">No developer or tester accounts have been created yet.</p>
@@ -338,6 +246,56 @@
     </div>
 
     <script>
+        const teamAccountSearch = document.getElementById('teamAccountSearch');
+        const teamAccountResults = document.getElementById('teamAccountResults');
+        const selectedTeamEmail = document.getElementById('selectedTeamEmail');
+        const selectedTeamLabel = document.getElementById('selectedTeamLabel');
+        const existingAccountForm = document.getElementById('existingAccountForm');
+        const addExistingAccountButton = document.getElementById('addExistingAccountButton');
+
+        if (teamAccountSearch) {
+            teamAccountSearch.addEventListener('input', () => {
+                const query = teamAccountSearch.value.trim().toLowerCase();
+                let visibleCount = 0;
+                selectedTeamEmail.value = '';
+                selectedTeamLabel.value = '';
+                addExistingAccountButton.disabled = true;
+                teamAccountResults.querySelectorAll('.team-account-option').forEach((option) => {
+                    const matches = !query || option.dataset.name.includes(query) || option.dataset.email.includes(query);
+                    option.style.display = matches ? 'flex' : 'none';
+                    if (matches) visibleCount++;
+                });
+                document.getElementById('teamAccountNoResults').classList.toggle('hidden', visibleCount !== 0);
+                teamAccountResults.classList.toggle('hidden', query === '');
+            });
+
+            teamAccountSearch.addEventListener('focus', () => {
+                if (teamAccountSearch.value.trim()) teamAccountSearch.dispatchEvent(new Event('input'));
+            });
+
+            teamAccountResults.querySelectorAll('.team-account-option:not(:disabled)').forEach((option) => {
+                option.addEventListener('click', () => {
+                    selectedTeamEmail.value = option.dataset.accountEmail;
+                    selectedTeamLabel.value = option.querySelector('span span').textContent + ' · ' + option.querySelector('span span + span').textContent;
+                    teamAccountSearch.value = option.querySelector('span span').textContent;
+                    teamAccountResults.classList.add('hidden');
+                    addExistingAccountButton.disabled = false;
+                });
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!teamAccountResults.contains(event.target) && event.target !== teamAccountSearch) teamAccountResults.classList.add('hidden');
+            });
+
+            existingAccountForm.addEventListener('submit', (event) => {
+                if (!selectedTeamEmail.value) {
+                    event.preventDefault();
+                    teamAccountSearch.focus();
+                    teamAccountResults.classList.remove('hidden');
+                }
+            });
+        }
+
         function handleRoleChange(role) {
             const group = document.getElementById('skillsFieldGroup');
             const capacityGroup = document.getElementById('capacityFieldGroup');

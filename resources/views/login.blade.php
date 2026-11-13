@@ -74,8 +74,13 @@
                         </span>
                         <input type="password" id="loginPass" name="password" required placeholder="••••••••" 
                                class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
-                        <button type="button" onclick="togglePass('loginPass')" aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
-                            👁
+                        <button type="button" data-password-target="loginPass" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+                            <svg data-eye-visible class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7z"/><circle cx="12" cy="12" r="3" stroke-width="1.8"/>
+                            </svg>
+                            <svg data-eye-hidden class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.25 0 9.75 7 9.75 7a16.7 16.7 0 0 1-3.1 3.9M6.2 6.2C3.7 8 2.25 12 2.25 12s3.5 7 9.75 7a10.8 10.8 0 0 0 4-.75"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -119,16 +124,25 @@
         <p class="text-center text-xs text-[#64748B]">
             Need a new organization? 
             <a href="/signup" class="font-bold text-indigo-600 hover:underline">
-                Create Workspace as Manager
+                Create an account
             </a>
         </p>
     </div>
 
     <script>
-        function togglePass(id) {
-            const input = document.getElementById(id);
-            input.type = input.type === 'password' ? 'text' : 'password';
-        }
+        document.querySelectorAll('[data-password-target]').forEach((button) => {
+            const input = document.getElementById(button.dataset.passwordTarget);
+            if (!input) return;
+
+            button.addEventListener('click', () => {
+                const isRevealed = input.type === 'password';
+                input.type = isRevealed ? 'text' : 'password';
+                button.setAttribute('aria-pressed', String(isRevealed));
+                button.setAttribute('aria-label', isRevealed ? 'Hide password' : 'Show password');
+                button.querySelector('[data-eye-visible]').classList.toggle('hidden', isRevealed);
+                button.querySelector('[data-eye-hidden]').classList.toggle('hidden', !isRevealed);
+            });
+        });
 
         function fillDemo(email, pass) {
             const emailInput = document.getElementById('loginEmail');

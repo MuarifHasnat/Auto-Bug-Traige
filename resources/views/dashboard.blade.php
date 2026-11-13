@@ -6,6 +6,8 @@
     <title>Command Center · AutoBugTriage AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
+    @vite('resources/js/app.js')
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
 <div class="flex min-h-screen">
@@ -101,14 +103,15 @@
             <!-- Center Search with Ctrl+K shortcut -->
             <div class="hidden md:flex items-center">
                 <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
-                    <input type="text" placeholder="Search issues, features, team..." 
+                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
+                    <input id="dashboardQuickSearch" type="search" name="search" form="dashboardQuickSearchForm" aria-label="Search bugs by title or description" placeholder="Search bugs by title or description…"
                            class="w-72 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-1.5 pl-8 pr-14 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
                     <span class="absolute inset-y-0 right-0 flex items-center pr-2">
                         <kbd class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code font-bold text-[#64748B]">Ctrl + K</kbd>
                     </span>
                 </div>
             </div>
+            <form id="dashboardQuickSearchForm" action="/workspace" method="GET" class="hidden"></form>
 
             <!-- Right Live Status Pill -->
             <div class="flex items-center gap-3">
@@ -496,5 +499,26 @@
         </div>
     </main>
 </div>
+<script>
+    window.liveProjectId = @json($currentProjectId);
+    document.addEventListener('DOMContentLoaded', () => {
+        const quickSearch = document.getElementById('dashboardQuickSearch');
+        document.addEventListener('keydown', (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                quickSearch?.focus();
+            }
+        });
+        quickSearch?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !quickSearch.value.trim()) event.preventDefault();
+        });
+
+        if (window.Echo && window.liveProjectId) window.Echo.private(`project.${window.liveProjectId}`).listen('.bug.updated', (update) => {
+            let toast = document.getElementById('liveDashboardToast');
+            if (!toast) { toast = document.createElement('button'); toast.id = 'liveDashboardToast'; toast.className = 'fixed bottom-5 right-5 z-50 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-xl'; toast.onclick = () => window.location.reload(); document.body.appendChild(toast); }
+            toast.textContent = `Issue #ABT-${update.bug_id} changed · click to refresh dashboard`;
+        });
+    });
+</script>
 </body>
 </html>

@@ -29,13 +29,14 @@ class BugController extends Controller
         $data = $request->validate([
             'manager_name' => ['required', 'string', 'max:100'],
             'manager_email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', Rule::in(['manager', 'developer', 'tester'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = \App\Models\User::create([
             'name' => $data['manager_name'],
             'email' => $data['manager_email'],
-            'role' => 'manager',
+            'role' => $data['role'],
             'password' => $data['password'],
         ]);
 
@@ -43,7 +44,22 @@ class BugController extends Controller
         $request->session()->regenerate();
         $request->session()->put('manager_name', $user->name);
 
-        return redirect($user->role === 'manager' ? '/create-project' : ($user->role === 'developer' ? '/workspace' : '/ai-agent'));
+        if ($user->role === 'manager') {
+            return redirect('/create-project');
+        }
+
+        return redirect('/pending-access')->with('success', 'Your account is ready. Ask your project manager to add this email to the team.');
+    }
+
+    public function pendingAccessPage(): View|RedirectResponse
+    {
+        abort_unless(in_array(Auth::user()?->role, ['developer', 'tester'], true), 403);
+
+        if ($this->accessibleProjects()->isNotEmpty()) {
+            return redirect(Auth::user()->role === 'developer' ? '/workspace' : '/ai-agent');
+        }
+
+        return view('pending_access');
     }
 
     public function loginPage(): View
@@ -65,11 +81,16 @@ class BugController extends Controller
         $request->session()->regenerate();
         $request->session()->put('manager_name', Auth::user()->name);
 
-        return redirect(match (Auth::user()->role) {
-            'manager' => '/dashboard',
-            'developer' => '/workspace',
-            default => '/ai-agent',
-        });
+        $user = Auth::user();
+        if ($user->role === 'manager') {
+            return redirect($this->accessibleProjects()->isEmpty() ? '/create-project' : '/dashboard');
+        }
+
+        if ($this->accessibleProjects()->isEmpty()) {
+            return redirect('/pending-access');
+        }
+
+        return redirect($user->role === 'developer' ? '/workspace' : '/ai-agent');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -658,7 +679,7 @@ class BugController extends Controller
 
     public function aiAgentPage(Request $request): View
     {
-        abort_unless(in_array(Auth::user()?->role, ['tester', 'developer'], true), 403);
+        abort_unless(in_array(Auth::user()?->role, ['manager', 'tester', 'developer'], true), 403);
 
         $projectId = $this->currentProjectId();
         $this->ensureProjectWorkflow($projectId);
@@ -691,7 +712,7 @@ class BugController extends Controller
 
     public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        abort_unless(Auth::user()?->role === 'tester', 403);
+        abort_unless(in_array(Auth::user()?->role, ['manager', 'tester'], true), 403);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],

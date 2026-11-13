@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
+if [ "${APP_SERVICE_ROLE:-web}" = "queue" ]; then
+    exec php artisan queue:work database --sleep=2 --tries=3 --timeout=120
+fi
+
+if [ "${APP_SERVICE_ROLE:-web}" = "reverb" ]; then
+    exec php artisan reverb:start --host="${REVERB_SERVER_HOST:-0.0.0.0}" --port="${REVERB_SERVER_PORT:-8080}"
+fi
+
 if ! php -r '
     $key = getenv("APP_KEY") ?: "";
     $cipher = strtolower(getenv("APP_CIPHER") ?: "aes-256-cbc");

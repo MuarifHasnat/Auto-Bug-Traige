@@ -6,6 +6,8 @@
     <title>AI Triage Studio · AutoBugTriage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
+    @vite('resources/js/app.js')
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
 <div class="flex min-h-screen">
@@ -1359,6 +1361,23 @@
             </div>
         </div>
     </div>
+</script>
+<script>
+    window.liveProjectId = @json($currentProjectId);
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.Echo && window.liveProjectId) {
+        window.Echo.private(`project.${window.liveProjectId}`).listen('.bug.updated', (update) => {
+            if (String(update.bug_id) !== String(@json(session('last_bug_id')))) return;
+            const notice = document.createElement('div');
+            notice.className = 'fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-white p-4 text-sm shadow-xl';
+            notice.textContent = `Issue #ABT-${update.bug_id} triage finished. Refresh to view the result.`;
+            const refresh = document.createElement('button');
+            refresh.className = 'ml-3 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white';
+            refresh.textContent = 'Refresh'; refresh.onclick = () => window.location.reload();
+            notice.appendChild(refresh); document.body.appendChild(notice);
+        });
+      }
+    });
 </script>
 </body>
 </html>
