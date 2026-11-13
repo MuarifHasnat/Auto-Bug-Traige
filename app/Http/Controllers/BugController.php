@@ -56,7 +56,7 @@ class BugController extends Controller
         abort_unless(in_array(Auth::user()?->role, ['developer', 'tester'], true), 403);
 
         if ($this->accessibleProjects()->isNotEmpty()) {
-            return redirect(Auth::user()->role === 'developer' ? '/workspace' : '/ai-agent');
+            return redirect(Auth::user()->role === 'developer' ? '/workspace' : '/dashboard');
         }
 
         return view('pending_access');
@@ -90,7 +90,7 @@ class BugController extends Controller
             return redirect('/pending-access');
         }
 
-        return redirect($user->role === 'developer' ? '/workspace' : '/ai-agent');
+        return redirect($user->role === 'developer' ? '/workspace' : '/dashboard');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -613,6 +613,33 @@ class BugController extends Controller
 
     public function dashboardPage(Request $request): View
     {
+        if (Auth::user()?->role === 'tester') {
+            $projectId = $this->currentProjectId();
+            $projects = $this->accessibleProjects();
+            $project = DB::table('projects')->where('id', $projectId)->first();
+            $workflow = $this->ensureProjectWorkflow($projectId);
+            $doneStatuses = $workflow->where('is_done', true)->pluck('name')->all();
+            $searchFilters = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+            $query = trim($searchFilters['q'] ?? '');
+            $reportsQuery = DB::table('bugs')->where('project_id', $projectId)->where('reporter_id', Auth::id());
+            $totalReports = (clone $reportsQuery)->count();
+            $openReports = (clone $reportsQuery)->whereNotIn('status', $doneStatuses)->count();
+            $resolvedReports = (clone $reportsQuery)->whereIn('status', $doneStatuses)->count();
+            $highPriorityReports = (clone $reportsQuery)->where('priority', 'High')->count();
+            $assignedReports = (clone $reportsQuery)->whereNotNull('assigned_to')->where('assigned_to', '!=', 'Unassigned')->count();
+            if ($query !== '') {
+                $reportsQuery->where(function ($search) use ($query) {
+                    $search->where('title', 'like', '%'.$query.'%')->orWhere('description', 'like', '%'.$query.'%');
+                });
+            }
+            $reports = $reportsQuery->orderByDesc('updated_at')->orderByDesc('id')->limit(12)
+                ->get(['id', 'title', 'description', 'status', 'priority', 'assigned_to', 'triage_state', 'updated_at']);
+
+            return view('tester_dashboard', compact('projects', 'project', 'projectId', 'totalReports', 'openReports', 'resolvedReports', 'highPriorityReports', 'assignedReports', 'reports', 'query') + [
+                'currentProjectId' => $projectId,
+            ]);
+        }
+
         abort_unless(Auth::user()?->role === 'manager', 403);
 
         $currentProjectId = $this->currentProjectId();
