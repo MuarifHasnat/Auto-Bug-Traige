@@ -1171,7 +1171,11 @@ class BugController extends Controller
     public function notificationsPage(): View
     {
         $notifications = Auth::user()->notifications()->latest()->paginate(30);
-        return view('notifications', compact('notifications'));
+        $projects = $this->accessibleProjects();
+        $currentProjectId = (int) (session('project_id') ?: ($projects->first()->id ?? 0));
+        $unreadNotificationCount = Auth::user()->unreadNotifications()->count();
+
+        return view('notifications', compact('notifications', 'projects', 'currentProjectId', 'unreadNotificationCount'));
     }
 
     public function openNotification(Request $request, string $id): RedirectResponse
