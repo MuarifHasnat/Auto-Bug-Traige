@@ -207,6 +207,23 @@ class BugController extends Controller
         $project = $this->accessibleProjects()->firstWhere('id', (int) $data['project_id']);
         abort_unless($project, 403, 'You are not assigned to that project.');
 
+        $previousProjectId = (int) $request->session()->get(
+            'last_opened_project_id',
+            $request->session()->get('project_id', 0),
+        );
+        $recentProjectIds = collect($request->session()->get('recent_project_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn ($id) => $id === (int) $project->id)
+            ->prepend((int) $project->id)
+            ->when($previousProjectId > 0 && $previousProjectId !== (int) $project->id, fn ($ids) => $ids->push($previousProjectId)->unique())
+            ->take(8)
+            ->values()
+            ->all();
+        $request->session()->put([
+            'recent_project_ids' => $recentProjectIds,
+            'last_opened_project_id' => (int) $project->id,
+        ]);
+
         $this->setCurrentProject($request, $project);
 
         return back()->with('success', 'Switched to '.$project->name.'.');
