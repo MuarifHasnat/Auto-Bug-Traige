@@ -182,10 +182,17 @@ class BugController extends Controller
             ->whereIn('id', DB::table('project_members')->where('project_id', $projectId)->pluck('user_id'))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'role']);
+        $registeredAccounts = \App\Models\User::query()
+            ->whereIn('role', ['tester', 'developer'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role']);
+        $assignedAccountIds = $teamMembers->pluck('id')->all();
 
         return view('add_developers', [
             'developers' => $developers,
             'teamMembers' => $teamMembers,
+            'registeredAccounts' => $registeredAccounts,
+            'assignedAccountIds' => $assignedAccountIds,
             'projects' => $projects,
             'currentProjectId' => $projectId,
         ]);
