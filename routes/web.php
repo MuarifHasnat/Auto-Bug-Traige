@@ -8,6 +8,7 @@ Route::get('/signup', [BugController::class, 'signupPage'])->name('signup');
 Route::post('/signup', [BugController::class, 'handleSignup']);
 Route::get('/login', [BugController::class, 'loginPage'])->name('login');
 Route::post('/login', [BugController::class, 'handleLogin']);
+Route::get('/u/{id}', [BugController::class, 'sharedProfile'])->whereNumber('id')->name('profile.public');
 
 Route::middleware('auth')->group(function () {
     Route::get('/pending-access', [BugController::class, 'pendingAccessPage'])->name('pending-access');
@@ -16,6 +17,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');
     Route::put('/profile', [BugController::class, 'updateProfile'])->name('profile.update');
     Route::get('/profile', [BugController::class, 'profilePage'])->name('profile.show');
+    Route::get('/profile/photo', [BugController::class, 'profilePhoto'])->name('profile.photo');
     Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->name('projects.sync-github');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);

@@ -19,12 +19,29 @@ class BugController extends Controller
         return view('profile');
     }
 
+    public function profilePhoto(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $path = Auth::user()->profile_photo_path;
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    public function sharedProfile(int $id): View
+    {
+        $profile = \App\Models\User::query()->select(['id', 'name', 'role', 'profile_photo_path'])->findOrFail($id);
+        return view('shared_profile', compact('profile'));
+    }
+
     public function updateProfile(Request $request): RedirectResponse
     {
         $user = Auth::user();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:30'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);
         if ($request->hasFile('profile_photo')) {
@@ -34,6 +51,7 @@ class BugController extends Controller
         unset($data['profile_photo']);
         $user->update($data);
         $request->session()->put('manager_name', $user->name);
+        if ($request->hasFile('profile_photo')) $user->refresh();
         return back()->with('success', 'Profile updated successfully.');
     }
 
