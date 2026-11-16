@@ -70,17 +70,17 @@
                     <form id="existingAccountForm" action="/team-members" method="POST" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                         @csrf
                         <div class="relative">
-                            <label class="sr-only" for="teamAccountSearch">Search by name or Gmail</label>
-                            <input id="teamAccountSearch" type="search" autocomplete="off" placeholder="Search team accounts by name or email…" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
+                            <label class="sr-only" for="teamAccountSearch">Search by profile ID, name, or Gmail</label>
+                            <input id="teamAccountSearch" type="search" autocomplete="off" placeholder="Search by profile ID, name, or Gmail…" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
                             <input id="selectedTeamEmail" type="hidden" name="email" required>
                             <div id="teamAccountResults" class="absolute z-20 mt-1 hidden max-h-64 w-full overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-xl" role="listbox" aria-label="Registered team accounts">
                             @foreach($registeredAccounts as $account)
-                                <button type="button" role="option" data-name="{{ strtolower($account->name) }}" data-email="{{ strtolower($account->email) }}" data-account-email="{{ $account->email }}" data-assigned="{{ in_array($account->id, $assignedAccountIds, true) ? 'true' : 'false' }}" class="team-account-option flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50" @disabled(in_array($account->id, $assignedAccountIds, true))>
-                                    <span class="min-w-0"><span class="block truncate text-xs font-semibold text-[#0F172A]">{{ $account->name }}</span><span class="block truncate text-[11px] text-slate-500">{{ $account->email }}</span></span>
+                                <button type="button" role="option" data-name="{{ strtolower($account->name) }}" data-email="{{ strtolower($account->email) }}" data-id="{{ $account->id }}" data-profile-id="{{ strtolower('abt-'.str_pad((string) $account->id, 6, '0', STR_PAD_LEFT)) }}" data-account-email="{{ $account->email }}" data-assigned="{{ in_array($account->id, $assignedAccountIds, true) ? 'true' : 'false' }}" class="team-account-option flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50" @disabled(in_array($account->id, $assignedAccountIds, true))>
+                                    <span class="min-w-0"><span class="block truncate text-xs font-semibold text-[#0F172A]">{{ $account->name }}</span><span class="block truncate text-[11px] text-slate-500">{{ $account->email }} · ABT-{{ str_pad((string) $account->id, 6, '0', STR_PAD_LEFT) }}</span></span>
                                     <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold {{ $account->role === 'developer' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' }}">{{ $account->role === 'tester' ? 'QA Tester' : 'Developer' }}{{ in_array($account->id, $assignedAccountIds, true) ? ' · Added' : '' }}</span>
                                 </button>
                             @endforeach
-                                <p id="teamAccountNoResults" class="hidden px-3 py-3 text-xs text-slate-500">No account matches that name or email.</p>
+                                <p id="teamAccountNoResults" class="hidden px-3 py-3 text-xs text-slate-500">No account matches that profile ID, name, or email.</p>
                             </div>
                         </div>
                         <div>
@@ -261,7 +261,7 @@
                 selectedTeamLabel.value = '';
                 addExistingAccountButton.disabled = true;
                 teamAccountResults.querySelectorAll('.team-account-option').forEach((option) => {
-                    const matches = !query || option.dataset.name.includes(query) || option.dataset.email.includes(query);
+                    const matches = !query || option.dataset.name.includes(query) || option.dataset.email.includes(query) || option.dataset.id.includes(query) || option.dataset.profileId.includes(query);
                     option.style.display = matches ? 'flex' : 'none';
                     if (matches) visibleCount++;
                 });
