@@ -14,6 +14,29 @@ use Illuminate\View\View;
 
 class BugController extends Controller
 {
+    public function profilePage(): View
+    {
+        return view('profile');
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'profile_photo' => ['nullable', 'image', 'max:2048'],
+        ]);
+        if ($request->hasFile('profile_photo')) {
+            if ($user->profile_photo_path) Storage::disk('public')->delete($user->profile_photo_path);
+            $data['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
+        unset($data['profile_photo']);
+        $user->update($data);
+        $request->session()->put('manager_name', $user->name);
+        return back()->with('success', 'Profile updated successfully.');
+    }
+
     public function landingPage(): View
     {
         return view('landing');

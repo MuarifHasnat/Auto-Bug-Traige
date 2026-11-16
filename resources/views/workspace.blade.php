@@ -6,10 +6,11 @@
     <title>{{ session('project_name', 'Workspace') }} · Kanban Board</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    @if(auth()->user()->role === 'tester')<link rel="stylesheet" href="/css/tester-theme.css">@endif
     <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
     @vite('resources/js/app.js')
 </head>
-<body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
+<body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
     <div class="flex min-h-screen">
         <!-- Modern Light Glassmorphic Left Sidebar (250px) -->
         <aside class="hidden w-[250px] shrink-0 flex-col bg-white/95 backdrop-blur-md text-slate-800 lg:flex border-r border-[#E2E8F0] z-20">
@@ -31,19 +32,19 @@
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Workspace</p>
                 <p class="mt-1 truncate font-bold text-slate-900 text-xs">{{ session('project_name', 'Software Project') }}</p>
                 <p class="mt-0.5 truncate text-[10px] text-indigo-600 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
-                @include('components.project-switcher', ['variant' => 'light'])
+                @include('components.project-switcher', ['variant' => auth()->user()->role === 'tester' ? 'dark' : 'light'])
             </div>
 
             <!-- Navigation Links -->
             <nav class="flex-1 space-y-1 p-3 text-xs">
-                @if(auth()->user()->role === 'manager')
+                @if(in_array(auth()->user()->role, ['manager', 'tester'], true))
                     <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/dashboard">
                         <span class="text-sm">▦</span>
                         <span>Command Center</span>
                     </a>
                 @endif
 
-                <a class="relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 px-3.5 py-2.5 font-bold transition border border-indigo-200/60 shadow-2xs" href="/workspace">
+                <a aria-current="page" class="relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 px-3.5 py-2.5 font-bold transition border border-indigo-200/60 shadow-2xs" href="/workspace">
                     <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600"></span>
                     <span class="text-sm">▤</span>
                     <span>Kanban Workspace</span>
@@ -73,31 +74,12 @@
                 @endif
             </nav>
 
-            <!-- User Footer -->
-            <div class="border-t border-[#E2E8F0] p-4 bg-[#F8FAFC]">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 text-xs font-bold font-mono-code uppercase border border-indigo-200">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="truncate text-xs font-bold text-slate-900">{{ auth()->user()->name }}</p>
-                        <span class="inline-block rounded px-1.5 py-0.2 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono-code">
-                            {{ ucfirst(auth()->user()->role) }}
-                        </span>
-                    </div>
-                    <a href="/logout" title="Sign Out" class="text-slate-400 hover:text-rose-600 p-1 transition">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                    </a>
-                </div>
-            </div>
         </aside>
 
         <!-- Main Content Area -->
         <main class="min-w-0 flex-1 flex flex-col">
             <!-- Sticky Header (60px) -->
-            <header class="sticky top-0 z-10 flex h-[60px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 lg:px-8">
+            <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 py-3 lg:px-8">
                 <div class="flex items-center gap-2 text-xs font-semibold text-[#64748B]">
                     <span>Workspace</span>
                     <span class="text-slate-300">/</span>
@@ -115,9 +97,9 @@
                         <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span class="font-mono-code">AI Agent Ready</span>
                     </div>
-                    <a href="/logout" class="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
-                        Log out
-                    </a>
+                    <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
+                    <a href="{{ route('profile.show') }}" class="flex items-center gap-2 rounded-xl p-1.5 text-left hover:bg-slate-50"><span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-indigo-50 text-sm font-bold text-indigo-700">@if(auth()->user()->profile_photo_path)<img src="{{ Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" class="h-full w-full object-cover" alt="Profile">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif</span><span class="hidden sm:block"><span class="block max-w-36 truncate text-sm font-bold text-slate-900">{{ auth()->user()->name }}</span><span class="block text-xs text-slate-500">{{ ucfirst(auth()->user()->role) }}</span></span></a>
+                    <a href="/logout" class="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Log out</a>
                 </div>
             </header>
 
@@ -129,7 +111,7 @@
                     $activeWorkflowStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
-                <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/70 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                <div id="workspaceWelcomeBanner" class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/70 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white font-bold text-base shadow-sm">
                             👋
@@ -162,7 +144,7 @@
                             </a>
                         @endif
                         <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" 
-                                class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition">
+                                aria-pressed="false" class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition">
                             <span>👤 Show Only Assigned to Me ({{ $myAssignedCount }})</span>
                         </button>
                     </div>
@@ -287,7 +269,7 @@
                     <!-- Quick Toggles -->
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" 
-                                class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-xs font-bold text-[#475569] hover:border-indigo-300 transition">
+                                aria-pressed="false" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-xs font-bold text-[#475569] hover:border-indigo-300 transition">
                             🚫 Hide Duplicates
                         </button>
                     </div>
@@ -1046,37 +1028,33 @@
 
         // Quick Toggles
         let onlyMyIssuesActive = false;
+        let hideDuplicatesActive = false;
+        function applyQuickIssueFilters() {
+            document.querySelectorAll('.bug-card').forEach(card => {
+                const assignee = card.getAttribute('data-assignee');
+                const isDuplicate = card.getAttribute('data-duplicate') === 'true';
+                card.style.display = (onlyMyIssuesActive && assignee !== @json(auth()->user()->name)) || (hideDuplicatesActive && isDuplicate) ? 'none' : '';
+            });
+        }
+
         function toggleMyIssues(userName) {
             onlyMyIssuesActive = !onlyMyIssuesActive;
             const btn = document.getElementById('myIssuesToggle');
             btn.classList.toggle('bg-indigo-600', onlyMyIssuesActive);
             btn.classList.toggle('text-white', onlyMyIssuesActive);
-
-            document.querySelectorAll('.bug-card').forEach(card => {
-                const assignee = card.getAttribute('data-assignee');
-                if (onlyMyIssuesActive && assignee !== userName) {
-                    card.style.display = 'none';
-                } else {
-                    card.style.display = 'block';
-                }
-            });
+            btn.setAttribute('aria-pressed', String(onlyMyIssuesActive));
+            btn.querySelector('span').textContent = `${onlyMyIssuesActive ? '👤 Showing Only Assigned to Me' : '👤 Show Only Assigned to Me'} ({{ $myAssignedCount }})`;
+            applyQuickIssueFilters();
         }
 
-        let hideDuplicatesActive = false;
         function toggleDuplicates() {
             hideDuplicatesActive = !hideDuplicatesActive;
             const btn = document.getElementById('duplicatesToggle');
             btn.classList.toggle('bg-indigo-600', hideDuplicatesActive);
             btn.classList.toggle('text-white', hideDuplicatesActive);
-
-            document.querySelectorAll('.bug-card').forEach(card => {
-                const isDup = card.getAttribute('data-duplicate') === 'true';
-                if (hideDuplicatesActive && isDup) {
-                    card.style.display = 'none';
-                } else if (!onlyMyIssuesActive) {
-                    card.style.display = 'block';
-                }
-            });
+            btn.setAttribute('aria-pressed', String(hideDuplicatesActive));
+            btn.textContent = hideDuplicatesActive ? '🚫 Duplicates Hidden' : '🚫 Hide Duplicates';
+            applyQuickIssueFilters();
         }
 
         // Kanban Drag and Drop

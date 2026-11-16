@@ -14,6 +14,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/create-project', [BugController::class, 'createProjectPage']);
     Route::post('/create-project', [BugController::class, 'handleCreateProject']);
     Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');
+    Route::put('/profile', [BugController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/profile', [BugController::class, 'profilePage'])->name('profile.show');
     Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->name('projects.sync-github');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);

@@ -47,7 +47,8 @@
             <div class="ml-auto flex items-center gap-3">
                 <div class="md:hidden">@include('components.project-switcher', ['variant' => 'mobile'])</div>
                 <a href="/notifications" aria-label="Notifications" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800">♧</a>
-                <div class="flex items-center gap-2.5"><div class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 font-bold text-emerald-300">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div><div class="hidden sm:block"><p class="max-w-36 truncate text-xs font-bold text-white">{{ auth()->user()->name }}</p><p class="text-[10px] text-slate-400">QA Tester</p></div></div>
+                <a href="{{ route('profile.show') }}" class="flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-slate-800"><span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-emerald-500/15 text-sm font-bold text-emerald-300">@if(auth()->user()->profile_photo_path)<img src="{{ Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" class="h-full w-full object-cover" alt="Profile">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif</span><span class="hidden sm:block"><span class="block max-w-36 truncate text-sm font-bold text-white">{{ auth()->user()->name }}</span><span class="text-xs text-slate-400">{{ ucfirst(auth()->user()->role) }}</span></span></a>
+                <a href="/logout" class="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Log out</a>
             </div>
         </header>
 
