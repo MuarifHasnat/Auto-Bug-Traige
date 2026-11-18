@@ -113,7 +113,9 @@
                         @if(count($studioFiles))
                             <div class="space-y-0.5 p-3">
                                 @foreach(array_slice($studioFiles, 0, 8) as $fileIndex => $studioFile)
-                                    @php($studioPath = is_array($studioFile) ? ($studioFile['path'] ?? 'Unknown file') : $studioFile)
+                                    @php
+                                        $studioPath = is_array($studioFile) ? ($studioFile['path'] ?? 'Unknown file') : $studioFile;
+                                    @endphp
                                     <a href="{{ is_array($studioFile) ? ($studioFile['github_url'] ?? '#') : '#' }}" target="_blank" rel="noopener" class="flex items-start gap-3 rounded-lg px-3 py-2.5 font-mono text-xs {{ $fileIndex === 0 ? 'bg-rose-500/15 text-rose-200' : 'text-slate-300 hover:bg-white/5' }}"><span class="select-none text-slate-500">{{ str_pad((string) ($fileIndex + 1), 2, '0', STR_PAD_LEFT) }}</span><span class="min-w-0 break-all">{{ $studioPath }}<span class="ml-2 text-slate-500">↗</span></span></a>
                                 @endforeach
                             </div>
@@ -127,7 +129,9 @@
                         <div class="flex items-start justify-between gap-3"><div><h2 class="text-lg font-bold text-slate-900">AI diagnosis</h2><p class="text-xs text-slate-500">Evidence-based analysis for the latest report</p></div><span class="rounded-full bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700">{{ !empty($studioTriage) ? 'Analyzed' : 'Waiting for report' }}</span></div>
                         @if($studioSelected)
                             <div class="mt-4 rounded-xl bg-slate-50 p-3.5"><p class="text-xs font-semibold text-slate-500">{{ $studioSelected->title }}</p><p class="mt-2 text-sm font-semibold text-slate-800">{{ $studioSelected->detected_feature ?: 'General area' }} <span class="font-normal text-slate-500">· {{ $studioSelected->priority ?: 'Priority pending' }}</span></p></div>
-                            @php($studioAnalysis = $studioTriage['code_help']['llm_analysis'] ?? $studioTriage['llm_analysis'] ?? [])
+                            @php
+                                $studioAnalysis = $studioTriage['code_help']['llm_analysis'] ?? $studioTriage['llm_analysis'] ?? [];
+                            @endphp
                             @if(!empty($studioAnalysis['root_cause']))<p class="mt-4 text-sm leading-6 text-slate-700">{{ $studioAnalysis['root_cause'] }}</p>@elseif(!empty($studioAnalysis['summary']))<p class="mt-4 text-sm leading-6 text-slate-700">{{ $studioAnalysis['summary'] }}</p>@else<p class="mt-4 text-sm leading-6 text-slate-600">{{ Str::limit($studioSelected->description ?? '', 220) }}</p>@endif
                             @if(count($studioFixes))<div class="mt-4 border-t border-slate-100 pt-4"><p class="text-xs font-bold uppercase tracking-wide text-slate-500">Suggested next step</p><p class="mt-2 text-sm text-slate-700">{{ is_array($studioFixes[0]) ? ($studioFixes[0]['detail'] ?? $studioFixes[0]['description'] ?? $studioFixes[0]['title'] ?? 'Review the AI fix suggestion') : $studioFixes[0] }}</p></div>@endif
                             <a href="/bugs/{{ $studioSelected->id }}" class="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white hover:bg-indigo-500">Review full diagnosis →</a>
@@ -464,7 +468,9 @@
                     </div>
 
                     @if(session('ai_result'))
-                        @php($ai = session('ai_result'))
+                        @php
+                            $ai = session('ai_result');
+                        @endphp
                         <!-- State 2: Result State (4 Human-in-the-Loop Sections) -->
                         <div class="space-y-4 animate-fade-in flex-1">
                             
@@ -508,9 +514,15 @@
                             </div>
 
                             <!-- Section B: Root Cause & Error Diagnosis Box -->
-                            @php($syntaxStatus = $ai['code_help']['syntax_status'] ?? 'unknown')
-                            @php($syntaxStatusLabel = ['passed' => 'Check passed', 'failed' => 'Syntax errors', 'timeout' => 'Check timed out', 'not_available' => 'Checker unavailable', 'not_run' => 'Check not run'][$syntaxStatus] ?? 'Check status unknown')
-                            @php($syntaxStatusClass = ['passed' => 'bg-emerald-100 text-emerald-800', 'failed' => 'bg-red-100 text-red-800', 'timeout' => 'bg-amber-100 text-amber-800', 'not_available' => 'bg-amber-100 text-amber-800', 'not_run' => 'bg-slate-100 text-slate-700'][$syntaxStatus] ?? 'bg-slate-100 text-slate-700')
+                            @php
+                                $syntaxStatus = $ai['code_help']['syntax_status'] ?? 'unknown';
+                            @endphp
+                            @php
+                                $syntaxStatusLabel = ['passed' => 'Check passed', 'failed' => 'Syntax errors', 'timeout' => 'Check timed out', 'not_available' => 'Checker unavailable', 'not_run' => 'Check not run'][$syntaxStatus] ?? 'Check status unknown';
+                            @endphp
+                            @php
+                                $syntaxStatusClass = ['passed' => 'bg-emerald-100 text-emerald-800', 'failed' => 'bg-red-100 text-red-800', 'timeout' => 'bg-amber-100 text-amber-800', 'not_available' => 'bg-amber-100 text-amber-800', 'not_run' => 'bg-slate-100 text-slate-700'][$syntaxStatus] ?? 'bg-slate-100 text-slate-700';
+                            @endphp
                             <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-4 text-xs">
                                 <div class="flex items-center justify-between mb-1">
                                     <div class="flex items-center gap-2 text-indigo-900 font-bold">
@@ -529,12 +541,23 @@
                                     Evidence: {{ $ai['code_help']['attachment_note'] ?? 'No attachment provided.' }}
                                 </p>
                                 @if(!empty($ai['code_help']['llm_analysis']) && empty($ai['code_help']['llm_analysis']['error']))
-                                    @php($llm = $ai['code_help']['llm_analysis'])
+                                    @php
+                                        $llm = $ai['code_help']['llm_analysis'];
+                                    @endphp
                                     <div class="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-violet-950">
                                         <div class="flex flex-wrap items-center justify-between gap-2"><p class="font-bold">Groq AI code analysis</p><span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold">Confidence {{ $llm['confidence'] }}%</span></div>
                                         <p class="mt-2 text-xs"><strong>Likely cause:</strong> {{ $llm['root_cause'] }}</p>
                                         @if(!empty($llm['evidence']))<ul class="mt-2 list-disc space-y-1 pl-5 text-[11px]">@foreach($llm['evidence'] as $evidence)<li>{{ $evidence }}</li>@endforeach</ul>@endif
-                                        @if(!empty($llm['affected_locations']))<div class="mt-2 space-y-1">@foreach($llm['affected_locations'] as $location)@php($locationCandidate = collect($ai['suspected_files'] ?? [])->firstWhere('path', $location['path']))<p class="text-[11px]">📍 <a class="font-semibold underline" target="_blank" rel="noopener" href="{{ $locationCandidate['github_url'] ?? '#' }}#L{{ $location['line'] }}">{{ $location['path'] }}:{{ $location['line'] }}</a> — {{ $location['reason'] }}</p>@endforeach</div>@endif
+                                        @if(!empty($llm['affected_locations']))
+                                            <div class="mt-2 space-y-1">
+                                                @foreach($llm['affected_locations'] as $location)
+                                                    @php
+                                                        $locationCandidate = collect($ai['suspected_files'] ?? [])->firstWhere('path', $location['path']);
+                                                    @endphp
+                                                    <p class="text-[11px]">📍 <a class="font-semibold underline" target="_blank" rel="noopener" href="{{ $locationCandidate['github_url'] ?? '#' }}#L{{ $location['line'] }}">{{ $location['path'] }}:{{ $location['line'] }}</a> — {{ $location['reason'] }}</p>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                         <p class="mt-2 text-[10px] text-violet-700">AI suggestions are unverified. Review code and tests before applying.</p>
                                     </div>
                                 @elseif(!empty($ai['code_help']['llm_analysis']['error']))
@@ -589,7 +612,9 @@
                             </div>
 
                             @if(!empty($ai['code_help']['suspected_files']) || !empty($ai['suspected_files']))
-                                @php($suspectedList = $ai['code_help']['suspected_files'] ?? ($ai['suspected_files'] ?? []))
+                                @php
+                                    $suspectedList = $ai['code_help']['suspected_files'] ?? ($ai['suspected_files'] ?? []);
+                                @endphp
                                 <!-- Section: AI Suspected Culprit Files in Repository -->
                                 <div class="rounded-2xl border-2 border-indigo-200 bg-white p-4 text-xs shadow-xs">
                                     <div class="flex items-center justify-between mb-2">
