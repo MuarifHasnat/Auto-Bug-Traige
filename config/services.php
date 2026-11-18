@@ -35,9 +35,9 @@ return [
         ],
     ],
 
-    'gemini' => [
-        'key' => env('GEMINI_API_KEY', env('GOOGLE_API_KEY')),
-        'triage_model' => env('GEMINI_TRIAGE_MODEL', 'gemini-3.8-flash'),
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
     ],
 
     'github' => [

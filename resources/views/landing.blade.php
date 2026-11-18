@@ -479,7 +479,7 @@
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-white p-5">
                         <h3 class="text-base font-bold text-slate-900">External services</h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-700">Repository paths are requested from GitHub when lookup is used. If Gemini vision is configured by the operator, screenshots are sent to Google for image analysis. Do not submit secrets or sensitive production data.</p>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-700">Repository paths are requested from GitHub when lookup is used. If Groq vision is configured by the operator, screenshots are sent to Groq for image analysis. Do not submit secrets or sensitive production data.</p>
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2">
                         <h3 class="text-base font-bold text-slate-900">Prototype limitations</h3>

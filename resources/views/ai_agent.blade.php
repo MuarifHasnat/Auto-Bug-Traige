@@ -503,7 +503,7 @@
                                 @if(!empty($ai['code_help']['llm_analysis']) && empty($ai['code_help']['llm_analysis']['error']))
                                     @php($llm = $ai['code_help']['llm_analysis'])
                                     <div class="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-violet-950">
-                                        <div class="flex flex-wrap items-center justify-between gap-2"><p class="font-bold">Gemini code analysis</p><span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold">Confidence {{ $llm['confidence'] }}%</span></div>
+                                        <div class="flex flex-wrap items-center justify-between gap-2"><p class="font-bold">Groq AI code analysis</p><span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold">Confidence {{ $llm['confidence'] }}%</span></div>
                                         <p class="mt-2 text-xs"><strong>Likely cause:</strong> {{ $llm['root_cause'] }}</p>
                                         @if(!empty($llm['evidence']))<ul class="mt-2 list-disc space-y-1 pl-5 text-[11px]">@foreach($llm['evidence'] as $evidence)<li>{{ $evidence }}</li>@endforeach</ul>@endif
                                         @if(!empty($llm['affected_locations']))<div class="mt-2 space-y-1">@foreach($llm['affected_locations'] as $location)@php($locationCandidate = collect($ai['suspected_files'] ?? [])->firstWhere('path', $location['path']))<p class="text-[11px]">📍 <a class="font-semibold underline" target="_blank" rel="noopener" href="{{ $locationCandidate['github_url'] ?? '#' }}#L{{ $location['line'] }}">{{ $location['path'] }}:{{ $location['line'] }}</a> — {{ $location['reason'] }}</p>@endforeach</div>@endif

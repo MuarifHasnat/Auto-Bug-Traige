@@ -16,33 +16,30 @@ from agent.triage import analyze_report
 
 
 class VisionAndScreenshotTest(unittest.TestCase):
-    @patch("agent.vision._perform_gemini_request")
-    @patch("agent.vision._load_image_base64", return_value="fake_b64")
+    @patch("agent.vision._perform_http_request")
     @patch("os.path.isfile", return_value=True)
-    def test_gemini_vision_mocked_success(self, mock_isfile, mock_b64, mock_request):
-        # 1. Arrange: Mock the file reading and the Gemini JSON response
+    def test_groq_vision_mocked_success(self, mock_isfile, mock_request):
+        # 1. Arrange: Mock the file reading and the Groq Vision JSON response
         mock_payload = {
-            "candidates": [
+            "choices": [
                 {
-                    "content": {
-                        "parts": [
-                            {
-                                "text": '{"error_name": "NullPointerException", "suspected_files": ["PaymentActivity.kt"], "line_numbers": [42], "detected_language": "Kotlin", "extracted_text": "FATAL EXCEPTION at PaymentActivity.kt:42"}'
-                            }
-                        ]
+                    "message": {
+                        "content": '{"error_name": "NullPointerException", "suspected_files": ["PaymentActivity.kt"], "line_numbers": [42], "detected_language": "Kotlin", "extracted_text": "FATAL EXCEPTION at PaymentActivity.kt:42"}'
                     }
                 }
             ]
         }
         import json
+        from unittest.mock import mock_open
         mock_request.return_value = json.dumps(mock_payload).encode("utf-8")
 
         # 2. Act: Call analyze_screenshot without real network or API keys
-        result = analyze_screenshot("dummy_screenshot.png", "dummy_key")
+        with patch("builtins.open", mock_open(read_data=b"fake_image_bytes")):
+            result = analyze_screenshot("dummy_screenshot.png", groq_api_key="dummy_key")
 
         # 3. Assert: Verify logic without spending API credits
         self.assertTrue(result["success"])
-        self.assertEqual(result["method"], "gemini_vision")
+        self.assertEqual(result["method"], "groq_vision")
         self.assertEqual(result["error_name"], "NullPointerException")
         self.assertIn("PaymentActivity.kt", result["suspected_files"])
         self.assertIn(42, result["line_numbers"])

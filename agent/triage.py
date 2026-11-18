@@ -16,14 +16,14 @@ from sentiment import analyze_sentiment
 from file_locator import locate_suspected_files
 from vision import analyze_screenshot
 from github_context import fetch_relevant_source
-from llm_analysis import analyze_with_gemini
+from llm_analysis import analyze_with_groq, analyze_report_llm
 
 
 def analyze_report(data):
     if data.get("github_token"):
         os.environ["GITHUB_TOKEN"] = str(data["github_token"])
-    if data.get("gemini_triage_model"):
-        os.environ["GEMINI_TRIAGE_MODEL"] = str(data["gemini_triage_model"])
+    if data.get("groq_model"):
+        os.environ["GROQ_MODEL"] = str(data["groq_model"])
     title = data.get("title") or ""
     description = data.get("description") or ""
     code_snippet = data.get("code_snippet") or ""
@@ -32,12 +32,15 @@ def analyze_report(data):
     developers = data.get("developers") or []
     attachment = data.get("attachment")
     screenshot_path = data.get("screenshot_path")
-    gemini_api_key = data.get("gemini_api_key")
+    groq_api_key = data.get("groq_api_key") or os.environ.get("GROQ_API_KEY")
 
     # 0. Vision & OCR Screenshot Intelligence Analysis
     screenshot_data = None
     if screenshot_path:
-        screenshot_data = analyze_screenshot(screenshot_path, gemini_api_key)
+        screenshot_data = analyze_screenshot(
+            screenshot_path,
+            groq_api_key=groq_api_key
+        )
 
     ss_text = screenshot_data.get("extracted_text", "") if (screenshot_data and screenshot_data.get("success")) else ""
 
@@ -50,7 +53,13 @@ def analyze_report(data):
     code_help["feature"] = feature
 
     if screenshot_data and screenshot_data.get("success"):
-        method_label = "Gemini AI Vision" if screenshot_data.get("method") == "gemini_vision" else "RapidOCR Neural Scan"
+        method = screenshot_data.get("method")
+        if method == "groq_vision":
+            method_label = "Groq Llama Vision"
+        elif method == "gemini_vision":
+            method_label = "Gemini AI Vision"
+        else:
+            method_label = "RapidOCR Neural Scan"
         err_label = screenshot_data.get("error_name") or "Exception Trace"
         files_label = f" in {', '.join(screenshot_data.get('suspected_files', [])[:2])}" if screenshot_data.get('suspected_files') else ""
         code_help["attachment_note"] = f"{method_label}: Identified {err_label}{files_label}"
@@ -115,7 +124,7 @@ def analyze_report(data):
         project_stack=project_stack,
         source_file_name=source_file_name,
         screenshot_data=screenshot_data,
-        gemini_api_key=gemini_api_key,
+        groq_api_key=groq_api_key,
     )
     if suspected_files:
         code_help["suspected_files"] = suspected_files
@@ -130,7 +139,7 @@ def analyze_report(data):
         {"path": item["path"], "branch": item["branch"], "lines": len(item["content"].splitlines())}
         for item in source_context
     ]
-    llm_analysis = analyze_with_gemini(
+    llm_analysis = analyze_report_llm(
         report={
             "title": title,
             "description": description,
@@ -148,7 +157,7 @@ def analyze_report(data):
             "duplicate": {"is_duplicate": is_duplicate, "duplicate_of": duplicate_of, "similarity": similarity_percent},
         },
         source_context=source_context,
-        api_key=data.get("gemini_api_key", ""),
+        groq_key=groq_api_key or "",
     )
     if llm_analysis is not None:
         code_help["llm_analysis"] = llm_analysis
@@ -253,7 +262,7 @@ def run_agent():
                 code_snippet=data.get("code_snippet") or "",
                 selected_language=data.get("selected_language") or "auto",
                 project_stack=data.get("project_stack") or "",
-                gemini_api_key=data.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY"),
+                groq_api_key=data.get("groq_api_key") or os.environ.get("GROQ_API_KEY"),
             )
         except Exception:
             pass

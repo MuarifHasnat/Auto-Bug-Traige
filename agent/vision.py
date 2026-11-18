@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 import sys
+from typing import Optional, List, Dict, Any
 
 # Ensure agent directory is in sys.path
 AGENT_DIR = Path(__file__).resolve().parent
@@ -146,118 +147,64 @@ from resilience import exponential_backoff
 
 
 @exponential_backoff(max_retries=2, base_delay=1.5, max_delay=6.0)
-def _perform_gemini_request(req: urllib.request.Request, timeout: float = 20.0) -> bytes:
+def _perform_http_request(req: urllib.request.Request, timeout: float = 20.0) -> bytes:
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return response.read()
 
-
-def _load_image_base64(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
+_perform_gemini_request = _perform_http_request
 
 
 def _run_gemini_vision(image_path: str, api_key: str) -> dict:
-    """Calls Google Gemini Vision API to analyze bug screenshot."""
-    try:
-        lower_path = str(image_path).lower()
-        if lower_path.endswith(".jpg") or lower_path.endswith(".jpeg"):
-            mime_type = "image/jpeg"
-        elif lower_path.endswith(".webp"):
-            mime_type = "image/webp"
-        else:
-            mime_type = "image/png"
+    """Deprecated: Gemini Vision removed. Redirects to Groq Vision."""
+    return _run_groq_vision(image_path, api_key)
 
-        b64_data = _load_image_base64(image_path)
+
+def _run_groq_vision(image_path: str, api_key: str) -> dict:
+    """Fallback Tier: Groq Free Llama-3.2-11b-vision-preview."""
+    try:
+        with open(image_path, "rb") as img_file:
+            b64_image = base64.b64encode(img_file.read()).decode("utf-8")
 
         prompt = (
-            "You are an automated software triage vision agent analyzing a bug report screenshot.\n"
-            "Carefully examine all error popups, stack traces, log lines, IDE files, and UI elements.\n"
-            "Return a strictly valid JSON object with the following schema:\n"
-            "{\n"
-            '  "error_name": "Exception or error name (e.g. NullPointerException, 401 Unauthorized, TypeError)",\n'
-            '  "error_message": "Concise description of the actual crash or error message shown",\n'
-            '  "suspected_files": ["List of source code files, paths, or classes visible in the crash or error trace (e.g. PaymentActivity.kt, OrderService.php)"],\n'
-            '  "line_numbers": [42],\n'
-            '  "detected_language": "Kotlin | Python | PHP | TypeScript | JavaScript | Java | etc",\n'
-            '  "extracted_text": "All relevant text or stack trace extracted from the image"\n'
-            "}\n"
-            "Return JSON only without Markdown formatting or fences."
+            "You are an expert software developer and QA engineer inspecting a bug report screenshot. "
+            "Extract error names, line numbers, culprit files, and stack trace. Output strictly JSON matching: "
+            '{"error_name": "...", "suspected_files": ["..."], "line_numbers": [1], "detected_language": "...", "extracted_text": "..."}'
         )
-
+        url = "https://api.groq.com/openai/v1/chat/completions"
         payload = {
-            "contents": [
+            "model": "llama-3.2-11b-vision-preview",
+            "messages": [
                 {
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": b64_data
-                            }
-                        }
-                    ]
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_image}"}},
+                    ],
                 }
             ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "response_mime_type": "application/json"
-            }
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
         }
-
-        # Try active Gemini models in order (gemini-3.5-flash-lite is fastest and active)
-        candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
-        raw_bytes = None
-        last_err = None
-
-        for model_name in candidate_models:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                raw_bytes = _perform_gemini_request(req, timeout=20.0)
-                if raw_bytes:
-                    break
-            except Exception as e:
-                last_err = e
-                continue
-
-        if not raw_bytes:
-            raise Exception(f"All Gemini models failed. Last error: {last_err}")
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": "AutoBugTriage/1.0"
+            },
+            method="POST",
+        )
+        raw_bytes = _perform_http_request(req, timeout=15.0)
         res_json = json.loads(raw_bytes.decode("utf-8"))
-        candidate = res_json.get("candidates", [{}])[0]
-        content_part = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
-            
-        # Robust JSON extraction using Regex to handle introductory or trailing conversational text
-        json_match = re.search(r'\{.*\}', content_part, re.DOTALL)
-        if json_match:
-            clean_json_str = json_match.group(0).strip()
-        else:
-            clean_json_str = content_part.strip()
-            if clean_json_str.startswith("```json"):
-                clean_json_str = clean_json_str[7:]
-            if clean_json_str.startswith("```"):
-                clean_json_str = clean_json_str[3:]
-            if clean_json_str.endswith("```"):
-                clean_json_str = clean_json_str[:-3]
-        
-        parsed = json.loads(clean_json_str.strip())
+        content = res_json["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
         parsed["success"] = True
-        parsed["method"] = "gemini_vision"
-        parsed["summary"] = f"Gemini Vision detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
+        parsed["method"] = "groq_vision"
+        parsed["summary"] = f"Groq Llama 3.2 Vision detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
         return parsed
-
     except Exception as exc:
-        return {
-            "success": False,
-            "method": "gemini_vision",
-            "error": str(exc),
-            "extracted_text": "",
-            "suspected_files": []
-        }
+        return {"success": False, "method": "groq_vision", "error": str(exc), "extracted_text": "", "suspected_files": []}
 
 
 def _run_openai_vision(image_path: str, api_key: str) -> dict:
@@ -292,7 +239,7 @@ def _run_openai_vision(image_path: str, api_key: str) -> dict:
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             method="POST",
         )
-        raw_bytes = _perform_gemini_request(req, timeout=12.0)
+        raw_bytes = _perform_http_request(req, timeout=12.0)
         res_json = json.loads(raw_bytes.decode("utf-8"))
         content = res_json["choices"][0]["message"]["content"]
         parsed = json.loads(content)
@@ -339,10 +286,14 @@ def _run_ollama_vision(image_path: str, host: str = "http://127.0.0.1:11434") ->
         return {"success": False, "method": "ollama_vision", "error": str(exc), "extracted_text": "", "suspected_files": []}
 
 
-def analyze_screenshot(image_path: str, gemini_api_key: str = None) -> dict:
+def analyze_screenshot(
+    image_path: str,
+    groq_api_key: Optional[str] = None,
+    gemini_api_key: Optional[str] = None
+) -> dict:
     """
-    Multi-LLM Tiered Fallback Chain for Screenshot Perception:
-    1. Tier 1: Gemini 1.5 Flash (via gemini_api_key or GEMINI_API_KEY env)
+    Perception Engine for Screenshot Intelligence:
+    1. Tier 1: Groq Free Llama 3.2 Vision (via groq_api_key or GROQ_API_KEY env)
     2. Tier 2: OpenAI GPT-4o-mini (via OPENAI_API_KEY env)
     3. Tier 3: Local Ollama VLM (if Ollama daemon running on 11434)
     4. Tier 4: On-device Deep Learning OCR (RapidOCR ONNX runtime - 100% offline)
@@ -356,12 +307,12 @@ def analyze_screenshot(image_path: str, gemini_api_key: str = None) -> dict:
             "error": "Image file not found on disk."
         }
 
-    # Tier 1: Try Gemini Vision
-    g_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
-    if g_key and g_key.strip():
-        gemini_result = _run_gemini_vision(image_path, g_key.strip())
-        if gemini_result.get("success"):
-            return gemini_result
+    # Tier 1: Try Groq Free Vision
+    gr_key = groq_api_key or gemini_api_key or os.environ.get("GROQ_API_KEY")
+    if gr_key and gr_key.strip():
+        groq_result = _run_groq_vision(image_path, gr_key.strip())
+        if groq_result.get("success"):
+            return groq_result
 
     # Tier 2: Try OpenAI Vision
     o_key = os.environ.get("OPENAI_API_KEY")

@@ -597,10 +597,10 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
     return [], branch
 
 
-def _get_gemini_api_key(passed_key: Optional[str] = None) -> Optional[str]:
+def _get_groq_api_key(passed_key: Optional[str] = None) -> Optional[str]:
     if passed_key and passed_key.strip():
         return passed_key.strip()
-    env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    env_key = os.environ.get("GROQ_API_KEY")
     if env_key and env_key.strip():
         return env_key.strip()
     dotenv_path = WORKSPACE_ROOT / ".env"
@@ -608,11 +608,7 @@ def _get_gemini_api_key(passed_key: Optional[str] = None) -> Optional[str]:
         try:
             with open(dotenv_path, "r", encoding="utf-8") as f:
                 for line in f:
-                    if line.startswith("GEMINI_API_KEY="):
-                        k = line.strip().split("=", 1)[1].strip('"\'')
-                        if k:
-                            return k
-                    elif line.startswith("GOOGLE_API_KEY="):
+                    if line.startswith("GROQ_API_KEY="):
                         k = line.strip().split("=", 1)[1].strip('"\'')
                         if k:
                             return k
@@ -621,7 +617,7 @@ def _get_gemini_api_key(passed_key: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def _locate_with_gemini(
+def _locate_with_groq(
     repo_files: List[str],
     title: str,
     description: str,
@@ -633,13 +629,12 @@ def _locate_with_gemini(
     limit: int = 3
 ) -> Optional[List[dict]]:
     """
-    Leverages Gemini LLM to semantically analyze the bug report, stack traces,
-    and repository structure to pinpoint exact root cause culprit files.
+    Leverages Groq Free LLM (Llama 3.3 70B / DeepSeek R1) to semantically analyze the bug report,
+    error traces, and repository structure to pinpoint exact culprit source files.
     """
     if not api_key or not repo_files:
         return None
 
-    # Filter repo_files to only production source code files (exclude tests, docs, assets, dot-folders)
     valid_candidates = []
     for f in repo_files:
         p = Path(f)
@@ -661,9 +656,7 @@ def _locate_with_gemini(
 
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
     ss_error = screenshot_data.get("error_name", "") if screenshot_data else ""
-    ss_lines = screenshot_data.get("line_numbers", []) if screenshot_data else []
 
-    # Score and rank candidates by relevance to the bug description and screenshot trace
     all_context_terms = set(re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {code_snippet}".lower()))
     def _rank_candidate(fpath: str) -> int:
         score = 0
@@ -694,54 +687,56 @@ def _locate_with_gemini(
         f"\nRepository File List (Choose ONLY from these {len(candidate_sample)} files):\n"
         + "\n".join(candidate_sample) + "\n\n"
         f"Select the top {min(limit, len(candidate_sample))} most relevant culprit files.\n"
-        "Return a strictly valid JSON array of objects with this schema:\n"
-        "[\n"
-        "  {\n"
-        '    "path": "exact path matching one from the list above",\n'
-        '    "confidence": 92,\n'
-        '    "reason": "Detailed technical reason explaining why this file is responsible for the bug"\n'
-        "  }\n"
-        "]\n"
-        "Return JSON only without markdown formatting or preamble."
+        "Return a JSON object with a 'culprits' key containing a list of objects with this schema:\n"
+        '{\n  "culprits": [\n    {\n      "path": "exact path from candidate list",\n      "confidence": 92,\n      "reason": "Detailed technical explanation"\n    }\n  ]\n}\n'
+        "Return JSON only without markdown formatting."
     )
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
+    configured_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    candidate_models = list(dict.fromkeys([configured_model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "allam-2-7b"]))
 
-    # Try modern active Gemini models in order (gemini-3.5-flash-lite is fastest and most responsive)
-    candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+    url = "https://api.groq.com/openai/v1/chat/completions"
     for model_name in candidate_models:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            body = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": "You are an expert AI root-cause localization agent. Output JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1
+            }
             req = urllib.request.Request(
                 url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                data=json.dumps(body).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "AutoBugTriage/1.0"
+                },
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=22.0) as resp:
+            with urllib.request.urlopen(req, timeout=12.0) as resp:
                 res_json = json.loads(resp.read().decode("utf-8"))
-                candidate = res_json.get("candidates", [{}])[0]
-                text_out = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
-                json_match = re.search(r'\[\s*\{.*\}\s*\]', text_out, re.DOTALL)
-                raw_json = json_match.group(0) if json_match else text_out.strip()
-                parsed = json.loads(raw_json)
-                if isinstance(parsed, list) and len(parsed) > 0:
-                    valid_results = []
-                    candidate_set = set(candidate_sample)
-                    for item in parsed:
-                        if isinstance(item, dict) and item.get("path") in candidate_set:
-                            valid_results.append({
-                                "path": item["path"],
-                                "confidence": max(50, min(98, int(item.get("confidence", 85)))),
-                                "reason": str(item.get("reason", "Identified by Gemini semantic root cause analysis."))
-                            })
-                    if valid_results:
-                        return valid_results[:limit]
+            content = res_json["choices"][0]["message"]["content"]
+            parsed_data = json.loads(content.strip())
+            items = parsed_data.get("culprits", []) if isinstance(parsed_data, dict) else parsed_data
+            if isinstance(items, list) and items:
+                valid_results = []
+                candidate_set = set(candidate_sample)
+                for item in items:
+                    p = item.get("path", "").strip()
+                    if p in candidate_set or any(p.lower() == c.lower() for c in candidate_set):
+                        valid_results.append({
+                            "path": p,
+                            "confidence": max(50, min(98, int(item.get("confidence", 85)))),
+                            "reason": str(item.get("reason", "Identified by Groq AI semantic root cause analysis."))
+                        })
+                if valid_results:
+                    return valid_results[:limit]
         except Exception:
             continue
-
     return None
 
 
@@ -755,13 +750,14 @@ def locate_suspected_files(
     project_stack="",
     source_file_name="",
     screenshot_data=None,
-    gemini_api_key=None,
-    limit=3
+    limit=3,
+    groq_api_key=None,
+    gemini_api_key=None
 ) -> List[SuspectedFileResult]:
     """
     Identifies the top repository files most likely containing or causing the bug.
     Guarantees strict technology alignment (e.g. Kotlin files for Kotlin projects).
-    Supports Gemini AI semantic root cause localization + Vision/OCR crash trace pinpointing.
+    Supports Groq AI semantic root cause localization + Vision/OCR crash trace pinpointing.
     """
     github_slug = parse_github_slug(github_repo)
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
@@ -888,10 +884,12 @@ def locate_suspected_files(
                 priority_file = fpath
                 break
 
-    # Tier 1: Gemini AI Semantic Root Cause Locator
-    active_gemini_key = _get_gemini_api_key(gemini_api_key)
-    if active_gemini_key and active_repo_files:
-        gemini_picks = _locate_with_gemini(
+    # Tier 1: Semantic AI Root Cause Locator (Groq Free LLM)
+    active_groq_key = _get_groq_api_key(groq_api_key)
+
+    ai_picks = None
+    if active_groq_key and active_repo_files:
+        ai_picks = _locate_with_groq(
             repo_files=active_repo_files,
             title=title,
             description=description,
@@ -899,21 +897,22 @@ def locate_suspected_files(
             code_snippet=code_snippet,
             project_stack=project_stack,
             screenshot_data=screenshot_data,
-            api_key=active_gemini_key,
+            api_key=active_groq_key,
             limit=limit
         )
-        if gemini_picks:
-            results: List[SuspectedFileResult] = []
-            safe_slug = github_slug or "MuarifHasnat/Auto-Bug-Traige"
-            for item in gemini_picks:
-                gh_url = f"https://github.com/{safe_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
-                results.append({
-                    "path": item["path"],
-                    "confidence": item["confidence"],
-                    "reason": item["reason"],
-                    "github_url": gh_url
-                })
-            return results
+
+    if ai_picks:
+        results: List[SuspectedFileResult] = []
+        safe_slug = github_slug or "MuarifHasnat/Auto-Bug-Traige"
+        for item in ai_picks:
+            gh_url = f"https://github.com/{safe_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+            results.append({
+                "path": item["path"],
+                "confidence": item["confidence"],
+                "reason": item["reason"],
+                "github_url": gh_url
+            })
+        return results
 
     # Tier 2: Heuristic Architectural Keyword Matching
     raw_tokens = set(re.findall(r'[a-zA-Z0-9_]{3,}', combined_text))
@@ -1104,7 +1103,7 @@ if __name__ == "__main__":
             selected_language=pdata.get("selected_language", "auto"),
             project_stack=pdata.get("project_stack", ""),
             source_file_name=pdata.get("source_file_name", ""),
-            gemini_api_key=pdata.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY"),
+            groq_api_key=pdata.get("groq_api_key") or os.environ.get("GROQ_API_KEY"),
         )
         print(json.dumps(located))
         sys.exit(0)

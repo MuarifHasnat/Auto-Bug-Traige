@@ -636,7 +636,8 @@ class BugController extends Controller
                 'selected_language' => 'auto',
                 'project_stack' => DB::table('projects')->where('id', $bug->project_id)->value('stack') ?: '',
                 'source_file_name' => $bug->source_file_name ?? '',
-                'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
+                'groq_api_key' => config('services.groq.key', env('GROQ_API_KEY')),
+                'groq_model' => config('services.groq.model', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
             ], JSON_THROW_ON_ERROR));
 
             $result = Process::run([$python, base_path('agent/file_locator.py'), '--locate', $payloadPath]);
@@ -953,8 +954,8 @@ class BugController extends Controller
                 'attachment' => $attachment,
                 'screenshot_path' => $screenshotAbsolutePath,
                 'screenshot_name' => $request->file('screenshot')?->getClientOriginalName(),
-                'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
-                'gemini_triage_model' => config('services.gemini.triage_model'),
+                'groq_api_key' => config('services.groq.key', env('GROQ_API_KEY')),
+                'groq_model' => config('services.groq.model', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
                 'github_token' => config('services.github.token'),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,

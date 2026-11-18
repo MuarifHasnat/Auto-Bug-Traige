@@ -38,7 +38,7 @@ flowchart TD
 
     subgraph ExternalServices["☁️ External Cloud Services"]
         Q["🐙 GitHub REST API (Tree & Blobs)"]
-        R["✨ Google Gemini 2.0 / OpenAI API (Vision)"]
+        R["✨ Groq API (openai/gpt-oss-120b & Llama 3.2 Vision)"]
         S["⚡ Laravel Reverb (WebSocket Server)"]
     end
 
@@ -119,7 +119,7 @@ sequenceDiagram
 | **API Gateway & Core** | Laravel 11 (PHP 8.2), Composer, Apache / Caddy | Authentication, role permissions, rate limiting (`throttle:10,1`), audit logging. |
 | **Data Persistence** | PostgreSQL 16 (Render/Supabase) / SQLite (Local) | Relational schema for bugs, projects, developer skills matrix, activities, and comments. |
 | **AI Inference Service** | Python 3.11+, FastAPI, Uvicorn, Scikit-learn, AST | Persistent microservice on port 8001 executing TF-IDF vector matching, AST syntax parsing, and GitHub file isolation. |
-| **Multimodal Vision** | Google Gemini 2.0 Flash / GPT-4o-mini / RapidOCR | Tiered fallback chain to parse error messages and stack traces from screenshots. |
+| **Multimodal Vision** | Groq Llama 3.2 Vision / GPT-4o-mini / RapidOCR | Tiered fallback chain to parse error messages and stack traces from screenshots. |
 | **CI/CD & DevOps** | GitHub Actions, Docker, Render Cloud | Automated test execution on every commit with automatic zero-downtime production deployment. |
 
 ---

@@ -19,8 +19,8 @@
 - **🧠 TF-IDF Vector Duplicate Matrix:** Scikit-learn powered cosine similarity engine with strict 0.75 threshold filtering to prevent duplicate issue proliferation.
 - **⚙️ AST Syntax & Compiler Diagnostics:** Static language checks supporting Python (AST), PHP (`php -l`), JavaScript/TypeScript (`node --check`/`tsc`), Java (`javac`), and C/C++ (`-fsyntax-only`) with 4-second timeout protection.
 - **⚡ Persistent FastAPI Microservice:** Runs high-throughput AI workloads via FastAPI with auto-generated interactive OpenAPI / Swagger UI at `/docs`.
-- **🛡️ Multi-Tiered VLM Fallback Chain:** Resilient screenshot OCR (Gemini 2.0 Flash $\rightarrow$ GPT-4o-mini $\rightarrow$ Ollama $\rightarrow$ RapidOCR).
-- **🔒 Cost & Brute-Force Rate Limiting:** Laravel throttle middleware protecting Gemini API billing and authentication endpoints.
+- **🛡️ Multi-Tiered VLM Fallback Chain:** Resilient screenshot OCR (Groq Llama 3.2 Vision $\rightarrow$ GPT-4o-mini $\rightarrow$ Ollama $\rightarrow$ RapidOCR).
+- **🔒 Cost & Brute-Force Rate Limiting:** Laravel throttle middleware protecting API endpoints and authentication routes.
 - **🚀 Automated CI/CD Pipeline:** GitHub Actions running unit and feature test matrices on every push with Render deploy hooks.
 
 ---
@@ -32,7 +32,7 @@ flowchart LR
     A[Tester / QA] -->|Bug & Screenshot| B(Laravel 11 App)
     B -->|Rate Limiter: throttle:10,1| G[BugController API]
     G -->|Async Queue Job| C(Python AI Microservice :8001)
-    C -->|OCR / VLM Fallback| D[Gemini 2.0 / OpenAI]
+    C -->|OCR / VLM Fallback| D[Groq Vision / OpenAI]
     C -->|Scan File Tree| E[GitHub REST API]
     C -->|Triage JSON| G
     G -->|WebSocket Push| F[Laravel Reverb]
@@ -46,7 +46,7 @@ For the comprehensive system diagram, sequence flow, and mathematical multi-fact
 ## ⚙️ How Triage Works (Step-by-Step)
 
 1. **Submission:** A tester enters what happened, reproduction steps, expected behavior, and attaches an optional crash screenshot or code snippet.
-2. **Phase 1 (Ingestion & OCR):** The AI Agent extracts text tokens and uses Gemini/OpenAI vision to transcribe error traces.
+2. **Phase 1 (Ingestion & OCR):** The AI Agent extracts text tokens and uses Groq/OpenAI vision to transcribe error traces.
 3. **Phase 2 (GitHub Repository Tree Scan):** Streams file paths from the linked GitHub repository to identify the culprit source file.
 4. **Phase 3 (AST Diagnostics):** Parses the snippet with the target language's abstract syntax tree compiler to detect syntax or logic flaws.
 5. **Phase 4 (TF-IDF Vector Deduplication):** Vectorizes title and symptoms across all existing tickets using word n-grams and cosine similarity ($> 0.75$ flag).
