@@ -60,7 +60,11 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
 
     language_for_history = language_key.lower()
     for dev in available:
-        dev_skills = (dev.get("skills") or "").lower().split()
+        raw_skills = dev.get("skills") or ""
+        if isinstance(raw_skills, list):
+            dev_skills = [str(s).lower() for s in raw_skills if s]
+        else:
+            dev_skills = str(raw_skills).lower().replace(",", " ").split()
         active_tasks = int(dev.get("active_tasks", 0) or 0)
         capacity = int(dev.get("capacity", 5) or 5)
         resolved_features = [str(item).lower() for item in (dev.get("resolved_features") or []) if item]
