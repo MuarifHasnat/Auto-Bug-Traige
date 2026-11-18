@@ -551,18 +551,16 @@ class BugController extends Controller
         $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
         $projectRepo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
 
-        // Dynamically resolve culprit files if missing or empty
-        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
-        if (empty($existingFiles) && !empty($projectRepo)) {
+        // Dynamically resolve culprit files if not yet resolved
+        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? null);
+        if ($existingFiles === null && !empty($projectRepo)) {
             $resolvedFiles = $this->resolveSuspectedFilesForBug($bug, $projectRepo);
-            if (!empty($resolvedFiles)) {
-                $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
-                $bug->triage['suspected_files'] = $resolvedFiles;
-                DB::table('bugs')->where('id', $bug->id)->update([
-                    'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
-                    'updated_at' => now(),
-                ]);
-            }
+            $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
+            $bug->triage['suspected_files'] = $resolvedFiles;
+            DB::table('bugs')->where('id', $bug->id)->update([
+                'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
+                'updated_at' => now(),
+            ]);
         }
 
         $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
@@ -602,18 +600,16 @@ class BugController extends Controller
         $bug->triage = json_decode($bug->triage_result ?: '', true) ?: [];
         $projectRepo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
 
-        // Dynamically resolve culprit files if missing or empty
-        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
-        if (empty($existingFiles) && !empty($projectRepo)) {
+        // Dynamically resolve culprit files if not yet resolved
+        $existingFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? null);
+        if ($existingFiles === null && !empty($projectRepo)) {
             $resolvedFiles = $this->resolveSuspectedFilesForBug($bug, $projectRepo);
-            if (!empty($resolvedFiles)) {
-                $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
-                $bug->triage['suspected_files'] = $resolvedFiles;
-                DB::table('bugs')->where('id', $bug->id)->update([
-                    'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
-                    'updated_at' => now(),
-                ]);
-            }
+            $bug->triage['code_help']['suspected_files'] = $resolvedFiles;
+            $bug->triage['suspected_files'] = $resolvedFiles;
+            DB::table('bugs')->where('id', $bug->id)->update([
+                'triage_result' => json_encode($bug->triage, JSON_THROW_ON_ERROR),
+                'updated_at' => now(),
+            ]);
         }
 
         $comments = DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $id)->orderBy('created_at')->get();
@@ -644,7 +640,7 @@ class BugController extends Controller
                 'groq_model' => config('services.groq.model', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
             ], JSON_THROW_ON_ERROR));
 
-            $result = Process::run([$python, base_path('agent/file_locator.py'), '--locate', $payloadPath]);
+            $result = Process::timeout(3)->run([$python, base_path('agent/file_locator.py'), '--locate', $payloadPath]);
             if ($result->successful()) {
                 $decoded = json_decode(trim($result->output()), true);
                 if (is_array($decoded) && !empty($decoded)) {

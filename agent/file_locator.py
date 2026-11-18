@@ -939,7 +939,7 @@ def _locate_with_groq(
                 },
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=12.0) as resp:
+            with urllib.request.urlopen(req, timeout=4.0) as resp:
                 res_json = json.loads(resp.read().decode("utf-8"))
             content = res_json["choices"][0]["message"]["content"]
             parsed_data = json.loads(content.strip())
@@ -957,6 +957,9 @@ def _locate_with_groq(
                         })
                 if valid_results:
                     return valid_results[:limit]
+        except urllib.error.URLError:
+            # Network is unreachable or timed out; do not hang or block subsequent requests
+            break
         except Exception:
             continue
     return None
