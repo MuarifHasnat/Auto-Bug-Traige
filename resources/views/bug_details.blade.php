@@ -176,8 +176,9 @@
                             ✓ Unique Report
                         @endif
                     </p>
+                    @php($simScore = $bug->duplicate_similarity_score ?? ($triageMetric->duplicate_similarity_score ?? ($bug->triage['similarity_score'] ?? 0)))
                     <span class="text-[10px] text-amber-700 block">
-                        TF-IDF Cosine similarity: {{ $bug->duplicate_similarity_score ? number_format($bug->duplicate_similarity_score, 0) . '%' : '0%' }}
+                        TF-IDF Cosine similarity: {{ $simScore ? number_format((float) $simScore, 0) . '%' : '0%' }}
                     </span>
                 </div>
 
