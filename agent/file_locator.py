@@ -798,6 +798,13 @@ def _locate_with_groq(
         return None
 
     valid_candidates = []
+    # Broad modern software code extensions
+    CODE_EXTS = (
+        '.php', '.blade.php', '.kt', '.kts', '.java', '.ts', '.tsx', '.js', '.jsx',
+        '.py', '.go', '.rs', '.dart', '.swift', '.cs', '.cpp', '.c', '.h', '.hpp',
+        '.vue', '.svelte', '.rb', '.scala', '.sql', '.xml', '.html', '.css', '.scss',
+        '.json', '.yaml', '.yml'
+    )
     for f in repo_files:
         p = Path(f)
         parts = [part.lower() for part in p.parts]
@@ -810,7 +817,7 @@ def _locate_with_groq(
         if any(seg in parts for seg in ['androidtest', 'test', 'tests', 'testfixtures']):
             continue
         ext = p.suffix.lower()
-        if ext in ('.php', '.kt', '.kts', '.java', '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.dart', '.swift', '.cs', '.cpp', '.c', '.xml', '.blade.php'):
+        if ext in CODE_EXTS:
             valid_candidates.append(f)
 
     if not valid_candidates:
@@ -818,18 +825,50 @@ def _locate_with_groq(
 
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
     ss_error = screenshot_data.get("error_name", "") if screenshot_data else ""
+    ss_files = [Path(s).name.lower() for s in (screenshot_data.get("suspected_files", []) if screenshot_data else [])]
 
-    all_context_terms = set(re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {code_snippet}".lower()))
+    # Extract all context keywords from user input, error traces, and screenshot OCR
+    raw_context_words = re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {code_snippet}".lower())
+    all_context_terms = set(raw_context_words)
+
+    # Expand terms with domain synonyms
+    expanded_terms = set(all_context_terms)
+    for term in list(all_context_terms):
+        if term in ABBREVIATION_EXPANSIONS:
+            expanded_terms.update(ABBREVIATION_EXPANSIONS[term])
+    for domain, terms in FEATURE_KEYWORD_MAP.items():
+        if domain in feature.lower() or any(domain in t for t in all_context_terms):
+            expanded_terms.update(terms)
+
     def _rank_candidate(fpath: str) -> int:
         score = 0
         fp_lower = fpath.lower()
-        for term in all_context_terms:
-            if term in fp_lower:
+        p = Path(fpath)
+        stem_lower = p.stem.lower()
+        f_tokens = extract_file_path_tokens(fpath)
+
+        # 1. Highest boost if exact filename matches screenshot / OCR stack trace
+        if any(s in p.name.lower() or stem_lower == Path(s).stem.lower() for s in ss_files):
+            score += 500
+
+        # 2. Strong boost if filename stem matches any context token exactly
+        for term in expanded_terms:
+            if term == stem_lower or term in stem_lower:
+                score += 35
+            elif term in f_tokens:
+                score += 20
+            elif term in fp_lower:
                 score += 10
+
+        # 3. Architectural layer priority (Controllers, Services, Models, Views are most bug-prone)
+        if any(k in fp_lower for k in ('controller', 'service', 'repository', 'viewmodel', 'handler', 'screen', 'component')):
+            score += 5
+
         return score
 
     valid_candidates.sort(key=_rank_candidate, reverse=True)
-    candidate_sample = valid_candidates[:45]
+    # Give Groq a rich candidate sample (up to 100 files across layers)
+    candidate_sample = valid_candidates[:100]
 
     prompt = (
         "You are an expert AI software debugging and root-cause localization agent.\n"
@@ -944,7 +983,7 @@ def locate_suspected_files(
         github_slug = "MuarifHasnat/Auto-Bug-Traige"
 
     repo_files, branch = get_repository_files(
-        github_slug=github_repo,
+        github_slug=github_slug or github_repo,
         target_tech=target_tech,
         source_file_name=source_file_name,
         branch=active_target_branch
@@ -972,19 +1011,24 @@ def locate_suspected_files(
     if repo_files is None:
         repo_files = []
 
-    # Ensure repo_files contains files compatible with detected technology
+    # If real repository files were fetched, preserve them unless it's the default PHP repo tested with another language
+    is_default_php_repo = bool(github_slug and github_slug.lower() in [
+        "muarifhasnat/auto-bug-traige",
+        "smart-bug-tracker",
+        "auto-bug-traige"
+    ])
     if target_tech == 'kotlin':
         compat_files = [f for f in repo_files if f.lower().endswith(('.kt', '.kts')) or (f.lower().endswith('.xml') and 'res/layout' in f.lower())]
         repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
     elif target_tech == 'python':
         compat_files = [f for f in repo_files if f.lower().endswith('.py')]
-        repo_files = compat_files if compat_files else list(PYTHON_DEFAULT_TREE)
+        repo_files = compat_files if compat_files else (list(PYTHON_DEFAULT_TREE) if is_default_php_repo else repo_files)
     elif target_tech in ['typescript', 'javascript']:
         compat_files = [f for f in repo_files if f.lower().endswith(('.ts', '.tsx', '.js', '.jsx'))]
-        repo_files = compat_files if compat_files else list(TYPESCRIPT_DEFAULT_TREE)
+        repo_files = compat_files if compat_files else (list(TYPESCRIPT_DEFAULT_TREE) if is_default_php_repo else repo_files)
     elif target_tech == 'java':
         compat_files = [f for f in repo_files if f.lower().endswith('.java')]
-        repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
+        repo_files = compat_files if compat_files else (list(KOTLIN_ANDROID_DEFAULT_TREE) if is_default_php_repo else repo_files)
     elif target_tech not in ['php', 'auto']:
         compat_files = [f for f in repo_files if not f.endswith(('.blade.php', '.php'))]
         if compat_files:
