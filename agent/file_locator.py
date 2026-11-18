@@ -301,7 +301,7 @@ def build_github_file_url(repo_slug_or_url: Optional[str], file_path: str, branc
     slug = slug.strip("/").removesuffix(".git")
 
     effective_branch = branch or url_branch or "HEAD"
-    clean_path = str(file_path).replace("\\", "/").strip()
+    clean_path = file_path.replace("\\", "/").strip()
     clean_path = re.sub(r'^(?:\./|/)+', '', clean_path)
     encoded_path = "/".join(quote(part, safe="") for part in clean_path.split("/") if part)
 
