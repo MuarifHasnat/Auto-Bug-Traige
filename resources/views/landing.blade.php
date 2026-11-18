@@ -131,28 +131,103 @@
                         <p class="mt-4 text-xs text-slate-600">Managers create projects. Developers and testers can sign up and join a team.</p>
                     </div>
 
-                    <aside aria-label="Example triage result" class="relative lg:col-span-5">
+                    <aside aria-label="Interactive AI Agent Simulator" class="relative lg:col-span-5">
                         <div class="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-100 via-indigo-50 to-sky-100 blur-xl" aria-hidden="true"></div>
                         <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-                            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                                <div class="flex items-center gap-2.5">
-                                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-sm text-white" aria-hidden="true">⚡</span>
-                                    <div><p class="text-xs font-extrabold text-slate-900">Triage overview</p><p class="text-[10px] text-slate-500">Illustrative sample · ABT-104</p></div>
+                            <!-- Header with Engine Status & Run Simulation Button -->
+                            <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-slate-900 text-white">
+                                <div class="flex items-center gap-2">
+                                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs text-white font-bold" aria-hidden="true">⚡</span>
+                                    <div>
+                                        <p class="text-xs font-extrabold text-white flex items-center gap-1.5">
+                                            <span>AI Agent Core</span>
+                                            <span class="rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] font-mono">LIVE SIMULATOR</span>
+                                        </p>
+                                        <p class="text-[10px] text-slate-400">See how the agent triages bugs</p>
+                                    </div>
                                 </div>
-                                <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-200">Needs review</span>
+                                <button type="button" onclick="runLandingAgentSim()" id="landingSimBtn" class="flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-xs transition active:scale-95 cursor-pointer">
+                                    <span id="landingSimIcon">▶</span>
+                                    <span id="landingSimText">Run Simulation</span>
+                                </button>
                             </div>
-                            <div class="space-y-4 bg-slate-50/80 p-5">
-                                <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                    <div class="flex items-center justify-between gap-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bug report</p><span class="rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-800">High priority</span></div>
-                                    <h2 class="mt-2 text-sm font-extrabold text-slate-950">Checkout fails after token refresh</h2>
-                                    <p class="mt-1.5 text-xs leading-relaxed text-slate-600">Payment confirmation freezes and returns a 401 error. Reproduction notes and screenshot are attached.</p>
+
+                            <!-- Interactive Scenario Switcher -->
+                            <div class="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-1 overflow-x-auto">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Sample Bugs:</span>
+                                <div class="flex items-center gap-1 text-[10px] font-bold">
+                                    <button type="button" onclick="selectLandingScenario(0)" id="scenBtn-0" class="px-2 py-0.5 rounded-md bg-indigo-600 text-white shadow-xs">1. Payment NPE</button>
+                                    <button type="button" onclick="selectLandingScenario(1)" id="scenBtn-1" class="px-2 py-0.5 rounded-md bg-white text-slate-700 hover:bg-slate-100 border border-slate-200">2. Auth 401</button>
+                                    <button type="button" onclick="selectLandingScenario(2)" id="scenBtn-2" class="px-2 py-0.5 rounded-md bg-white text-slate-700 hover:bg-slate-100 border border-slate-200">3. DB Timeout</button>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="rounded-2xl border border-slate-200 bg-white p-3.5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Likely file</p><code class="mt-2 block break-all text-[10px] font-semibold text-blue-800">PaymentService.php</code></div>
-                                    <div class="rounded-2xl border border-slate-200 bg-white p-3.5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Suggested owner</p><p class="mt-2 text-xs font-extrabold text-slate-900">Payments team</p><p class="mt-0.5 text-[10px] text-slate-500">Skill and workload match</p></div>
-                                </div>
-                                <p class="px-1 text-[10px] leading-relaxed text-slate-500">Example output only. File hints and assignment suggestions need human review.</p>
                             </div>
+
+                            <!-- 5-Phase Mini Visual Stepper -->
+                            <div class="px-4 pt-3 bg-white">
+                                <div class="grid grid-cols-5 gap-1 text-center text-[9px] font-bold">
+                                    <div id="simStep-1" class="p-1 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 transition">
+                                        <span class="block text-[11px]">📸</span>
+                                        <span class="truncate block">1. Vision</span>
+                                    </div>
+                                    <div id="simStep-2" class="p-1 rounded bg-slate-50 border border-slate-200 text-slate-500 transition">
+                                        <span class="block text-[11px]">🐙</span>
+                                        <span class="truncate block">2. Branch</span>
+                                    </div>
+                                    <div id="simStep-3" class="p-1 rounded bg-slate-50 border border-slate-200 text-slate-500 transition">
+                                        <span class="block text-[11px]">🔍</span>
+                                        <span class="truncate block">3. Dedupe</span>
+                                    </div>
+                                    <div id="simStep-4" class="p-1 rounded bg-slate-50 border border-slate-200 text-slate-500 transition">
+                                        <span class="block text-[11px]">👤</span>
+                                        <span class="truncate block">4. Match</span>
+                                    </div>
+                                    <div id="simStep-5" class="p-1 rounded bg-slate-50 border border-slate-200 text-slate-500 transition">
+                                        <span class="block text-[11px]">🧠</span>
+                                        <span class="truncate block">5. Groq Fix</span>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                                    <div id="simProgressBar" class="bg-indigo-600 h-full w-1/5 transition-all duration-300"></div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Anomaly & Forensic Output Card -->
+                            <div class="p-4 space-y-3 bg-white">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span id="scenBadge" class="rounded bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-bold">High Priority</span>
+                                        <span id="scenTiming" class="text-[10px] font-mono font-bold text-slate-500">Triage Time: &lt; 2.1s</span>
+                                    </div>
+                                    <h3 id="scenTitle" class="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">Borrow Equipment Button crashes with NullPointerException</h3>
+                                    <p id="scenDesc" class="text-[11px] text-slate-600 leading-relaxed">Tester attached a mobile crash screenshot. Groq Llama 3.2 Vision OCR extracted stack line: <code class="bg-slate-200/80 px-1 py-0.5 rounded text-[10px] font-mono text-slate-800">BorrowEquipmentController.php:38</code></p>
+                                </div>
+
+                                <!-- 2 Key Results (Culprit & Assignee) -->
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="rounded-xl border border-sky-200 bg-sky-50/60 p-2.5">
+                                        <span class="text-[9px] font-bold uppercase tracking-wider text-sky-700 block">📁 GitHub Culprit File</span>
+                                        <code id="scenFile" class="mt-1 block truncate text-[10px] font-bold text-sky-950 font-mono">BorrowEquipmentController.php:38</code>
+                                        <span id="scenBranch" class="text-[9px] text-sky-600 block mt-0.5 font-mono">Branch: main (No tokens needed)</span>
+                                    </div>
+                                    <div class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-2.5">
+                                        <span class="text-[9px] font-bold uppercase tracking-wider text-indigo-700 block">👤 Auto-Assigned Dev</span>
+                                        <p id="scenDev" class="mt-1 text-[11px] font-extrabold text-indigo-950">Arif (Backend Lead)</p>
+                                        <p id="scenDevReason" class="text-[9px] text-indigo-700 truncate mt-0.5">98% match • PHP & Inventory skill</p>
+                                    </div>
+                                </div>
+
+                                <!-- Plain Language Explanation -->
+                                <div class="p-2.5 rounded-xl bg-slate-900 text-slate-200 text-[10px] font-mono leading-relaxed space-y-1">
+                                    <div class="text-emerald-400 flex items-center justify-between">
+                                        <span>⚡ Groq AI Root Cause Diagnosis:</span>
+                                        <span class="text-[9px] text-slate-400">120B Model</span>
+                                    </div>
+                                    <p id="scenAiFix" class="text-slate-300 font-sans text-[11px]">
+                                        User object is dereferenced before session authentication verification. Guard with <code class="font-mono text-[9px] bg-slate-800 text-amber-300 px-1 rounded">optional($user)->department_id</code>.
+                                    </p>
+                                </div>
+                            </div>
+
                         </div>
                     </aside>
                 </div>
@@ -641,6 +716,107 @@
                 });
             });
         })();
+
+        // Landing Hero AI Agent Simulator Scenarios
+        const landingScenarios = [
+            {
+                title: "Borrow Equipment Button crashes with NullPointerException",
+                desc: "Tester attached a mobile crash screenshot. Groq Llama 3.2 Vision OCR extracted stack line: BorrowEquipmentController.php:38",
+                badge: "High Priority",
+                badgeClass: "rounded bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-bold",
+                timing: "Triage Time: < 2.1s",
+                file: "BorrowEquipmentController.php:38",
+                branch: "Branch: main (No tokens needed)",
+                dev: "Arif (Backend Lead)",
+                devReason: "98% match • PHP & Inventory skill",
+                aiFix: "User object is dereferenced before session authentication verification. Guard with optional($user)->department_id."
+            },
+            {
+                title: "User Session 401 Unauthorized after Token Refresh",
+                desc: "Tester reported logout loops during checkout. Groq Vision OCR identified OAuth error: RefreshTokenExpired in AuthMiddleware.php:94",
+                badge: "Critical Priority",
+                badgeClass: "rounded bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 text-[10px] font-bold",
+                timing: "Triage Time: < 1.8s",
+                file: "app/Http/Middleware/AuthMiddleware.php:94",
+                branch: "Branch: develop (Dynamic discovery)",
+                dev: "Alice (Laravel Auth Lead)",
+                devReason: "95% match • Security & JWT auth",
+                aiFix: "JWT expiration timestamp is compared against client time instead of server UTC. Add UTC synchronization clamp."
+            },
+            {
+                title: "Warehouse Inventory Search Query Timeout (> 5000ms)",
+                desc: "Tester noticed spinner hangs when searching stock items. AST analyzer detected unindexed table scan in ProductRepository.php:112",
+                badge: "Medium Priority",
+                badgeClass: "rounded bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-bold",
+                timing: "Triage Time: < 2.4s",
+                file: "app/Repositories/ProductRepository.php:112",
+                branch: "Branch: staging (Multi-branch lookup)",
+                dev: "Bob (Database & SQL)",
+                devReason: "91% match • SQLite & query optimize",
+                aiFix: "Missing composite index on (sku, warehouse_id, status). Add migration index or eager load relations."
+            }
+        ];
+
+        let activeLandingScenario = 0;
+        let isSimRunning = false;
+
+        function selectLandingScenario(idx) {
+            if (isSimRunning) return;
+            activeLandingScenario = idx;
+            const s = landingScenarios[idx];
+            
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`scenBtn-${i}`);
+                if (btn) {
+                    if (i === idx) {
+                        btn.className = "px-2 py-0.5 rounded-md bg-indigo-600 text-white shadow-xs";
+                    } else {
+                        btn.className = "px-2 py-0.5 rounded-md bg-white text-slate-700 hover:bg-slate-100 border border-slate-200";
+                    }
+                }
+            }
+
+            document.getElementById('scenTitle').innerText = s.title;
+            document.getElementById('scenDesc').innerText = s.desc;
+            document.getElementById('scenBadge').innerText = s.badge;
+            document.getElementById('scenBadge').className = s.badgeClass;
+            document.getElementById('scenTiming').innerText = s.timing;
+            document.getElementById('scenFile').innerText = s.file;
+            document.getElementById('scenBranch').innerText = s.branch;
+            document.getElementById('scenDev').innerText = s.dev;
+            document.getElementById('scenDevReason').innerText = s.devReason;
+            document.getElementById('scenAiFix').innerText = s.aiFix;
+        }
+
+        async function runLandingAgentSim() {
+            if (isSimRunning) return;
+            isSimRunning = true;
+            const btnText = document.getElementById('landingSimText');
+            const btnIcon = document.getElementById('landingSimIcon');
+            btnText.innerText = "Simulating...";
+            btnIcon.innerText = "⏳";
+
+            const progressBar = document.getElementById('simProgressBar');
+            
+            // Reset steps
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`simStep-${i}`);
+                step.className = "p-1 rounded bg-slate-50 border border-slate-200 text-slate-500 transition";
+            }
+
+            for (let step = 1; step <= 5; step++) {
+                const stepEl = document.getElementById(`simStep-${step}`);
+                stepEl.className = "p-1 rounded bg-indigo-600 border border-indigo-600 text-white shadow-xs transition scale-105";
+                progressBar.style.width = `${(step / 5) * 100}%`;
+                
+                await new Promise(r => setTimeout(r, 400));
+                stepEl.className = "p-1 rounded bg-emerald-50 border border-emerald-300 text-emerald-700 font-bold transition";
+            }
+
+            btnText.innerText = "Re-Run";
+            btnIcon.innerText = "↺";
+            isSimRunning = false;
+        }
     </script>
 
 </body>

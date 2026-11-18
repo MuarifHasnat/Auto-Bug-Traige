@@ -125,6 +125,110 @@
                 </div>
             </div>
 
+            <!-- AI Agent 5-Engine Execution Matrix (Crystal Clear Architecture Guide) -->
+            <section class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/40 p-4 sm:p-5 shadow-xs">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-indigo-100/80 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-xs">
+                            🧠
+                        </span>
+                        <div>
+                            <h2 class="text-sm font-extrabold text-[#0F172A] flex items-center gap-2">
+                                <span>AI Agent Forensic Architecture</span>
+                                <span class="rounded bg-indigo-100 text-indigo-700 px-2 py-0.5 text-[9px] font-mono-code font-bold">5 Autonomous Modules</span>
+                            </h2>
+                            <p class="text-xs text-[#64748B]">How incoming bug reports are autonomously investigated, located in code, and assigned:</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="toggleAgentFlow()" id="btnToggleAgentFlow" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition shadow-2xs flex items-center gap-1.5">
+                        <span id="agentFlowIcon">👁️</span>
+                        <span id="agentFlowText">View Visual Pipeline Flow</span>
+                    </button>
+                </div>
+
+                <!-- 5 Modules Status Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 flex items-center gap-1">📸 Vision OCR</span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-snug">Groq Llama 3.2 Vision parses crash screens & extracts stack traces.</p>
+                        <span class="text-[9px] font-mono-code text-indigo-600 font-bold block pt-1">No code required</span>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 flex items-center gap-1">🐙 GitHub Tree</span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-snug">Scans any branch (<code class="font-mono text-[9px]">main</code>, <code class="font-mono text-[9px]">dev</code>) to isolate culprit file & line.</p>
+                        <span class="text-[9px] font-mono-code text-sky-600 font-bold block pt-1">Zero rate limits</span>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 flex items-center gap-1">⚡ AST Parser</span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-snug">Validates code syntax for Python, PHP, JS, Kotlin, and SQL.</p>
+                        <span class="text-[9px] font-mono-code text-purple-600 font-bold block pt-1">AST Diagnostics</span>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 flex items-center gap-1">🔍 Vector Sim</span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-snug">TF-IDF Cosine similarity prevents duplicate tickets automatically.</p>
+                        <span class="text-[9px] font-mono-code text-amber-600 font-bold block pt-1">90%+ match alert</span>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 flex items-center gap-1">👤 Dev Router</span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-snug">Taxonomy match + current workload balances dev assignments.</p>
+                        <span class="text-[9px] font-mono-code text-emerald-600 font-bold block pt-1">Optimal Capacity</span>
+                    </div>
+                </div>
+
+                <!-- Expandable Visual Flowchart Banner -->
+                <div id="agentVisualFlowchart" class="hidden mt-3 pt-3 border-t border-indigo-100">
+                    <div class="rounded-xl bg-slate-950 p-3.5 text-white font-mono-code text-[11px] space-y-2">
+                        <div class="flex items-center justify-between text-indigo-400 font-bold pb-1 border-b border-white/10 text-xs">
+                            <span>⚡ END-TO-END AUTONOMOUS AGENT PIPELINE FLOW</span>
+                            <span class="text-emerald-400">Average Latency: ~2.1s</span>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 py-2 text-slate-300">
+                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
+                                <span>1. Ingest Bug</span>
+                            </div>
+                            <span class="text-indigo-400">➔</span>
+                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
+                                <span>2. Groq Vision OCR</span>
+                            </div>
+                            <span class="text-indigo-400">➔</span>
+                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
+                                <span>3. GitHub Culprit Locator</span>
+                            </div>
+                            <span class="text-indigo-400">➔</span>
+                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
+                                <span>4. TF-IDF Dedupe</span>
+                            </div>
+                            <span class="text-indigo-400">➔</span>
+                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
+                                <span>5. Dev Assignment & Fix</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-sans leading-relaxed">
+                            Every bug submitted through the AI Workbench runs through this 5-stage explainable pipeline. Developers receive direct GitHub code permalinks and suggested code fixes directly on their Kanban cards.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
@@ -539,6 +643,21 @@
     </main>
 </div>
 <script>
+    function toggleAgentFlow() {
+        const el = document.getElementById('agentVisualFlowchart');
+        const text = document.getElementById('agentFlowText');
+        const icon = document.getElementById('agentFlowIcon');
+        if (el.classList.contains('hidden')) {
+            el.classList.remove('hidden');
+            text.innerText = 'Hide Pipeline Flow';
+            icon.innerText = '✕';
+        } else {
+            el.classList.add('hidden');
+            text.innerText = 'View Visual Pipeline Flow';
+            icon.innerText = '👁️';
+        }
+    }
+
     window.liveProjectId = @json($currentProjectId);
     document.addEventListener('DOMContentLoaded', () => {
         const quickSearch = document.getElementById('dashboardQuickSearch');

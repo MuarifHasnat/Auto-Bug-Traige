@@ -610,39 +610,112 @@
                             </div>
                         </div>
                     @else
-                        <!-- State 1: Empty / Ready State (AI System Blueprint Illustration) -->
-                        <div class="flex-1 flex flex-col justify-center items-center py-8 text-center">
-                            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-200 text-2xl text-indigo-600">
-                                🤖
+                        <!-- State 1: Empty / Ready State (AI Autonomous Engine Visual Blueprint) -->
+                        <div class="flex-1 flex flex-col justify-start items-center py-4 text-center space-y-4">
+                            <div class="flex items-center gap-2">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white text-lg font-bold shadow-sm">
+                                    ⚡
+                                </span>
+                                <div class="text-left">
+                                    <h3 class="text-sm font-extrabold text-[#0F172A] flex items-center gap-1.5">
+                                        <span>Autonomous AI Triage Architecture</span>
+                                        <span class="rounded bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 text-[9px] font-mono-code font-bold">5-Phase Pipeline</span>
+                                    </h3>
+                                    <p class="text-[11px] text-[#64748B]">How the agent converts black-box symptom reports into actionable developer assignments in &lt; 2.5s:</p>
+                                </div>
                             </div>
-                            <h3 class="text-base font-extrabold text-[#0F172A]">AI System Blueprint Ready</h3>
-                            <p class="mt-1 max-w-sm text-xs text-[#64748B] leading-relaxed">
-                                Enter your bug summary or paste code on the left to trigger the 4-phase automated triage sequence:
-                            </p>
 
-                            <!-- 4 Pipeline Blueprint Cards -->
-                            <div class="grid grid-cols-2 gap-3 mt-6 w-full max-w-md text-left">
-                                <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-[10px] font-bold mb-1.5">1</span>
-                                    <p class="text-xs font-bold text-[#0F172A]">Language Syntax Check</p>
-                                    <p class="text-[10px] text-[#64748B] mt-0.5">Scans code tokens & exception signatures</p>
+                            <!-- 5-Phase Interactive Visual Blueprint Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 w-full text-left">
+                                
+                                <!-- Phase 1: Vision Perception -->
+                                <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 hover:border-indigo-300 transition">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                                            <span>📸</span> <span>1. Vision Perception</span>
+                                        </span>
+                                        <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Groq 11B Vision</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 leading-relaxed">
+                                        Extracts stack traces, line numbers & crash dialogs directly from screenshots without needing access to user code.
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold mb-1.5">2</span>
-                                    <p class="text-xs font-bold text-[#0F172A]">Duplicate Checking</p>
-                                    <p class="text-[10px] text-[#64748B] mt-0.5">Vector similarity with past project bugs</p>
+
+                                <!-- Phase 2: Multi-Branch Repo Traversal -->
+                                <div class="rounded-2xl border border-sky-100 bg-sky-50/40 p-3 hover:border-sky-300 transition">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xs font-bold text-sky-900 flex items-center gap-1">
+                                            <span>🐙</span> <span>2. GitHub Traversal</span>
+                                        </span>
+                                        <span class="rounded bg-sky-100 text-sky-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Multi-Branch</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 leading-relaxed">
+                                        Traverses target repository branch (<code class="font-mono text-[9px]">main</code>, <code class="font-mono text-[9px]">develop</code>, etc.) without API rate limits to locate suspected culprit files.
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white text-[10px] font-bold mb-1.5">3</span>
-                                    <p class="text-xs font-bold text-[#0F172A]">Severity & Feature</p>
-                                    <p class="text-[10px] text-[#64748B] mt-0.5">Calculates Priority and Feature Module</p>
+
+                                <!-- Phase 3: TF-IDF Similarity -->
+                                <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-3 hover:border-amber-300 transition">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xs font-bold text-amber-900 flex items-center gap-1">
+                                            <span>🔍</span> <span>3. Vector Dedupe</span>
+                                        </span>
+                                        <span class="rounded bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Cosine Similarity</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 leading-relaxed">
+                                        Generates n-gram TF-IDF vectors to compare symptom overlap against all past bugs to prevent duplicate work.
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold mb-1.5">4</span>
-                                    <p class="text-xs font-bold text-[#0F172A]">Skill-Based Routing</p>
-                                    <p class="text-[10px] text-[#64748B] mt-0.5">Matches developer skills & workload capacity</p>
+
+                                <!-- Phase 4: Skill-Based Routing -->
+                                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3 hover:border-emerald-300 transition">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                                            <span>👤</span> <span>4. Smart Dev Routing</span>
+                                        </span>
+                                        <span class="rounded bg-emerald-100 text-emerald-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Capacity Aware</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 leading-relaxed">
+                                        Scores engineers by programming language, feature history, and live task queue to pick the best-suited owner.
+                                    </p>
+                                </div>
+
+                                <!-- Phase 5: Groq Deep Reasoning -->
+                                <div class="rounded-2xl border border-purple-100 bg-purple-50/40 p-3 hover:border-purple-300 transition col-span-1 sm:col-span-2 lg:col-span-2">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xs font-bold text-purple-900 flex items-center gap-1">
+                                            <span>🧠</span> <span>5. Groq Deep Diagnosis & Fix</span>
+                                        </span>
+                                        <span class="rounded bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">openai/gpt-oss-120b</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 leading-relaxed">
+                                        Dissects culprit code AST patterns and synthesizes clear root cause explanation, interactive checklist, and fix suggestions.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <!-- 1-Click Interactive Sample Bug Loaders -->
+                            <div class="w-full rounded-2xl border border-slate-200 bg-[#F8FAFC] p-3 text-left">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[11px] font-bold text-[#0F172A] flex items-center gap-1.5">
+                                        <span>⚡</span> <span>Try Agent with 1-Click Sample Bug:</span>
+                                    </span>
+                                    <span class="text-[10px] text-[#64748B]">Auto-fills form</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" onclick="loadSampleBug('payment')" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition shadow-2xs flex items-center gap-1">
+                                        <span>💳</span> <span>Payment NPE Crash</span>
+                                    </button>
+                                    <button type="button" onclick="loadSampleBug('auth')" class="rounded-xl border border-rose-200 bg-white hover:bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition shadow-2xs flex items-center gap-1">
+                                        <span>🔐</span> <span>Auth Token 401 Loop</span>
+                                    </button>
+                                    <button type="button" onclick="loadSampleBug('ui')" class="rounded-xl border border-blue-200 bg-white hover:bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition shadow-2xs flex items-center gap-1">
+                                        <span>📱</span> <span>UI Modal Overflow</span>
+                                    </button>
                                 </div>
                             </div>
+
                         </div>
                     @endif
                 </section>
@@ -653,6 +726,23 @@
 </div>
 
 <script>
+    // 1-Click Interactive Sample Bug Loader
+    function loadSampleBug(type) {
+        const titleInput = document.getElementById('bugTitle');
+        const labelInput = document.querySelector('input[name="labels"]');
+        if (type === 'payment') {
+            if (titleInput) titleInput.value = 'Borrow Equipment Button crashes with NullPointerException';
+            if (labelInput) labelInput.value = 'inventory, equipment, crash';
+        } else if (type === 'auth') {
+            if (titleInput) titleInput.value = 'User Session 401 Unauthorized after Token Refresh';
+            if (labelInput) labelInput.value = 'auth, jwt, security';
+        } else if (type === 'ui') {
+            if (titleInput) titleInput.value = 'Checkout modal overlaps and freezes on mobile screen';
+            if (labelInput) labelInput.value = 'ui, frontend, mobile';
+        }
+        applyTemplate(type);
+    }
+
     // Guided tester report helpers
     function applyTemplate(type) {
         const title = document.getElementById('bugTitle');
@@ -1403,20 +1493,30 @@
 
             <!-- 5-Phase Stepper Pills (Responsive Grid) -->
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-xs">
-                <div id="step-pill-1" data-name="NLP & OCR" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
-                    1. NLP & OCR
+                <div id="step-pill-1" data-name="NLP & OCR" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
+                    <span class="text-xs">📸</span>
+                    <span class="font-bold text-slate-800">1. Vision & OCR</span>
+                    <span class="text-[8px] font-mono-code text-slate-400">Groq Vision 11B</span>
                 </div>
-                <div id="step-pill-2" data-name="GitHub Tree" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
-                    2. GitHub Tree
+                <div id="step-pill-2" data-name="GitHub Tree" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
+                    <span class="text-xs">🐙</span>
+                    <span class="font-bold text-slate-800">2. GitHub Tree</span>
+                    <span class="text-[8px] font-mono-code text-slate-400">Multi-Branch Code</span>
                 </div>
-                <div id="step-pill-3" data-name="AST Syntax" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
-                    3. AST Syntax
+                <div id="step-pill-3" data-name="AST Syntax" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
+                    <span class="text-xs">⚡</span>
+                    <span class="font-bold text-slate-800">3. AST Syntax</span>
+                    <span class="text-[8px] font-mono-code text-slate-400">Pattern Analyzer</span>
                 </div>
-                <div id="step-pill-4" data-name="Vector Sim" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
-                    4. Vector Sim
+                <div id="step-pill-4" data-name="Vector Sim" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
+                    <span class="text-xs">🔍</span>
+                    <span class="font-bold text-slate-800">4. Vector Sim</span>
+                    <span class="text-[8px] font-mono-code text-slate-400">TF-IDF Deduplication</span>
                 </div>
-                <div id="step-pill-5" data-name="Dev Routing" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px] col-span-2 sm:col-span-1">
-                    5. Dev Routing
+                <div id="step-pill-5" data-name="Dev Routing" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px] col-span-2 sm:col-span-1">
+                    <span class="text-xs">👤</span>
+                    <span class="font-bold text-slate-800">5. Dev Routing</span>
+                    <span class="text-[8px] font-mono-code text-slate-400">Skill & Workload</span>
                 </div>
             </div>
 

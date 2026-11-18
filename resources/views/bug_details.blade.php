@@ -106,6 +106,98 @@
             </div>
         </div>
 
+        <!-- AI Agent Forensic Decision Trail (Visual Step-by-Step Transparency) -->
+        <section class="rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50/60 via-white to-purple-50/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-indigo-100 pb-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-xs shadow-xs">⚡</span>
+                    <div>
+                        <h2 class="text-xs sm:text-sm font-extrabold text-[#0F172A] flex items-center gap-1.5">
+                            <span>AI Agent Investigation Trail</span>
+                            <span class="rounded bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 text-[9px] font-mono-code font-bold">5-Phase Autonomous Audit</span>
+                        </h2>
+                        <p class="text-[10px] text-[#64748B]">Transparent breakdown of how the AI agent analyzed and triaged issue #ABT-{{ $bug->id }}:</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono-code text-indigo-700 font-bold bg-white px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs">
+                    Triage State: {{ ucfirst($bug->triage_state ?? 'Completed') }}
+                </span>
+            </div>
+
+            <!-- 4 Breadcrumb Forensic Trail Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                
+                <!-- 1. Vision & Evidence -->
+                <div class="rounded-2xl border border-slate-200 bg-white p-3 space-y-1 shadow-2xs">
+                    <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono-code uppercase">
+                        <span>Phase 1: Evidence</span>
+                        <span>📸</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-900">
+                        @if($bug->screenshot_path)
+                            Image OCR Extracted
+                        @else
+                            Text Symptom Analysis
+                        @endif
+                    </p>
+                    <span class="text-[10px] text-slate-500 block">
+                        {{ $bug->screenshot_path ? 'Screenshot analyzed with Groq Vision' : 'Natural language symptom parsed' }}
+                    </span>
+                </div>
+
+                <!-- 2. Code Location -->
+                <div class="rounded-2xl border border-sky-200 bg-sky-50/50 p-3 space-y-1 shadow-2xs">
+                    <div class="flex items-center justify-between text-[10px] text-sky-700 font-mono-code uppercase">
+                        <span>Phase 2: Code Search</span>
+                        <span>🐙</span>
+                    </div>
+                    <p class="text-xs font-bold text-sky-950 truncate font-mono-code">
+                        @if(!empty($suspectedFiles))
+                            {{ is_array($suspectedFiles[0]) ? ($suspectedFiles[0]['path'] ?? 'Culprit Located') : $suspectedFiles[0] }}
+                        @else
+                            Branch: main Scanned
+                        @endif
+                    </p>
+                    <span class="text-[10px] text-sky-700 block">
+                        {{ !empty($suspectedFiles) ? 'Suspected culprit file isolated' : 'Repo file tree traversed' }}
+                    </span>
+                </div>
+
+                <!-- 3. Duplicate Score -->
+                <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-3 space-y-1 shadow-2xs">
+                    <div class="flex items-center justify-between text-[10px] text-amber-700 font-mono-code uppercase">
+                        <span>Phase 3: Duplicate</span>
+                        <span>🔍</span>
+                    </div>
+                    <p class="text-xs font-bold text-amber-950">
+                        @if($bug->is_duplicate)
+                            ⚠️ Duplicate (#ABT-{{ $bug->duplicate_of }})
+                        @else
+                            ✓ Unique Report
+                        @endif
+                    </p>
+                    <span class="text-[10px] text-amber-700 block">
+                        TF-IDF Cosine similarity: {{ $bug->duplicate_similarity_score ? number_format($bug->duplicate_similarity_score, 0) . '%' : '0%' }}
+                    </span>
+                </div>
+
+                <!-- 4. Developer Match Rationale -->
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-1 shadow-2xs">
+                    <div class="flex items-center justify-between text-[10px] text-emerald-700 font-mono-code uppercase">
+                        <span>Phase 4: Routing</span>
+                        <span>👤</span>
+                    </div>
+                    <p class="text-xs font-bold text-emerald-950 truncate">
+                        {{ $bug->assigned_to ?: 'Auto-Matched' }}
+                    </p>
+                    <span class="text-[10px] text-emerald-700 block truncate">
+                        {{ $bug->triage['assignment_rationale'] ?? 'Best tech-stack and capacity balance' }}
+                    </span>
+                </div>
+
+            </div>
+        </section>
+
         <!-- 2-Column Content Layout (65% / 35%) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
