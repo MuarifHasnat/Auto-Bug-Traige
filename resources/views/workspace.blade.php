@@ -22,7 +22,7 @@
             <!-- Sticky Header (60px) -->
             <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 py-3 lg:px-8">
                 <div class="ml-auto flex items-center gap-2.5">
-                    @include('components.project-switcher', ['variant' => 'mobile'])
+                    @include('components.project-switcher', ['variant' => 'header'])
                     <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
                     @include('components.profile-header')
                 </div>

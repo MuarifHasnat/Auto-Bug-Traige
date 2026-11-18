@@ -1,11 +1,11 @@
 @if(isset($projects) && $projects->count() > 0)
     @php($darkSwitcher = ($variant ?? 'light') === 'dark')
-    @php($compactSwitcher = ($variant ?? 'light') === 'mobile')
+    @php($compactSwitcher = in_array(($variant ?? 'light'), ['mobile', 'header'], true))
     @if($compactSwitcher)
-        <form action="{{ route('projects.switch', [], false) }}" method="POST" class="lg:hidden">
+        <form action="{{ route('projects.switch', [], false) }}" method="POST" class="{{ ($variant ?? '') === 'mobile' ? 'lg:hidden' : 'flex' }}">
             @csrf
-            <label for="project-switcher-mobile" class="sr-only">Switch project</label>
-            <select id="project-switcher-mobile" name="project_id" onchange="this.form.submit()" class="w-28 rounded-lg border border-slate-300 bg-white px-1.5 py-1.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-indigo-500">
+            <label for="project-switcher-{{ $variant }}" class="sr-only">Switch project</label>
+            <select id="project-switcher-{{ $variant }}" name="project_id" onchange="this.form.submit()" class="{{ ($variant ?? '') === 'header' ? 'min-w-40 max-w-56' : 'w-28' }} rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-indigo-500">
                 @foreach($projects as $project)
                     <option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>
                 @endforeach
