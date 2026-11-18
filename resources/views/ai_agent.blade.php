@@ -55,6 +55,7 @@
                 })->count();
                 $studioSelected = $studioBugs->first();
                 $studioTriage = $studioSelected ? (json_decode($studioSelected->triage_result ?? '', true) ?: []) : [];
+                $triageResult = session('ai_result') ?: $studioTriage;
                 $studioCodeHelp = $studioTriage['code_help'] ?? [];
                 $studioFiles = $studioCodeHelp['suspected_files'] ?? $studioTriage['suspected_files'] ?? [];
                 $studioFixes = $studioCodeHelp['fix_suggestions'] ?? $studioCodeHelp['suggestions'] ?? [];
@@ -367,18 +368,19 @@
                                 </label>
                                 <span class="text-[10px] text-slate-500 font-mono-code">No code required</span>
                             </div>
-                            <div id="screenshotDropzone" class="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 p-5 text-center transition group" ondragover="event.preventDefault(); this.classList.add('border-indigo-500','bg-indigo-50')" ondragleave="this.classList.remove('border-indigo-500','bg-indigo-50')" ondrop="handleScreenshotDrop(event)">
-                                <label for="screenshotInput" id="screenshotPlaceholder" class="flex flex-col items-center py-2 cursor-pointer">
+                            <div id="screenshotDropzone" class="relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 p-5 text-center transition group hover:border-indigo-400 hover:bg-indigo-50/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-indigo-400" ondragover="event.preventDefault(); this.classList.add('border-indigo-500','bg-indigo-50')" ondragleave="this.classList.remove('border-indigo-500','bg-indigo-50')" ondrop="handleScreenshotDrop(event)">
+                                <div id="screenshotPlaceholder" class="relative z-20 flex flex-col items-center py-2 pointer-events-none">
                                     <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 text-2xl group-hover:scale-105 transition shadow-xs">📸</span>
                                     <span class="text-xs font-bold text-[#0F172A] mt-2 block" id="screenshotStatus">Click to Upload or Drag & Drop Screenshot</span>
                                     <span class="text-[11px] text-[#64748B] block mt-0.5">Supports PNG, JPG, WEBP • Or directly press <kbd class="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono-code text-[10px] font-bold text-slate-700 shadow-2xs">Ctrl + V</kbd> to paste</span>
-                                </label>
-                                <div id="screenshotPreviewWrapper" class="hidden w-full text-center">
+                                    <span class="mt-3 inline-flex min-h-9 items-center rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white">Choose image</span>
+                                </div>
+                                <div id="screenshotPreviewWrapper" class="relative z-20 hidden w-full text-center pointer-events-none">
                                     <img id="screenshotPreview" src="" alt="Screenshot Preview" class="max-h-44 rounded-xl mx-auto object-contain border border-indigo-200 shadow-sm">
                                     <span class="inline-block mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shadow-2xs" id="screenshotFileName">✓ Image attached</span>
-                                    <div class="mt-2 flex items-center justify-center gap-4"><label for="screenshotInput" class="cursor-pointer text-[10px] font-bold text-indigo-600 hover:underline">Replace image</label><button type="button" onclick="clearScreenshot(event)" class="text-[10px] font-bold text-rose-500 hover:underline">Remove image</button></div>
+                                    <div class="pointer-events-auto relative z-30 mt-2 flex items-center justify-center gap-4"><button type="button" onclick="event.stopPropagation(); document.getElementById('screenshotInput').click()" class="text-[10px] font-bold text-indigo-600 hover:underline">Replace image</button><button type="button" onclick="clearScreenshot(event)" class="text-[10px] font-bold text-rose-500 hover:underline">Remove image</button></div>
                                 </div>
-                                <input type="file" id="screenshotInput" name="screenshot" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleScreenshotSelected(this)">
+                                <input type="file" id="screenshotInput" name="screenshot" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" onchange="handleScreenshotSelected(this)" aria-label="Choose a screenshot or drop an image here">
                             </div>
                             <p id="screenshotError" class="hidden mt-1 text-[11px] font-semibold text-rose-700" role="alert"></p>
                             <div id="screenshotUploadProgress" class="hidden mt-2" aria-live="polite"><div class="mb-1 flex justify-between text-[10px] text-slate-600"><span id="screenshotUploadLabel">Uploading screenshot…</span><span id="screenshotUploadPercent">0%</span></div><div class="h-1.5 overflow-hidden rounded-full bg-slate-100"><div id="screenshotUploadBar" class="h-full w-0 rounded-full bg-indigo-600 transition-[width]"></div></div></div>
@@ -467,10 +469,136 @@
                         </span>
                     </div>
 
-                    @if(session('ai_result'))
+                    @if(!empty($triageResult))
                         @php
-                            $ai = session('ai_result');
+                            $ai = $triageResult;
+                            $pipelineCode = $ai['code_help'] ?? [];
+                            $pipelineVision = $ai['screenshot_vision'] ?? $pipelineCode['screenshot_vision'] ?? [];
+                            $pipelineHasScreenshot = !empty($pipelineVision) || str_contains(strtolower((string) ($pipelineCode['attachment_note'] ?? '')), 'screenshot');
+                            $pipelineFiles = $pipelineCode['suspected_files'] ?? $ai['suspected_files'] ?? [];
+                            $pipelineLlm = $pipelineCode['llm_analysis'] ?? [];
+                            $pipelineDiagnostics = $pipelineCode['steps'] ?? [];
+                            $pipelineFixes = $pipelineCode['fix_suggestions'] ?? $pipelineCode['suggestions'] ?? [];
+                            $pipelineSourceContext = $pipelineCode['github_source_context'] ?? [];
+                            $pipelineSteps = [
+                                [
+                                    'number' => '01', 'icon' => '📸', 'title' => 'Vision OCR',
+                                    'state' => $pipelineVision ? 'Complete' : ($pipelineHasScreenshot ? 'Needs review' : 'Skipped'),
+                                    'tone' => $pipelineVision ? 'emerald' : ($pipelineHasScreenshot ? 'amber' : 'slate'),
+                                    'summary' => $pipelineVision
+                                        ? 'Read text from the attached screenshot and extracted error clues.'
+                                        : ($pipelineHasScreenshot ? 'A screenshot was attached, but OCR did not return readable text.' : 'No screenshot was attached, so image reading was skipped.'),
+                                    'facts' => array_values(array_filter([
+                                        !empty($pipelineVision['method']) ? 'Reader: '.strtoupper(str_replace('_', ' ', $pipelineVision['method'])) : null,
+                                        !empty($pipelineVision['error_name']) ? 'Detected error: '.$pipelineVision['error_name'] : null,
+                                        !empty($pipelineVision['line_numbers']) ? 'Line numbers: '.implode(', ', $pipelineVision['line_numbers']) : null,
+                                        !empty($pipelineVision['suspected_files']) ? 'Names found in image: '.implode(', ', $pipelineVision['suspected_files']) : null,
+                                        !empty($pipelineVision['stack_traces']) ? 'Stack trace lines extracted: '.count($pipelineVision['stack_traces']) : null,
+                                    ])),
+                                    'raw' => $pipelineVision['extracted_text'] ?? '',
+                                ],
+                                [
+                                    'number' => '02', 'icon' => '🏷️', 'title' => 'Categorizer & priority', 'state' => 'Complete', 'tone' => 'emerald',
+                                    'summary' => 'Classified the report from its title, description, supplied code and any OCR text.',
+                                    'facts' => array_values(array_filter([
+                                        'Module: '.($ai['feature'] ?? $pipelineCode['feature'] ?? 'General'),
+                                        'Priority: '.($ai['priority'] ?? 'Medium'),
+                                        'Issue status: '.($ai['status'] ?? 'Open'),
+                                        'Blocker signal: '.(!empty($ai['blocker_signal']) ? 'Detected' : 'Not detected'),
+                                        'Sentiment: '.ucfirst((string) ($ai['sentiment'] ?? 'neutral')).(isset($ai['sentiment_score']) ? ' (score '.round((float) $ai['sentiment_score'], 2).')' : ''),
+                                        'Method: keyword-based feature and priority rules',
+                                    ])), 'raw' => '',
+                                ],
+                                [
+                                    'number' => '03', 'icon' => '🔍', 'title' => 'Duplicate check', 'state' => 'Complete', 'tone' => !empty($ai['is_duplicate']) ? 'amber' : 'emerald',
+                                    'summary' => !empty($ai['is_duplicate']) ? 'A similar existing report crossed the duplicate threshold; review the match before closing either report.' : 'Compared this report with earlier project reports; no match crossed the duplicate threshold.',
+                                    'facts' => array_values(array_filter([
+                                        'Closest similarity: '.($ai['similarity_score'] ?? 0).'% (duplicate threshold: 75%)',
+                                        !empty($ai['duplicate_of']) ? 'Matched report: #ABT-'.$ai['duplicate_of'] : 'Duplicate match: none',
+                                        'Compared fields: report title and description',
+                                        'Method: cosine similarity over report text',
+                                    ])), 'raw' => '',
+                                ],
+                                [
+                                    'number' => '04', 'icon' => '🧪', 'title' => 'AST & syntax diagnostics',
+                                    'state' => match($pipelineCode['syntax_status'] ?? 'not_run') { 'passed' => 'Passed', 'failed' => 'Issue found', 'timeout' => 'Timed out', 'not_available' => 'Unavailable', default => 'Not run' },
+                                    'tone' => match($pipelineCode['syntax_status'] ?? 'not_run') { 'passed' => 'emerald', 'failed' => 'rose', 'timeout', 'not_available' => 'amber', default => 'slate' },
+                                    'summary' => !empty($pipelineCode['fixed_code']) ? 'Checked the provided source snippet with a language parser. This is a syntax check; it cannot confirm runtime or business logic.' : 'No source snippet was provided, so parser-based syntax checking was skipped.',
+                                    'facts' => array_merge(array_values(array_filter([
+                                        'Language: '.($pipelineCode['language'] ?? 'Unknown'),
+                                        !empty($pipelineCode['syntax_checker']) ? 'Checker: '.$pipelineCode['syntax_checker'] : null,
+                                        !empty($pipelineCode['error_name']) ? 'Result: '.$pipelineCode['error_name'] : null,
+                                        !empty($pipelineCode['analysis_scope']) ? 'Scope: '.$pipelineCode['analysis_scope'] : null,
+                                    ])), is_array($pipelineDiagnostics) ? array_map(fn ($item) => is_array($item) ? json_encode($item) : (string) $item, $pipelineDiagnostics) : []), 'raw' => '',
+                                ],
+                                [
+                                    'number' => '05', 'icon' => '🐙', 'title' => 'GitHub file locator',
+                                    'state' => !empty($pipelineFiles) ? 'Files found' : (empty($ai['github_repo']) ? 'Repository not linked' : 'No file match'),
+                                    'tone' => !empty($pipelineFiles) ? 'emerald' : 'amber',
+                                    'summary' => !empty($pipelineFiles) ? 'Ranked likely repository files using report clues, stack details and project context.' : 'No likely source file was returned. Link or scan the repository and include an error trace for stronger file matches.',
+                                    'facts' => array_merge(array_values(array_filter([
+                                        !empty($ai['github_repo']) ? 'Repository: '.$ai['github_repo'] : 'Repository: not linked to this project',
+                                        !empty($pipelineSourceContext) ? 'Source read: '.implode(', ', array_map(fn ($item) => ($item['path'] ?? 'file').' ('.($item['lines'] ?? 0).' lines)', $pipelineSourceContext)) : null,
+                                    ])), is_array($pipelineFiles) ? array_map(fn ($file) => is_array($file) ? (($file['path'] ?? 'Unknown file').' · '.($file['confidence'] ?? 0).'% match — '.($file['reason'] ?? 'Ranked from report context')) : (string) $file, $pipelineFiles) : []), 'raw' => '',
+                                ],
+                                [
+                                    'number' => '06', 'icon' => '👤', 'title' => 'Smart developer routing',
+                                    'state' => !empty($ai['assigned_to']) && $ai['assigned_to'] !== 'Unassigned' ? 'Assigned' : 'Manager review',
+                                    'tone' => !empty($ai['assigned_to']) && $ai['assigned_to'] !== 'Unassigned' ? 'emerald' : 'amber',
+                                    'summary' => !empty($ai['is_duplicate']) ? 'Duplicate reports are held for manager review instead of being assigned automatically.' : (!empty($ai['assigned_to']) && $ai['assigned_to'] !== 'Unassigned' ? 'Selected the available developer whose skills, feature experience and workload best fit this report.' : 'No eligible developer was selected; manager review is needed.'),
+                                    'facts' => array_values(array_filter([
+                                        'Recommended developer: '.($ai['assigned_to'] ?? 'Unassigned'),
+                                        !empty($pipelineCode['assignment_reason']) ? 'Why: '.$pipelineCode['assignment_reason'] : null,
+                                    ])), 'raw' => '',
+                                ],
+                                [
+                                    'number' => '07', 'icon' => '💡', 'title' => 'Code fix guidance',
+                                    'state' => !empty($pipelineLlm) && empty($pipelineLlm['error']) ? 'AI analysis ready' : (!empty($pipelineFixes) ? 'Suggestions ready' : 'No fix suggestion'),
+                                    'tone' => !empty($pipelineLlm) && empty($pipelineLlm['error']) ? 'violet' : (!empty($pipelineFixes) ? 'amber' : 'slate'),
+                                    'summary' => !empty($pipelineLlm['root_cause']) ? $pipelineLlm['root_cause'] : (!empty($pipelineFixes) ? 'Rule-based guidance is available. Review it with the developer before changing code.' : 'The agent could not produce a specific fix for this report.'),
+                                    'facts' => array_merge(array_values(array_filter([
+                                        isset($pipelineLlm['confidence']) ? 'LLM confidence: '.$pipelineLlm['confidence'].'%' : (!empty($pipelineLlm['error']) ? 'LLM unavailable: '.$pipelineLlm['error'] : 'LLM root-cause analysis: not available; showing rule-based guidance where possible'),
+                                    ])), is_array($pipelineLlm['evidence'] ?? null) ? array_map(fn ($item) => 'Evidence: '.(is_array($item) ? json_encode($item) : (string) $item), $pipelineLlm['evidence']) : [], is_array($pipelineFixes) ? array_map(fn ($item) => is_array($item) ? (($item['title'] ?? 'Suggestion').': '.($item['detail'] ?? 'Review with the developer.')) : (string) $item, $pipelineFixes) : []), 'raw' => '',
+                                ],
+                            ];
                         @endphp
+                        <section id="ai-pipeline-details" class="mb-5 overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm" aria-labelledby="ai-pipeline-title">
+                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-white px-5 py-4">
+                                <div><h3 id="ai-pipeline-title" class="text-base font-extrabold text-slate-900">How the AI analyzed this report</h3><p class="mt-1 text-xs text-slate-600">Seven steps, with the result and evidence from this run. Expand any step for details.</p></div>
+                                <a href="/workspace" class="inline-flex min-h-10 items-center rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-500">View on Kanban →</a>
+                            </div>
+                            <div class="divide-y divide-slate-100 px-4 sm:px-5">
+                                @foreach($pipelineSteps as $step)
+                                    @php
+                                        $stepToneClasses = [
+                                            'emerald' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                            'amber' => 'bg-amber-50 text-amber-800 border-amber-200',
+                                            'rose' => 'bg-rose-50 text-rose-700 border-rose-200',
+                                            'violet' => 'bg-violet-50 text-violet-700 border-violet-200',
+                                            'slate' => 'bg-slate-100 text-slate-600 border-slate-200',
+                                        ];
+                                    @endphp
+                                    <details class="group py-3" @if($loop->first) open @endif>
+                                        <summary class="flex cursor-pointer list-none items-start gap-3 marker:hidden [&::-webkit-details-marker]:hidden">
+                                            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-lg">{{ $step['icon'] }}</span>
+                                            <span class="min-w-0 flex-1"><span class="flex flex-wrap items-center gap-2"><span class="text-[10px] font-bold tracking-wide text-slate-400">STEP {{ $step['number'] }}</span><span class="text-sm font-bold text-slate-900">{{ $step['title'] }}</span><span class="rounded-full border px-2 py-0.5 text-[10px] font-bold {{ $stepToneClasses[$step['tone']] ?? $stepToneClasses['slate'] }}">{{ $step['state'] }}</span></span><span class="mt-1 block text-xs leading-5 text-slate-600">{{ $step['summary'] }}</span></span>
+                                            <span class="mt-2 text-xs font-bold text-indigo-600 group-open:rotate-180">⌄</span>
+                                        </summary>
+                                        <div class="ml-12 mt-3 space-y-2 border-l-2 border-slate-100 pl-4">
+                                            @if(!empty($step['facts']))
+                                                <ul class="space-y-1.5 text-xs leading-5 text-slate-700">
+                                                    @foreach($step['facts'] as $fact)<li class="flex gap-2"><span class="text-indigo-400">•</span><span>{{ $fact }}</span></li>@endforeach
+                                                </ul>
+                                            @endif
+                                            @if(!empty($step['raw']))
+                                                <details class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"><summary class="cursor-pointer text-[11px] font-semibold text-slate-700">Show OCR text excerpt</summary><pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-600">{{ \Illuminate\Support\Str::limit($step['raw'], 1800) }}</pre></details>
+                                            @endif
+                                        </div>
+                                    </details>
+                                @endforeach
+                            </div>
+                            <p class="border-t border-slate-100 bg-slate-50 px-5 py-3 text-[11px] leading-5 text-slate-500">AI results are recommendations for review. Syntax checks cannot prove a program is logically correct, and suggested code is never applied automatically.</p>
+                        </section>
                         <!-- State 2: Result State (4 Human-in-the-Loop Sections) -->
                         <div class="space-y-4 animate-fade-in flex-1">
                             
@@ -950,7 +1078,10 @@
         const file = input.files && input.files[0];
         const error = document.getElementById('screenshotError');
         if (!file) return;
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+        const extension = (file.name.split('.').pop() || '').toLowerCase();
+        const supportedType = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)
+            || (!file.type && ['png', 'jpg', 'jpeg', 'webp'].includes(extension));
+        if (!supportedType || file.size > 5 * 1024 * 1024) {
             error.textContent = file.size > 5 * 1024 * 1024 ? 'Screenshot must be 5 MB or smaller.' : 'Choose a PNG, JPG, or WEBP image.';
             error.classList.remove('hidden');
             input.value = '';
@@ -1013,15 +1144,26 @@
 
     // Clipboard Screenshot Paste (Ctrl + V)
     window.addEventListener('paste', function(e) {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        const items = e.clipboardData?.items;
+        if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
+            if (items[i].type && items[i].type.indexOf('image/') === 0) {
                 const blob = items[i].getAsFile();
+                if (!blob) continue;
+                if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
+                    const error = document.getElementById('screenshotError');
+                    error.textContent = 'Paste a PNG, JPG, or WEBP image. Other image formats are not supported.';
+                    error.classList.remove('hidden');
+                    break;
+                }
                 const fileInput = document.getElementById('screenshotInput');
                 const dt = new DataTransfer();
-                dt.items.add(blob);
+                const safeType = blob.type;
+                const fileName = `pasted-screenshot-${Date.now()}.${safeType === 'image/jpeg' ? 'jpg' : safeType.split('/')[1]}`;
+                dt.items.add(new File([blob], fileName, { type: safeType }));
                 fileInput.files = dt.files;
                 handleScreenshotSelected(fileInput);
+                document.getElementById('screenshotDropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 break;
             }
         }

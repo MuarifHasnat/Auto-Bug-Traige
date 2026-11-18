@@ -824,7 +824,11 @@ class BugController extends Controller
         $projectId = $this->currentProjectId();
         $this->ensureProjectWorkflow($projectId);
         $projectBugCount = DB::table('bugs')->where('project_id', $projectId)->count();
-        $bugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(10)->get();
+        $bugsQuery = DB::table('bugs')->where('project_id', $projectId);
+        if (Auth::user()->role === 'tester') {
+            $bugsQuery->where('reporter_id', Auth::id());
+        }
+        $bugs = $bugsQuery->orderByDesc('id')->limit(10)->get();
         $assignedBugs = collect();
         if (Auth::user()->role === 'developer') {
             $assignedBugs = DB::table('bugs')
@@ -859,6 +863,12 @@ class BugController extends Controller
     public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         abort_unless(in_array(Auth::user()?->role, ['manager', 'tester'], true), 403);
+
+        // Screenshot OCR, repository lookup and LLM analysis can exceed PHP's
+        // default 30-second request limit. Keep the request alive for the
+        // bounded agent run below so an uploaded image is not abandoned before
+        // its bug report is persisted.
+        set_time_limit(120);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],
@@ -970,7 +980,7 @@ class BugController extends Controller
             ], JSON_THROW_ON_ERROR));
 
             $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $result = Process::run([$python, base_path('agent/triage.py'), $payloadPath]);
+            $result = Process::timeout(110)->run([$python, base_path('agent/triage.py'), $payloadPath]);
         } finally {
             @unlink($payloadPath);
         }
