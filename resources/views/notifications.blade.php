@@ -31,8 +31,8 @@
                     <h1 class="text-2xl font-extrabold">Notifications</h1>
                     <p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes.</p>
                 </div>
-                @if($notifications->whereNull('read_at')->isNotEmpty())
-                    <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold transition hover:bg-slate-50">Mark all read</button></form>
+                @if(($unreadNotificationCount ?? 0) > 0)
+                    <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold transition hover:bg-slate-50">Mark all as read <span class="ml-1 text-slate-500">({{ $unreadNotificationCount }})</span></button></form>
                 @endif
             </div>
 
@@ -59,7 +59,7 @@
                         </div>
                     </article>
                 @empty
-                    <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><p class="font-bold">You’re all caught up</p><p class="mt-1 text-sm text-slate-500">New bug updates will appear here.</p></div>
+                    <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center" role="status"><p class="text-lg font-bold">You’re all caught up</p><p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes will appear here.</p></div>
                 @endforelse
             </div>
             <div class="mt-6">{{ $notifications->links() }}</div>
