@@ -1449,7 +1449,10 @@ class BugController extends Controller
         $projectId = $this->currentProjectId();
         $statuses = $this->ensureProjectWorkflow($projectId);
         $transitions = DB::table('project_workflow_transitions')->where('project_id', $projectId)->orderBy('from_status')->orderBy('to_status')->get();
-        return view('workflow_settings', compact('statuses', 'transitions'));
+        $currentProject = DB::table('projects')->where('id', $projectId)->first();
+        $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
+        $projectStack = $currentProject?->stack ?: session('project_stack', 'Multi-stack');
+        return view('workflow_settings', compact('statuses', 'transitions', 'projectGithubRepo', 'projectStack'));
     }
 
     public function saveWorkflow(Request $request): RedirectResponse
