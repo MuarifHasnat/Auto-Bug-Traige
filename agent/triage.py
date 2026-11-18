@@ -1,5 +1,6 @@
 import json
 import sys
+import os
 from pathlib import Path
 
 # Ensure the agent directory is in sys.path for direct script execution
@@ -14,9 +15,15 @@ from similarity import detect_duplicates
 from sentiment import analyze_sentiment
 from file_locator import locate_suspected_files
 from vision import analyze_screenshot
+from github_context import fetch_relevant_source
+from llm_analysis import analyze_with_gemini
 
 
 def analyze_report(data):
+    if data.get("github_token"):
+        os.environ["GITHUB_TOKEN"] = str(data["github_token"])
+    if data.get("gemini_triage_model"):
+        os.environ["GEMINI_TRIAGE_MODEL"] = str(data["gemini_triage_model"])
     title = data.get("title") or ""
     description = data.get("description") or ""
     code_snippet = data.get("code_snippet") or ""
@@ -113,7 +120,43 @@ def analyze_report(data):
     if suspected_files:
         code_help["suspected_files"] = suspected_files
 
-    # Provide actionable fix suggestions based on root cause analysis
+    # Provide actionable fix suggestions based on root cause analysis.
+
+    # 7. Fetch bounded GitHub source context and add an evidence-grounded LLM analysis.
+    source_context = fetch_relevant_source(
+        github_repo, suspected_files, token=data.get("github_token", "")
+    ) if github_repo and suspected_files else []
+    code_help["github_source_context"] = [
+        {"path": item["path"], "branch": item["branch"], "lines": len(item["content"].splitlines())}
+        for item in source_context
+    ]
+    llm_analysis = analyze_with_gemini(
+        report={
+            "title": title,
+            "description": description,
+            "expected_result": data.get("expected_result"),
+            "reproduction_steps": data.get("reproduction_steps"),
+            "code_snippet": code_snippet,
+            "selected_language": selected_language,
+        },
+        diagnostics={
+            "error_name": code_help.get("error_name"),
+            "syntax_status": code_help.get("syntax_status"),
+            "steps": code_help.get("steps", []),
+            "feature": feature,
+            "priority": priority,
+            "duplicate": {"is_duplicate": is_duplicate, "duplicate_of": duplicate_of, "similarity": similarity_percent},
+        },
+        source_context=source_context,
+        api_key=data.get("gemini_api_key", ""),
+    )
+    if llm_analysis is not None:
+        code_help["llm_analysis"] = llm_analysis
+        if not llm_analysis.get("error"):
+            code_help["fix_suggestions"] = llm_analysis.get("fix_suggestions") or code_help.get("fix_suggestions", [])
+            code_help["suggested_fix_available"] = bool(code_help["fix_suggestions"])
+
+    # Keep repository and static-analysis recommendations when the LLM is unavailable.
     if not code_help.get("fix_suggestions"):
         if suspected_files and suspected_files[0].get("reason"):
             top_f = suspected_files[0]

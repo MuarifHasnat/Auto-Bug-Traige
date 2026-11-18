@@ -500,6 +500,19 @@
                                 <p class="text-[11px] text-slate-700 mt-1">
                                     Evidence: {{ $ai['code_help']['attachment_note'] ?? 'No attachment provided.' }}
                                 </p>
+                                @if(!empty($ai['code_help']['llm_analysis']) && empty($ai['code_help']['llm_analysis']['error']))
+                                    @php($llm = $ai['code_help']['llm_analysis'])
+                                    <div class="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-violet-950">
+                                        <div class="flex flex-wrap items-center justify-between gap-2"><p class="font-bold">Gemini code analysis</p><span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold">Confidence {{ $llm['confidence'] }}%</span></div>
+                                        <p class="mt-2 text-xs"><strong>Likely cause:</strong> {{ $llm['root_cause'] }}</p>
+                                        @if(!empty($llm['evidence']))<ul class="mt-2 list-disc space-y-1 pl-5 text-[11px]">@foreach($llm['evidence'] as $evidence)<li>{{ $evidence }}</li>@endforeach</ul>@endif
+                                        @if(!empty($llm['affected_locations']))<div class="mt-2 space-y-1">@foreach($llm['affected_locations'] as $location)@php($locationCandidate = collect($ai['suspected_files'] ?? [])->firstWhere('path', $location['path']))<p class="text-[11px]">📍 <a class="font-semibold underline" target="_blank" rel="noopener" href="{{ $locationCandidate['github_url'] ?? '#' }}#L{{ $location['line'] }}">{{ $location['path'] }}:{{ $location['line'] }}</a> — {{ $location['reason'] }}</p>@endforeach</div>@endif
+                                        <p class="mt-2 text-[10px] text-violet-700">AI suggestions are unverified. Review code and tests before applying.</p>
+                                    </div>
+                                @elseif(!empty($ai['code_help']['llm_analysis']['error']))
+                                    <p class="mt-2 text-[10px] text-amber-700">LLM analysis unavailable; rule-based triage was used. {{ $ai['code_help']['llm_analysis']['error'] }}</p>
+                                @endif
+                                @if(!empty($ai['code_help']['github_source_context']))<p class="mt-2 text-[10px] text-slate-500">Source retrieved from: {{ collect($ai['code_help']['github_source_context'])->pluck('path')->implode(', ') }}</p>@endif
                                 @if(!empty($ai['code_help']['screenshot_vision']['stack_traces']))
                                     <details class="mt-2 rounded-xl border border-indigo-200 bg-white p-2.5">
                                         <summary class="cursor-pointer font-bold text-indigo-700 text-[11px] flex items-center gap-1.5 select-none">

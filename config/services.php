@@ -37,6 +37,11 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY', env('GOOGLE_API_KEY')),
+        'triage_model' => env('GEMINI_TRIAGE_MODEL', 'gemini-3.8-flash'),
+    ],
+
+    'github' => [
+        'token' => env('GITHUB_TOKEN'),
     ],
 
 ];

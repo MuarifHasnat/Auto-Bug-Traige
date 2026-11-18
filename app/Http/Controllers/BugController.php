@@ -954,6 +954,8 @@ class BugController extends Controller
                 'screenshot_path' => $screenshotAbsolutePath,
                 'screenshot_name' => $request->file('screenshot')?->getClientOriginalName(),
                 'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
+                'gemini_triage_model' => config('services.gemini.triage_model'),
+                'github_token' => config('services.github.token'),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
                 'github_repo' => $effectiveRepo,
