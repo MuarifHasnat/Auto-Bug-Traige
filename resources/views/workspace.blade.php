@@ -21,221 +21,61 @@
         <main class="min-w-0 flex-1 flex flex-col">
             <!-- Sticky Header (60px) -->
             <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 py-3 lg:px-8">
-                <div class="flex items-center gap-2 text-xs font-semibold text-[#64748B]">
-                    <span>Workspace</span>
-                    <span class="text-slate-300">/</span>
-                    <span class="text-[#0F172A] font-bold">{{ session('project_name', 'Project') }}</span>
-                    <span class="text-slate-300">/</span>
-                    <span class="text-indigo-600">Kanban Board</span>
-                </div>
-
-                <div class="flex items-center gap-2.5">
-                    <a href="/ai-agent" class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-1.5 shadow-xs transition">
-                        <span>⚡ + Report Bug</span>
-                    </a>
+                <div class="ml-auto flex items-center gap-2.5">
                     @include('components.project-switcher', ['variant' => 'mobile'])
-                    <div class="hidden sm:flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
-                        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span class="font-mono-code">AI Agent Ready</span>
-                    </div>
                     <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
-                    <a href="{{ route('profile.show') }}" class="flex items-center gap-2 rounded-xl p-1.5 text-left hover:bg-slate-50"><span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-indigo-50 text-sm font-bold text-indigo-700">@if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" class="h-full w-full object-cover" alt="Profile">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif</span><span class="hidden sm:block"><span class="block max-w-36 truncate text-sm font-bold text-slate-900">{{ auth()->user()->name }}</span><span class="block text-xs text-slate-500">{{ ucfirst(auth()->user()->role) }}</span></span></a>
-                    <a href="/logout" class="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Log out</a>
+                    @include('components.profile-header')
                 </div>
             </header>
 
             <!-- Board Body Container -->
             <div class="flex-1 mx-auto w-full max-w-[1700px] px-5 py-6 lg:px-8 space-y-5">
                 
-                <!-- Role-Aware Contextual Greeting Banner -->
                 @php
                     $activeWorkflowStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
-                <div id="workspaceWelcomeBanner" class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/70 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white font-bold text-base shadow-sm">
-                            👋
-                        </div>
-                        <div>
-                            @if(auth()->user()->role === 'manager')
-                                <h2 class="text-sm font-bold text-[#0F172A]">
-                                    Good Day, {{ auth()->user()->name }}! 
-                                    @if($stats['high'] > 0)
-                                        <span class="text-rose-600 font-extrabold">{{ $stats['high'] }} High-Priority</span> bugs require attention today.
-                                    @else
-                                        All priority queues are operating smoothly.
-                                    @endif
-                                </h2>
-                                <p class="text-xs text-[#64748B]">Automated developer routing active across {{ $developers->count() }} engineering profiles.</p>
-                            @else
-                                <h2 class="text-sm font-bold text-[#0F172A]">
-                                    Welcome, {{ auth()->user()->name }}! 
-                                    You have <span class="text-indigo-600 font-extrabold">{{ $myAssignedCount }} active</span> {{ Str::plural('bug', $myAssignedCount) }} assigned to your profile.
-                                </h2>
-                                <p class="text-xs text-[#64748B]">Click "Show Only Assigned to Me" below to focus exclusively on your queue.</p>
-                            @endif
-                        </div>
+                <section class="flex flex-wrap items-end justify-between gap-4" aria-labelledby="kanban-title">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500">Workspace / {{ session('project_name', 'Project') }}</p>
+                        <h1 id="kanban-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Kanban board</h1>
                     </div>
+                    <a href="/ai-agent" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">⚡ Report bug</a>
+                </section>
 
-                    <div class="flex items-center gap-2">
-                        @if(auth()->user()->role === 'manager' && $stats['high'] > 0)
-                            <a href="/workspace?priority=High" class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition">
-                                <span>🔥 Focus Critical Bugs ({{ $stats['high'] }})</span>
-                            </a>
-                        @endif
-                        <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" 
-                                aria-pressed="false" class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition">
-                            <span>👤 Show Only Assigned to Me ({{ $myAssignedCount }})</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Interactive Quick-Start & Feature Tips Banner (Collapsible) -->
-                <div id="quickTipsBanner" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                    <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleQuickTips()">
-                        <div class="flex items-center gap-2.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 font-bold text-sm">💡</span>
-                            <div>
-                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide (সহজে ব্যবহার নির্দেশিকা)</h3>
-                                <p class="text-[11px] text-[#64748B]">বোর্ডের মূল ফিচারগুলো একনজরে দেখে নিন কিভাবে কাজ করে</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span id="quickTipsToggleText" class="text-[11px] font-bold text-indigo-600">Hide Guide ▴</span>
-                        </div>
-                    </div>
-
-                    <div id="quickTipsContent" class="mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-indigo-600">🖱️</span>
-                                <span>১. ড্র্যাগ অ্যান্ড ড্রপ</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো বাগের কার্ড টেনে অন্য কলামে নিয়ে ছেড়ে দিলেই স্ট্যাটাস সাথে সাথে আপডেট হয়ে যাবে।</p>
-                        </div>
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-purple-600">🔍</span>
-                                <span>২. ক্লিক করে ড্রয়ার প্রিভিউ</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো কার্ডে ক্লিক করলে ডানে ড্রয়ার ওপেন হবে—যেখানে AI ডায়াগনস্টিক, রুট কজ ও কমেন্টস পাবেন।</p>
-                        </div>
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-sky-600">📄</span>
-                                <span>৩. ডেডিকেটেড পেজ ও গিটহাব</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ড্রয়ারের "Open in Full Page" বাটনে ক্লিক করলে পুরো পেজে গিটহাবের ফাইল লিংকসহ কোড দেখা যাবে।</p>
-                        </div>
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-emerald-600">⚡</span>
-                                <span>৪. নতুন বাগ সাবমিট</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">উপরের "+ Report Bug" বাটনে চাপলে AI স্টুডিও ওপেন হবে, যা স্বয়ংক্রিয়ভাবে ইঞ্জিনিয়ার অ্যাসাইন করে দেবে।</p>
-                        </div>
-                    </div>
-                </div>
-
-                @if(session('success'))
-                    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800 flex items-center gap-2.5 shadow-xs">
-                        <svg class="h-4 w-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        <span>{{ session('success') }}</span>
-                    </div>
-                @endif
-
-                <!-- Filter & Control Toolbar -->
-                <div class="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-xs flex flex-col items-stretch gap-3">
+                <!-- Compact Board Filters -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs" aria-label="Board filters">
                     <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2.5">
-                        <!-- Real-time Search Box -->
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
-                            <input id="issue-search" data-live-search name="search" value="{{ $filters['search'] ?? '' }}" autocomplete="off" placeholder="Search issues, stack traces..."
-                                   class="w-56 sm:w-64 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-2 pl-8 pr-3 text-xs outline-none transition focus:border-indigo-600 focus:bg-white">
+                        <label class="sr-only" for="issue-search">Search issues and stack traces</label>
+                        <div class="relative min-w-[220px] flex-1 sm:max-w-sm">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
+                            <input id="issue-search" data-live-search name="search" value="{{ $filters['search'] ?? '' }}" autocomplete="off" placeholder="Search issues, stack traces…" class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white">
                         </div>
-
-                        <!-- Priority Dropdown -->
-                        <select name="priority" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A] outline-none transition focus:border-indigo-600">
-                            <option value="">All Priorities</option>
-                            @foreach(['High','Medium','Low'] as $priority)
-                                <option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} Priority</option>
-                            @endforeach
-                        </select>
-
-                        <select name="assignee" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
-                            <option value="">All Assignees</option>
-                            @foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
-                        </select>
-                        <select name="status" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
-                            <option value="">All Statuses</option>
-                            @foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach
-                        </select>
-                        <select name="issue_type" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
-                            <option value="">All Issue Types</option>
-                            @foreach(['Bug', 'Task', 'Story', 'Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach
-                        </select>
-                        <select name="label" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
-                            <option value="">All Labels</option>
-                            @foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach
-                        </select>
-
-                        <button type="button" id="clear-filters" class="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition">
-                            Clear
-                        </button>
+                        <label class="sr-only" for="kanbanPriorityFilter">Priority</label>
+                        <select id="kanbanPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All priorities</option>@foreach(['High','Medium','Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }}</option>@endforeach</select>
+                        <label class="sr-only" for="kanbanAssigneeFilter">Assignee</label>
+                        <select id="kanbanAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All assignees</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach</select>
+                        <label class="sr-only" for="kanbanLabelFilter">Label</label>
+                        <select id="kanbanLabelFilter" name="label" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All labels</option>@foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach</select>
+                        <label class="sr-only" for="savedFilterSelect">Saved filters</label>
+                        <select id="savedFilterSelect" class="min-w-36 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">Saved filters…</option>@foreach($savedFilters as $savedFilter)<option value="{{ $savedFilter->id }}" data-filters="{{ json_encode($savedFilter->filters) }}">{{ $savedFilter->name }}</option>@endforeach</select>
+                        <button type="button" id="clear-filters" class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Clear</button>
                     </form>
-
-                    <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                        <select id="savedFilterSelect" class="min-w-48 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#0F172A]">
-                            <option value="">Saved filters…</option>
-                            @foreach($savedFilters as $savedFilter)
-                                <option value="{{ $savedFilter->id }}" data-filters="{{ json_encode($savedFilter->filters) }}">{{ $savedFilter->name }}</option>
-                            @endforeach
-                        </select>
-                        <button type="button" id="loadSavedFilter" class="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
-                        <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
-                        <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">
-                            @csrf<div id="savedFilterPayload"></div>
-                            <input type="hidden" name="name" id="savedFilterName">
-                            <button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Save current filter</button>
-                        </form>
-                        <form id="deleteFilterForm" method="POST" class="hidden">@csrf @method('DELETE')</form>
-                    </div>
-
-                    <!-- Quick Toggles -->
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" 
-                                aria-pressed="false" class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-xs font-bold text-[#475569] hover:border-indigo-300 transition">
-                            🚫 Hide Duplicates
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Empty Project State with Clear Guide Buttons (if 0 bugs in project) -->
-                @if($bugs->count() === 0 && collect($filters)->filter()->isEmpty())
-                    <div class="rounded-3xl border border-dashed border-[#CBD5E1] bg-white p-12 text-center my-6">
-                        <div class="flex h-16 w-16 mx-auto items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600 text-3xl mb-3">
-                            🎉
-                        </div>
-                        <h3 class="text-base font-extrabold text-[#0F172A]">আপনার প্রজেক্টে এখনো কোনো বাগ নেই!</h3>
-                        <p class="mt-1 max-w-md mx-auto text-xs text-[#64748B] leading-relaxed">
-                            টিম মেম্বারদের যোগ করুন অথবা এআই এজেন্ট স্টুডিও থেকে সরাসরি টেস্ট বাগ সাবমিট করে অটোমেটিক ট্রায়াজ পরীক্ষা করুন।
-                        </p>
-                        <div class="mt-5 flex items-center justify-center gap-3">
-                            <a href="/add-developers" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 transition">
-                                + প্রথম টিম মেম্বার যোগ করুন
-                            </a>
-                            <a href="/ai-agent" class="rounded-xl border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-bold text-xs px-4 py-2 transition">
-                                🤖 টেস্ট বাগ সাবমিট করুন
-                            </a>
-                        </div>
-                    </div>
-                @endif
+                    <details class="w-full border-t border-slate-100 pt-2">
+                            <summary class="w-fit cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">More filters and saved filter actions <span aria-hidden="true">⌄</span></summary>
+                            <div class="mt-3 flex flex-wrap items-center gap-2.5">
+                                @if(auth()->user()->role === 'manager' && $stats['high'] > 0)<a href="/workspace?priority=High" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">🔥 Critical {{ $stats['high'] }}</a>@endif
+                                <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50">👤 Assigned to me ({{ $myAssignedCount }})</button>
+                                <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" aria-pressed="false" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100">🚫 Hide duplicates</button>
+                                <label class="sr-only" for="kanbanStatusFilter">Status</label><select id="kanbanStatusFilter" name="status" form="issue-filters" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"><option value="">All statuses</option>@foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach</select>
+                                <label class="sr-only" for="kanbanIssueTypeFilter">Issue type</label><select id="kanbanIssueTypeFilter" name="issue_type" form="issue-filters" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"><option value="">All issue types</option>@foreach(['Bug','Task','Story','Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach</select>
+                                <button type="button" id="loadSavedFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
+                                <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
+                                <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">@csrf<div id="savedFilterPayload"></div><input type="hidden" name="name" id="savedFilterName"><button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white">Save current filter</button></form>
+                                <form id="deleteFilterForm" method="POST" class="hidden">@csrf @method('DELETE')</form>
+                            </div>
+                    </details>
+                </section>
 
                 <!-- Search Empty State -->
                 @if($bugs->count() === 0 && collect($filters)->filter()->isNotEmpty())
@@ -376,22 +216,63 @@
                                     </div>
                                 @empty
                                     <!-- Empty Column Illustration (SaaS Zero-Data View) -->
-                                    <div class="py-10 px-4 text-center border border-dashed border-slate-200 rounded-xl bg-white/70 flex flex-col items-center justify-center">
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-400 text-lg mb-2">
-                                            ☕
-                                        </div>
-                                        <p class="text-xs font-semibold text-slate-800">You're all caught up!</p>
-                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">No tasks in this queue right now.</p>
-                                        @if($loop->first)
-                                            <a href="/ai-agent" class="mt-3 inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800 transition shadow-xs">
-                                                <span>+ Submit Bug</span>
-                                            </a>
-                                        @endif
+                                    <div class="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center">
+                                        <span class="text-2xl text-slate-300" aria-hidden="true">✓</span>
+                                        <p class="mt-2 text-xs font-medium text-slate-500">No issues in this stage</p>
                                     </div>
                                 @endforelse
                             </div>
                         </section>
                     @endforeach
+                </div>
+                <!-- Interactive Quick-Start & Feature Tips Banner (Collapsible) -->
+                <div id="quickTipsBanner" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                    <div class="flex items-center justify-between cursor-pointer select-none" role="button" tabindex="0" onclick="toggleQuickTips()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();toggleQuickTips()}">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 font-bold text-sm">💡</span>
+                            <div>
+                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide (সহজে ব্যবহার নির্দেশিকা)</h3>
+                                <p class="text-[11px] text-[#64748B]">বোর্ডের মূল ফিচারগুলো একনজরে দেখে নিন কিভাবে কাজ করে</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="quickTipsToggleText" class="text-[11px] font-bold text-indigo-600">Show Guide ▾</span>
+                        </div>
+                    </div>
+
+                    <div id="quickTipsContent" class="hidden mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-indigo-600">🖱️</span>
+                                <span>১. ড্র্যাগ অ্যান্ড ড্রপ</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো বাগের কার্ড টেনে অন্য কলামে নিয়ে ছেড়ে দিলেই স্ট্যাটাস সাথে সাথে আপডেট হয়ে যাবে।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-purple-600">🔍</span>
+                                <span>২. ক্লিক করে ড্রয়ার প্রিভিউ</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো কার্ডে ক্লিক করলে ডানে ড্রয়ার ওপেন হবে—যেখানে AI ডায়াগনস্টিক, রুট কজ ও কমেন্টস পাবেন।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-sky-600">📄</span>
+                                <span>৩. ডেডিকেটেড পেজ ও গিটহাব</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ড্রয়ারের "Open in Full Page" বাটনে ক্লিক করলে পুরো পেজে গিটহাবের ফাইল লিংকসহ কোড দেখা যাবে।</p>
+                        </div>
+
+                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                <span class="text-emerald-600">⚡</span>
+                                <span>৪. নতুন বাগ সাবমিট</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">উপরের "+ Report Bug" বাটনে চাপলে AI স্টুডিও ওপেন হবে, যা স্বয়ংক্রিয়ভাবে ইঞ্জিনিয়ার অ্যাসাইন করে দেবে।</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -923,9 +804,10 @@
             });
         }
         filterForm.querySelectorAll('select').forEach(select => select.addEventListener('change', () => filterForm.requestSubmit()));
+        document.querySelectorAll('[form="issue-filters"]').forEach(control => control.addEventListener('change', () => filterForm.requestSubmit()));
         if (clearFilters) {
             clearFilters.addEventListener('click', () => {
-                filterForm.querySelectorAll('input, select').forEach(control => control.value = '');
+                document.querySelectorAll('#issue-filters input, #issue-filters select, [form="issue-filters"]').forEach(control => control.value = '');
                 filterForm.requestSubmit();
             });
         }
@@ -935,14 +817,14 @@
             if (!selected || !selected.value) return;
             let saved = {};
             try { saved = JSON.parse(selected.dataset.filters || '{}'); } catch (error) {}
-            filterForm.querySelectorAll('input[name], select[name]').forEach(control => control.value = saved[control.name] || '');
+            document.querySelectorAll('#issue-filters [name], [form="issue-filters"][name]').forEach(control => control.value = saved[control.name] || '');
             filterForm.requestSubmit();
         });
         document.getElementById('saveCurrentFilter').addEventListener('click', () => {
             const name = prompt('Name this saved filter:');
             if (!name || !name.trim()) return;
             const payload = document.getElementById('savedFilterPayload'); payload.replaceChildren();
-            filterForm.querySelectorAll('input[name], select[name]').forEach(control => {
+            document.querySelectorAll('#issue-filters [name], [form="issue-filters"][name]').forEach(control => {
                 if (!control.value) return;
                 const input = document.createElement('input'); input.type = 'hidden'; input.name = `filters[${control.name}]`; input.value = control.value; payload.appendChild(input);
             });
@@ -1107,13 +989,12 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('abt_show_guide') === '0') {
-                const content = document.getElementById('quickTipsContent');
-                const text = document.getElementById('quickTipsToggleText');
-                if (content && text) {
-                    content.classList.add('hidden');
-                    text.textContent = 'Show Guide ▾';
-                }
+            const guideVisible = localStorage.getItem('abt_show_guide') === '1';
+            const guideContent = document.getElementById('quickTipsContent');
+            const guideText = document.getElementById('quickTipsToggleText');
+            if (guideContent && guideText) {
+                guideContent.classList.toggle('hidden', !guideVisible);
+                guideText.textContent = guideVisible ? 'Hide Guide ▴' : 'Show Guide ▾';
             }
 
             const hash = window.location.hash;

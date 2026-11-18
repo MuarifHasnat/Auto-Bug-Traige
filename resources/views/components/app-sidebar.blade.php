@@ -18,16 +18,4 @@
             <a href="/create-project" @if($active === 'project') aria-current="page" @endif class="{{ $active === 'project' ? $activeClass : $linkClass }}"><span aria-hidden="true">＋</span><span>New project wizard</span></a>
         @endif
     </nav>
-    <div class="border-t border-slate-200 p-3">
-        <div class="flex items-center gap-2 rounded-lg p-2">
-            <a href="{{ route('profile.show') }}" aria-label="Open my profile" class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700">
-                @if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" alt="Profile picture" class="h-full w-full object-cover">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif
-            </a>
-            <a href="{{ route('profile.show') }}" class="min-w-0 flex-1">
-                <span class="block truncate text-xs font-semibold text-slate-900">{{ auth()->user()->name }}</span>
-                <span class="block text-[11px] text-slate-500">{{ ucfirst($currentRole) }}</span>
-            </a>
-            <a href="/logout" aria-label="Log out" title="Log out" class="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><span aria-hidden="true">↪</span></a>
-        </div>
-    </div>
 </aside>

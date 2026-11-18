@@ -21,7 +21,7 @@
             </div>
             <div class="flex items-center gap-2">
                 @include('components.project-switcher', ['variant' => 'mobile'])
-                <a href="/logout" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Sign Out</a>
+                @include('components.profile-header')
             </div>
         </header>
 
@@ -35,6 +35,12 @@
                     <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold transition hover:bg-slate-50">Mark all read</button></form>
                 @endif
             </div>
+
+            <nav class="mb-4 flex flex-wrap gap-2" aria-label="Filter notifications">
+                @foreach(['all' => 'All', 'mention' => 'Mentions', 'assignment' => 'Assignments', 'status' => 'Status changes'] as $type => $label)
+                    <a href="{{ route('notifications.index', $type === 'all' ? [] : ['type' => $type], false) }}" @if($notificationType === $type) aria-current="page" @endif class="rounded-xl border px-4 py-2 text-xs font-semibold transition {{ $notificationType === $type ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
+                @endforeach
+            </nav>
 
             <div class="space-y-3">
                 @forelse($notifications as $notification)

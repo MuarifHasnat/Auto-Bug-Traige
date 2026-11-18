@@ -819,6 +819,7 @@ class BugController extends Controller
 
         $projectId = $this->currentProjectId();
         $this->ensureProjectWorkflow($projectId);
+        $projectBugCount = DB::table('bugs')->where('project_id', $projectId)->count();
         $bugs = DB::table('bugs')->where('project_id', $projectId)->orderByDesc('id')->limit(10)->get();
         $assignedBugs = collect();
         if (Auth::user()->role === 'developer') {
@@ -844,7 +845,7 @@ class BugController extends Controller
         $currentProject = DB::table('projects')->where('id', $projectId)->first();
         $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
-        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects') + [
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects', 'projectBugCount') + [
             'currentProjectId' => $projectId,
             'currentProject' => $currentProject,
             'projectGithubRepo' => $projectGithubRepo,
@@ -1364,14 +1365,29 @@ class BugController extends Controller
         return back()->with('success', 'You are now watching this bug.');
     }
 
-    public function notificationsPage(): View
+    public function notificationsPage(Request $request): View
     {
-        $notifications = Auth::user()->notifications()->latest()->paginate(30);
+        $notificationType = $request->query('type', 'all');
+        $notificationQuery = Auth::user()->notifications()->latest();
+        if ($notificationType !== 'all') {
+            $events = match ($notificationType) {
+                'mention' => ['mention', 'mentioned', 'comment_mention'],
+                'assignment' => ['assigned', 'assignment_changed', 'reassigned'],
+                'status' => ['status_changed'],
+                default => [],
+            };
+            if ($events) {
+                $notificationQuery->whereIn('data->event', $events);
+            } else {
+                $notificationType = 'all';
+            }
+        }
+        $notifications = $notificationQuery->paginate(30)->withQueryString();
         $projects = $this->accessibleProjects();
         $currentProjectId = (int) (session('project_id') ?: ($projects->first()->id ?? 0));
         $unreadNotificationCount = Auth::user()->unreadNotifications()->count();
 
-        return view('notifications', compact('notifications', 'projects', 'currentProjectId', 'unreadNotificationCount'));
+        return view('notifications', compact('notifications', 'projects', 'currentProjectId', 'unreadNotificationCount', 'notificationType'));
     }
 
     public function openNotification(Request $request, string $id): RedirectResponse

@@ -9,7 +9,12 @@
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] antialiased">
 <div class="flex min-h-screen">
     @include('components.app-sidebar', ['active' => 'workflow'])
-    <main class="min-w-0 flex-1 px-5 py-8 lg:px-8">
+    <main class="min-w-0 flex-1">
+        <nav class="sticky top-0 z-10 flex min-h-[68px] flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-5 py-3 backdrop-blur lg:px-8" aria-label="Page header">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-500"><a href="/workspace" class="hover:text-indigo-600">Workspace</a><span>/</span><span>{{ session('project_name', 'Project') }}</span><span>/</span><span class="text-indigo-600">Workflow settings</span></div>
+            <div class="flex items-center gap-3">@include('components.project-switcher', ['variant' => 'mobile']) @include('components.profile-header')</div>
+        </nav>
+        <div class="px-5 py-8 lg:px-8">
 <div class="mx-auto max-w-5xl">
     <a href="/workspace" class="text-sm font-bold text-indigo-600">← Back to board</a>
     <header class="mb-7 mt-4">
@@ -76,7 +81,8 @@
         </form>
     </div>
 </div>
-</main>
+        </div>
+    </main>
 </div>
 </body>
 </html>

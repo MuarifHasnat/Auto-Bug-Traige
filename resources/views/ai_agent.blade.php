@@ -20,13 +20,13 @@
     <!-- Main Content Container -->
     <main class="min-w-0 flex-1 flex flex-col">
         <!-- Sticky Top Header (60px) -->
-        <header class="sticky top-0 z-10 flex h-[60px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 lg:px-8">
+        <header class="sticky top-0 z-10 flex min-h-[72px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 py-3 lg:px-8">
             <div class="flex items-center gap-2 text-xs font-semibold text-[#64748B]">
                 <span>Workspace</span>
                 <span class="text-slate-300">/</span>
                 <span class="text-[#0F172A] font-bold">{{ session('project_name', 'Project') }}</span>
                 <span class="text-slate-300">/</span>
-                <span class="text-indigo-600">AI Triage Workbench</span>
+                    <span class="text-indigo-600">AI Triage Studio</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -35,14 +35,115 @@
                     <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="font-mono-code">Python Triage Agent: Ready</span>
                 </div>
-                <a href="/logout" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
-                    Sign Out
-                </a>
+                @include('components.profile-header')
             </div>
         </header>
 
         <!-- Studio Body -->
-        <div class="flex-1 mx-auto w-full max-w-7xl px-5 py-6 lg:px-8 space-y-6">
+        <div class="flex-1 mx-auto w-full max-w-[1600px] px-5 py-6 lg:px-8 space-y-6">
+            @php
+                $studioBugs = auth()->user()->role === 'developer' ? $assignedBugs : $bugs;
+                $studioHigh = $studioBugs->filter(fn ($item) => in_array(strtolower((string) ($item->priority ?? '')), ['high', 'critical', 'urgent', 'p0', 'p1']))->count();
+                $studioFilePaths = $studioBugs->flatMap(function ($item) {
+                    $result = json_decode($item->triage_result ?? '', true) ?: [];
+                    $files = $result['code_help']['suspected_files'] ?? $result['suspected_files'] ?? [];
+                    return collect($files)->map(fn ($file) => is_array($file) ? ($file['path'] ?? null) : $file)->filter();
+                })->unique()->values();
+                $studioFixReady = $studioBugs->filter(function ($item) {
+                    $result = json_decode($item->triage_result ?? '', true) ?: [];
+                    return !empty($result['code_help']['fix_suggestions']) || !empty($result['code_help']['suggestions']) || !empty($result['code_help']['fixed_code']);
+                })->count();
+                $studioSelected = $studioBugs->first();
+                $studioTriage = $studioSelected ? (json_decode($studioSelected->triage_result ?? '', true) ?: []) : [];
+                $studioCodeHelp = $studioTriage['code_help'] ?? [];
+                $studioFiles = $studioCodeHelp['suspected_files'] ?? $studioTriage['suspected_files'] ?? [];
+                $studioFixes = $studioCodeHelp['fix_suggestions'] ?? $studioCodeHelp['suggestions'] ?? [];
+            @endphp
+
+            <!-- AI Triage Studio overview, styled after the supplied reference -->
+            <section class="space-y-5" aria-labelledby="studio-title">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500">{{ session('project_name', $currentProject->name ?? 'Project') }} <span class="mx-1 text-slate-300">/</span> AI Triage</p>
+                        <h1 id="studio-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Find, locate and fix bugs</h1>
+                        <p class="mt-1 text-sm text-slate-500">Review project issues, inspect AI evidence and open the suggested fix in context.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if(!empty($projectGithubRepo))
+                            <a href="{{ $projectGithubRepo }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-indigo-300">⌘ <span class="max-w-52 truncate">{{ basename(parse_url($projectGithubRepo, PHP_URL_PATH) ?: $projectGithubRepo) }}</span></a>
+                        @endif
+                        @if(auth()->user()->role === 'manager')
+                            <form action="{{ route('projects.sync-github') }}" method="POST">@csrf
+                                <button class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500" {{ empty($projectGithubRepo) ? 'disabled' : '' }}>⟳ Scan repository</button>
+                            </form>
+                        @elseif(!empty($projectGithubRepo))
+                            <a href="{{ $projectGithubRepo }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500">↗ Open repository</a>
+                        @endif
+                        @if(auth()->user()->role !== 'developer')
+                            <button type="button" onclick="openTriageForm()" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-50">＋ Report bug</button>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">{{ auth()->user()->role === 'developer' ? 'Assigned bugs' : 'Bugs detected' }}</p><p class="mt-2 text-3xl font-extrabold text-slate-900">{{ auth()->user()->role === 'developer' ? $studioBugs->count() : $projectBugCount }}</p><p class="mt-1 text-xs text-slate-500">{{ auth()->user()->role === 'developer' ? 'Assigned to your account' : 'Total reports in this project' }}</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">Files affected</p><p class="mt-2 text-3xl font-extrabold text-slate-900">{{ $studioFilePaths->count() }}</p><p class="mt-1 text-xs text-slate-500">From repository triage evidence</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">High severity</p><p class="mt-2 text-3xl font-extrabold text-rose-600">{{ $studioHigh }}</p><p class="mt-1 text-xs text-slate-500">High, critical or urgent priority</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">Fix guidance ready</p><p class="mt-2 text-3xl font-extrabold text-indigo-700">{{ $studioFixReady }}</p><p class="mt-1 text-xs text-slate-500">AI suggestions available to review</p></div>
+                </div>
+
+                <div class="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-12">
+                    <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-4">
+                        <div class="mb-4 flex items-center justify-between"><div><h2 class="text-lg font-bold text-slate-900">Recent bugs</h2><p class="text-xs text-slate-500">Latest reports in this project</p></div><a href="/workspace" class="text-sm font-semibold text-indigo-600 hover:underline">Open board →</a></div>
+                        <div class="max-h-[440px] space-y-2 overflow-y-auto">
+                            @forelse($studioBugs as $studioBug)
+                                <a href="/bugs/{{ $studioBug->id }}" class="block rounded-xl border border-slate-100 bg-slate-50 p-3.5 transition hover:border-indigo-200 hover:bg-indigo-50/50">
+                                    <div class="flex items-center justify-between gap-2"><span class="font-mono text-[11px] font-bold text-indigo-700">#ABT-{{ $studioBug->id }}</span><span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ in_array(strtolower((string) $studioBug->priority), ['high','critical','urgent','p0','p1']) ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600' }}">{{ $studioBug->priority ?: 'Unclassified' }}</span></div>
+                                    <p class="mt-2 line-clamp-2 text-sm font-semibold text-slate-800">{{ $studioBug->title }}</p>
+                                    <p class="mt-1 truncate text-xs text-slate-500">{{ $studioBug->detected_feature ?: $studioBug->issue_type ?: 'Project issue' }} · {{ $studioBug->status ?: 'Open' }}</p>
+                                </a>
+                            @empty
+                                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center"><span class="text-3xl">🎉</span><p class="mt-2 font-semibold text-slate-800">No bugs to triage yet</p><p class="mt-1 text-xs text-slate-500">Submit a report and its analysis will appear here.</p></div>
+                            @endforelse
+                        </div>
+                    </section>
+
+                    <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#111827] shadow-sm xl:col-span-4">
+                        <div class="flex items-center justify-between border-b border-white/10 px-4 py-3"><div><h2 class="text-sm font-bold text-white">Code context</h2><p class="text-[11px] text-slate-400">Repository evidence from latest report</p></div><span class="rounded-md bg-white/10 px-2 py-1 text-[10px] font-semibold text-slate-300">READ ONLY</span></div>
+                        @if(count($studioFiles))
+                            <div class="space-y-0.5 p-3">
+                                @foreach(array_slice($studioFiles, 0, 8) as $fileIndex => $studioFile)
+                                    @php($studioPath = is_array($studioFile) ? ($studioFile['path'] ?? 'Unknown file') : $studioFile)
+                                    <a href="{{ is_array($studioFile) ? ($studioFile['github_url'] ?? '#') : '#' }}" target="_blank" rel="noopener" class="flex items-start gap-3 rounded-lg px-3 py-2.5 font-mono text-xs {{ $fileIndex === 0 ? 'bg-rose-500/15 text-rose-200' : 'text-slate-300 hover:bg-white/5' }}"><span class="select-none text-slate-500">{{ str_pad((string) ($fileIndex + 1), 2, '0', STR_PAD_LEFT) }}</span><span class="min-w-0 break-all">{{ $studioPath }}<span class="ml-2 text-slate-500">↗</span></span></a>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="flex min-h-[240px] flex-col items-center justify-center px-6 text-center"><span class="text-3xl">⌘</span><p class="mt-3 text-sm font-semibold text-white">No code location found yet</p><p class="mt-1 max-w-xs text-xs leading-5 text-slate-400">Link and scan a GitHub repository, or submit a report with an error trace to get file-level evidence.</p></div>
+                        @endif
+                        @if(!empty($projectGithubRepo))<a href="{{ $projectGithubRepo }}" target="_blank" rel="noopener" class="block border-t border-white/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:bg-white/5">Browse linked repository →</a>@endif
+                    </section>
+
+                    <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-4">
+                        <div class="flex items-start justify-between gap-3"><div><h2 class="text-lg font-bold text-slate-900">AI diagnosis</h2><p class="text-xs text-slate-500">Evidence-based analysis for the latest report</p></div><span class="rounded-full bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700">{{ !empty($studioTriage) ? 'Analyzed' : 'Waiting for report' }}</span></div>
+                        @if($studioSelected)
+                            <div class="mt-4 rounded-xl bg-slate-50 p-3.5"><p class="text-xs font-semibold text-slate-500">{{ $studioSelected->title }}</p><p class="mt-2 text-sm font-semibold text-slate-800">{{ $studioSelected->detected_feature ?: 'General area' }} <span class="font-normal text-slate-500">· {{ $studioSelected->priority ?: 'Priority pending' }}</span></p></div>
+                            @php($studioAnalysis = $studioTriage['code_help']['llm_analysis'] ?? $studioTriage['llm_analysis'] ?? [])
+                            @if(!empty($studioAnalysis['root_cause']))<p class="mt-4 text-sm leading-6 text-slate-700">{{ $studioAnalysis['root_cause'] }}</p>@elseif(!empty($studioAnalysis['summary']))<p class="mt-4 text-sm leading-6 text-slate-700">{{ $studioAnalysis['summary'] }}</p>@else<p class="mt-4 text-sm leading-6 text-slate-600">{{ Str::limit($studioSelected->description ?? '', 220) }}</p>@endif
+                            @if(count($studioFixes))<div class="mt-4 border-t border-slate-100 pt-4"><p class="text-xs font-bold uppercase tracking-wide text-slate-500">Suggested next step</p><p class="mt-2 text-sm text-slate-700">{{ is_array($studioFixes[0]) ? ($studioFixes[0]['detail'] ?? $studioFixes[0]['description'] ?? $studioFixes[0]['title'] ?? 'Review the AI fix suggestion') : $studioFixes[0] }}</p></div>@endif
+                            <a href="/bugs/{{ $studioSelected->id }}" class="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white hover:bg-indigo-500">Review full diagnosis →</a>
+                        @else
+                            <div class="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">AI analysis will show the likely cause, confidence and suggested changes after you submit a bug report.</div>
+                        @endif
+                        <p class="mt-3 text-[11px] leading-5 text-slate-400">Suggested fixes are review guidance; repository files are not changed automatically.</p>
+                    </section>
+                </div>
+            </section>
+
+            <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" @if(session('ai_result') || (isset($errors) && $errors->any())) open @endif>
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-1 text-sm font-bold text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
+                    <span>Report and full AI analysis</span><span class="text-xs font-semibold text-indigo-600 group-open:hidden">Open workspace ↓</span><span class="hidden text-xs font-semibold text-indigo-600 group-open:inline">Close workspace ↑</span>
+                </summary>
+                <div class="mt-5 space-y-6">
             <!-- Header Title -->
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -648,11 +749,19 @@
                 </section>
             </div>
             @endif
+                </div>
+            </details>
         </div>
     </main>
 </div>
 
 <script>
+    function openTriageForm() {
+        const workflow = document.getElementById('triageWorkflow');
+        if (workflow) workflow.open = true;
+        document.getElementById('triageForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // Guided tester report helpers
     function applyTemplate(type) {
         const title = document.getElementById('bugTitle');
