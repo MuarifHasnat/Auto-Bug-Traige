@@ -1,6 +1,7 @@
 import math
 import re
 from collections import Counter
+from typing import Any
 
 # Try importing scikit-learn for production TF-IDF semantic vectorization
 try:
@@ -23,7 +24,7 @@ def cosine_similarity(text, candidates):
         try:
             corpus = [text] + list(candidates)
             vectorizer = TfidfVectorizer(token_pattern=r"[a-zA-Z0-9+#_]+", stop_words="english")
-            tfidf_matrix = vectorizer.fit_transform(corpus)
+            tfidf_matrix: Any = vectorizer.fit_transform(corpus)
             scores = sk_cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
             return [float(s) for s in scores]
         except Exception:

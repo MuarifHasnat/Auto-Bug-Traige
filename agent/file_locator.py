@@ -15,7 +15,8 @@ AGENT_DIR = Path(__file__).resolve().parent
 if str(AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(AGENT_DIR))
 
-from urllib.parse import quote
+import urllib.parse
+from urllib.parse import quote, unquote
 from typing import TypedDict, Optional, List, Dict, Any
 from resilience import exponential_backoff
 
@@ -248,7 +249,7 @@ def parse_github_target(repo_input) -> tuple[Optional[str], Optional[str]]:
         owner, repo = tree_match.group(1), tree_match.group(2)
         if repo.endswith('.git'):
             repo = repo[:-4]
-        branch = urllib.parse.unquote(tree_match.group(3)).rstrip('/')
+        branch = unquote(tree_match.group(3)).rstrip('/')
         return f"{owner}/{repo}", branch
 
     # 2. URL with /blob/
@@ -257,7 +258,7 @@ def parse_github_target(repo_input) -> tuple[Optional[str], Optional[str]]:
         owner, repo = blob_match.group(1), blob_match.group(2)
         if repo.endswith('.git'):
             repo = repo[:-4]
-        branch = urllib.parse.unquote(blob_match.group(3)).rstrip('/')
+        branch = unquote(blob_match.group(3)).rstrip('/')
         return f"{owner}/{repo}", branch
 
     # 3. Spec with #branch, :branch, or @branch

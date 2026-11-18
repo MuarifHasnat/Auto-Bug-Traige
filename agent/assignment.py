@@ -1,4 +1,14 @@
 import re
+from typing import TypedDict, List
+
+
+class BestDevDetails(TypedDict):
+    matched_skills: List[str]
+    feature_history: int
+    language_history: int
+    active_tasks: int
+    capacity: int
+    feature_match: bool
 
 
 def assign_developer(developers, full_text, selected_language, feature, is_duplicate):
@@ -39,7 +49,7 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
     best_dev_name = available[0].get("name", "Unassigned")
     highest_score = -999
     text_words = set(re.findall(r'[a-zA-Z0-9_+#]+', full_text.lower()))
-    best_dev_details = {
+    best_dev_details: BestDevDetails = {
         "matched_skills": [],
         "feature_history": 0,
         "language_history": 0,
@@ -85,20 +95,24 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
 
     assigned_to = best_dev_name
     reasons = []
-    if best_dev_details.get("matched_skills"):
-        reasons.append(f"skill match ({', '.join(best_dev_details['matched_skills'])})")
+    matched_skills = best_dev_details["matched_skills"]
+    if matched_skills:
+        reasons.append(f"skill match ({', '.join(matched_skills)})")
     else:
         reasons.append("skill match")
 
-    if best_dev_details.get("feature_history", 0) > 0:
-        reasons.append(f"resolved-fix history ({best_dev_details['feature_history']} past fixes)")
-    elif best_dev_details.get("feature_match"):
+    feature_history = best_dev_details["feature_history"]
+    if feature_history > 0:
+        reasons.append(f"resolved-fix history ({feature_history} past fixes)")
+    elif best_dev_details["feature_match"]:
         reasons.append(f"{feature} specialization")
     else:
         reasons.append("resolved-fix history")
 
     reasons.append("language experience")
-    reasons.append(f"available capacity ({best_dev_details.get('active_tasks', 0)}/{best_dev_details.get('capacity', 5)} active)")
+    active_cnt = best_dev_details["active_tasks"]
+    cap_cnt = best_dev_details["capacity"]
+    reasons.append(f"available capacity ({active_cnt}/{cap_cnt} active)")
 
     reason = f"{assigned_to} was selected for {feature} work based on " + ", ".join(reasons) + "."
 
