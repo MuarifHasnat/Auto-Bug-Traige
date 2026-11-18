@@ -911,11 +911,17 @@ def _locate_with_groq(
         return None
 
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
+    ss_visual_context = " ".join([
+        str(screenshot_data.get("page_type") or ""),
+        str(screenshot_data.get("visual_summary") or ""),
+        str(screenshot_data.get("error_message") or ""),
+        " ".join(str(item) for item in screenshot_data.get("visual_evidence", []) if item),
+    ]) if screenshot_data else ""
     ss_error = screenshot_data.get("error_name", "") if screenshot_data else ""
     ss_files = [Path(s).name.lower() for s in (screenshot_data.get("suspected_files", []) if screenshot_data else [])]
 
     # Extract all context keywords from user input, error traces, and screenshot OCR
-    raw_context_words = re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {code_snippet}".lower())
+    raw_context_words = re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {ss_visual_context} {code_snippet}".lower())
     all_context_terms = set(raw_context_words)
 
     # Expand terms with domain synonyms
@@ -975,8 +981,8 @@ def _locate_with_groq(
         f"Feature Area: {feature}\n"
         f"Technology Stack: {project_stack}\n"
     )
-    if ss_error or ss_text:
-        prompt += f"Error/Stack Trace from Screenshot: {ss_error}\n{ss_text[:600]}\n"
+    if ss_error or ss_text or ss_visual_context:
+        prompt += f"Screenshot clues (visible evidence only): {ss_error}\n{ss_visual_context[:600]}\n{ss_text[:600]}\n"
     if code_snippet:
         prompt += f"Code Snippet:\n{code_snippet[:400]}\n"
 

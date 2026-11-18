@@ -160,25 +160,35 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
 
 
 def _run_groq_vision(image_path: str, api_key: str) -> dict:
-    """Fallback Tier: Groq Free Llama-3.2-11b-vision-preview."""
+    """Analyze a bug screenshot with Groq's current multimodal model."""
     try:
         with open(image_path, "rb") as img_file:
-            b64_image = base64.b64encode(img_file.read()).decode("utf-8")
+            image_bytes = img_file.read()
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        mime_type = mimetypes.guess_type(image_path)[0] or "image/png"
+        if mime_type not in {"image/jpeg", "image/png", "image/webp"}:
+            return {"success": False, "method": "groq_vision", "error": f"Unsupported screenshot type: {mime_type}", "extracted_text": "", "suspected_files": []}
 
         prompt = (
-            "You are an expert software developer and QA engineer inspecting a bug report screenshot. "
-            "Extract error names, line numbers, culprit files, and stack trace. Output strictly JSON matching: "
-            '{"error_name": "...", "suspected_files": ["..."], "line_numbers": [1], "detected_language": "...", "extracted_text": "..."}'
+            "Inspect this software screenshot as visual evidence. Analyze the image itself first; do not infer facts from a possibly incorrect bug title. "
+            "Transcribe visible error messages exactly where possible, identify the screen/page and likely bug area, and distinguish visible facts from guesses. "
+            "Never invent source files, line numbers, error messages, or stack traces: only return them when visibly present in the image. "
+            "Use feature values Authentication, Payments, Database, API, Frontend, Performance, or General. "
+            "Return JSON only with this schema: "
+            '{"page_type":"login page or unknown","feature":"Authentication","issue_type":"UI or validation or server error or crash or other","severity":"low or medium or high or unknown",'
+            '"error_name":"visible error name or empty string","error_message":"visible message or empty string","visual_summary":"short description of what is visibly wrong",'
+            '"visual_evidence":["specific visible clue"],"confidence":0,"suspected_files":[],"line_numbers":[],"detected_language":"unknown","extracted_text":"readable text from the screenshot"}. '
+            "Confidence is 0-100 and must reflect image clarity and evidence, not certainty about the hidden code root cause."
         )
         url = "https://api.groq.com/openai/v1/chat/completions"
         payload = {
-            "model": "llama-3.2-11b-vision-preview",
+            "model": os.environ.get("GROQ_VISION_MODEL", "qwen/qwen3.8-27b"),
             "messages": [
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_image}"}},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_image}"}},
                     ],
                 }
             ],
@@ -199,9 +209,26 @@ def _run_groq_vision(image_path: str, api_key: str) -> dict:
         res_json = json.loads(raw_bytes.decode("utf-8"))
         content = res_json["choices"][0]["message"]["content"]
         parsed = json.loads(content)
+        if not isinstance(parsed, dict):
+            raise ValueError("Vision response was not a JSON object.")
+        valid_features = {"Authentication", "Payments", "Database", "API", "Frontend", "Performance", "General"}
+        feature = str(parsed.get("feature") or "General").strip()
+        parsed["feature"] = feature if feature in valid_features else "General"
+        try:
+            parsed["confidence"] = max(0, min(100, int(parsed.get("confidence", 0))))
+        except (TypeError, ValueError):
+            parsed["confidence"] = 0
+        for field in ("page_type", "issue_type", "severity", "error_name", "error_message", "visual_summary", "detected_language", "extracted_text"):
+            parsed[field] = str(parsed.get(field) or "")[:4000]
+        for field in ("visual_evidence", "suspected_files", "line_numbers"):
+            value = parsed.get(field, [])
+            parsed[field] = value[:8] if isinstance(value, list) else []
+        parsed["line_numbers"] = [int(line) for line in parsed["line_numbers"] if str(line).isdigit()][:8]
+        parsed["suspected_files"] = [str(name)[:240] for name in parsed["suspected_files"] if isinstance(name, str) and name.strip()][:8]
+        parsed["visual_evidence"] = [str(clue)[:300] for clue in parsed["visual_evidence"] if str(clue).strip()][:8]
         parsed["success"] = True
         parsed["method"] = "groq_vision"
-        parsed["summary"] = f"Groq Llama 3.2 Vision detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
+        parsed["summary"] = parsed.get("visual_summary") or "Screenshot analyzed by Groq Vision."
         return parsed
     except Exception as exc:
         return {"success": False, "method": "groq_vision", "error": str(exc), "extracted_text": "", "suspected_files": []}
@@ -307,12 +334,16 @@ def analyze_screenshot(
             "error": "Image file not found on disk."
         }
 
-    # Tier 1: Try Groq Free Vision
+    failures = []
+    # Tier 1: Try Groq Vision.
     gr_key = groq_api_key or gemini_api_key or os.environ.get("GROQ_API_KEY")
     if gr_key and gr_key.strip():
         groq_result = _run_groq_vision(image_path, gr_key.strip())
         if groq_result.get("success"):
             return groq_result
+        failures.append("Groq Vision: " + str(groq_result.get("error") or "request failed"))
+    else:
+        failures.append("Groq Vision: GROQ_API_KEY is not configured.")
 
     # Tier 2: Try OpenAI Vision
     o_key = os.environ.get("OPENAI_API_KEY")
@@ -320,6 +351,7 @@ def analyze_screenshot(
         openai_result = _run_openai_vision(image_path, o_key.strip())
         if openai_result.get("success"):
             return openai_result
+        failures.append("OpenAI Vision: " + str(openai_result.get("error") or "request failed"))
 
     # Tier 3: Try Local Ollama Vision (if host responds within 1s)
     ollama_host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
@@ -327,10 +359,13 @@ def analyze_screenshot(
         ollama_result = _run_ollama_vision(image_path, ollama_host)
         if ollama_result.get("success"):
             return ollama_result
+        failures.append("Local Vision: " + str(ollama_result.get("error") or "request failed"))
 
     # Tier 4: On-device RapidOCR Fallback
     rapid_result = _run_rapid_ocr(image_path)
     if rapid_result.get("success"):
+        rapid_result["fallback_reason"] = "; ".join(failures)
+        rapid_result["analysis_limit"] = "OCR extracted text only; visual bug classification was not completed."
         return rapid_result
 
     return {
@@ -338,6 +373,7 @@ def analyze_screenshot(
         "method": "none",
         "extracted_text": "",
         "suspected_files": [],
-        "summary": "No vision or OCR engine was able to extract text."
+        "summary": "No vision or OCR engine was able to extract text.",
+        "error": "; ".join(failures + ["Local OCR: " + str(rapid_result.get("error") or "no readable text")]),
     }
 

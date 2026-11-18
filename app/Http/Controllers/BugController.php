@@ -967,6 +967,7 @@ class BugController extends Controller
                 'screenshot_name' => $request->file('screenshot')?->getClientOriginalName(),
                 'groq_api_key' => config('services.groq.key', env('GROQ_API_KEY')),
                 'groq_model' => config('services.groq.model', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
+                'groq_vision_model' => config('services.groq.vision_model', env('GROQ_VISION_MODEL', 'qwen/qwen3.8-27b')),
                 'github_token' => config('services.github.token'),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,

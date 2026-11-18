@@ -52,6 +52,9 @@ def analyze_with_groq(report: dict, diagnostics: dict, source_context: list, api
         "}\n"
         "Rules:\n"
         "- Confidence must be an integer between 0 and 100.\n"
+        "- Use screenshot_visual_analysis only when success is true; OCR-only output is text evidence, not visual understanding.\n"
+        "- Treat visual_evidence and visible error messages as first-class evidence when the report title or description conflicts with the screenshot.\n"
+        "- Do not claim a code root cause from a screenshot alone; distinguish visible symptoms from source-confirmed causes.\n"
         "- Only reference file paths present in github_source.\n"
         "- Do not include markdown codeblocks or conversational text. Return raw JSON object only."
     )

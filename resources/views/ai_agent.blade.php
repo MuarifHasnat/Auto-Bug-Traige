@@ -475,6 +475,8 @@
                             $pipelineCode = $ai['code_help'] ?? [];
                             $pipelineVision = $ai['screenshot_vision'] ?? $pipelineCode['screenshot_vision'] ?? [];
                             $pipelineHasScreenshot = !empty($pipelineVision) || str_contains(strtolower((string) ($pipelineCode['attachment_note'] ?? '')), 'screenshot');
+                            $pipelineVisionSuccess = !empty($pipelineVision['success']);
+                            $pipelineVisionMode = $pipelineVisionSuccess && in_array($pipelineVision['method'] ?? '', ['groq_vision', 'openai_vision', 'ollama_vision'], true);
                             $pipelineFiles = $pipelineCode['suspected_files'] ?? $ai['suspected_files'] ?? [];
                             $pipelineLlm = $pipelineCode['llm_analysis'] ?? [];
                             $pipelineDiagnostics = $pipelineCode['steps'] ?? [];
@@ -483,17 +485,24 @@
                             $pipelineSteps = [
                                 [
                                     'number' => '01', 'icon' => '📸', 'title' => 'Vision OCR',
-                                    'state' => $pipelineVision ? 'Complete' : ($pipelineHasScreenshot ? 'Needs review' : 'Skipped'),
-                                    'tone' => $pipelineVision ? 'emerald' : ($pipelineHasScreenshot ? 'amber' : 'slate'),
-                                    'summary' => $pipelineVision
-                                        ? 'Read text from the attached screenshot and extracted error clues.'
-                                        : ($pipelineHasScreenshot ? 'A screenshot was attached, but OCR did not return readable text.' : 'No screenshot was attached, so image reading was skipped.'),
+                                    'state' => $pipelineVisionMode ? 'Vision analyzed' : ($pipelineVisionSuccess ? 'OCR only' : ($pipelineHasScreenshot ? 'Needs review' : 'Skipped')),
+                                    'tone' => $pipelineVisionMode ? 'emerald' : ($pipelineHasScreenshot ? 'amber' : 'slate'),
+                                    'summary' => $pipelineVisionMode
+                                        ? ($pipelineVision['visual_summary'] ?? 'Vision model inspected the screenshot and extracted visual evidence.')
+                                        : ($pipelineVisionSuccess ? 'Text was extracted, but visual bug classification did not complete.' : ($pipelineHasScreenshot ? 'Screenshot analysis failed; no image-derived conclusion was used.' : 'No screenshot was attached, so image reading was skipped.')),
                                     'facts' => array_values(array_filter([
                                         !empty($pipelineVision['method']) ? 'Reader: '.strtoupper(str_replace('_', ' ', $pipelineVision['method'])) : null,
+                                        !empty($pipelineVision['page_type']) ? 'Page type: '.$pipelineVision['page_type'] : null,
+                                        !empty($pipelineVision['feature']) ? 'Image category: '.$pipelineVision['feature'] : null,
+                                        isset($pipelineVision['confidence']) ? 'Image confidence: '.$pipelineVision['confidence'].'%' : null,
                                         !empty($pipelineVision['error_name']) ? 'Detected error: '.$pipelineVision['error_name'] : null,
+                                        !empty($pipelineVision['error_message']) ? 'Visible message: '.$pipelineVision['error_message'] : null,
                                         !empty($pipelineVision['line_numbers']) ? 'Line numbers: '.implode(', ', $pipelineVision['line_numbers']) : null,
                                         !empty($pipelineVision['suspected_files']) ? 'Names found in image: '.implode(', ', $pipelineVision['suspected_files']) : null,
+                                        !empty($pipelineVision['visual_evidence']) ? 'Visual evidence: '.implode('; ', $pipelineVision['visual_evidence']) : null,
                                         !empty($pipelineVision['stack_traces']) ? 'Stack trace lines extracted: '.count($pipelineVision['stack_traces']) : null,
+                                        !empty($pipelineVision['analysis_limit']) ? $pipelineVision['analysis_limit'] : null,
+                                        !empty($pipelineVision['fallback_reason']) ? 'Vision fallback: '.$pipelineVision['fallback_reason'] : (!empty($pipelineVision['error']) ? 'Analysis issue: '.$pipelineVision['error'] : null),
                                     ])),
                                     'raw' => $pipelineVision['extracted_text'] ?? '',
                                 ],
@@ -895,7 +904,7 @@
                                         <span class="text-xs font-bold text-indigo-900 flex items-center gap-1">
                                             <span>📸</span> <span>1. Vision Perception</span>
                                         </span>
-                                        <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Groq 11B Vision</span>
+                                        <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.2 text-[8px] font-mono-code font-bold">Groq Qwen Vision</span>
                                     </div>
                                     <p class="text-[10px] text-slate-600 leading-relaxed">
                                         Extracts stack traces, line numbers & crash dialogs directly from screenshots without needing access to user code.

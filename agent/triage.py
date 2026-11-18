@@ -24,6 +24,8 @@ def analyze_report(data):
         os.environ["GITHUB_TOKEN"] = str(data["github_token"])
     if data.get("groq_model"):
         os.environ["GROQ_MODEL"] = str(data["groq_model"])
+    if data.get("groq_vision_model"):
+        os.environ["GROQ_VISION_MODEL"] = str(data["groq_vision_model"])
     title = data.get("title") or ""
     description = data.get("description") or ""
     code_snippet = data.get("code_snippet") or ""
@@ -43,21 +45,37 @@ def analyze_report(data):
         )
 
     ss_text = screenshot_data.get("extracted_text", "") if (screenshot_data and screenshot_data.get("success")) else ""
+    visual_clues = screenshot_data.get("visual_evidence", []) if screenshot_data else []
+    visual_context = " ".join([
+        str(screenshot_data.get("page_type") or "") if screenshot_data else "",
+        str(screenshot_data.get("visual_summary") or "") if screenshot_data else "",
+        str(screenshot_data.get("error_message") or "") if screenshot_data else "",
+        " ".join(str(clue) for clue in visual_clues if clue),
+    ]).strip()
 
     # 1. Code Diagnosis & Fix suggestion
     code_help = check_code_error(code_snippet, f"{description} {ss_text}", selected_language)
 
     # 2. Feature Categorization
-    combined_text = f"{title} {description} {code_snippet} {ss_text}".lower()
+    combined_text = f"{title} {description} {code_snippet} {ss_text} {visual_context}".lower()
     feature = detect_feature(combined_text) or "General"
+    vision_feature = screenshot_data.get("feature") if screenshot_data else None
+    vision_confidence = int(screenshot_data.get("confidence", 0) or 0) if screenshot_data else 0
+    if screenshot_data and screenshot_data.get("method") == "groq_vision" and vision_confidence >= 60 and vision_feature:
+        # Strong visual evidence wins over a typo or misleading report title.
+        feature = vision_feature
     code_help["feature"] = feature
 
     if screenshot_data and screenshot_data.get("success"):
         method = screenshot_data.get("method")
         if method == "groq_vision":
-            method_label = "Groq Llama Vision"
+            method_label = "Groq Vision"
+        elif method == "openai_vision":
+            method_label = "OpenAI Vision"
+        elif method == "ollama_vision":
+            method_label = "Local Vision"
         elif method == "gemini_vision":
-            method_label = "Gemini AI Vision"
+            method_label = "Groq Vision"
         else:
             method_label = "RapidOCR Neural Scan"
         err_label = screenshot_data.get("error_name") or "Exception Trace"
@@ -65,14 +83,10 @@ def analyze_report(data):
         code_help["attachment_note"] = f"{method_label}: Identified {err_label}{files_label}"
         if screenshot_data.get("error_name") and (not code_help.get("error_name") or code_help.get("error_name") == "Analysis complete"):
             code_help["error_name"] = screenshot_data["error_name"]
-        code_help["screenshot_vision"] = {
-            "method": screenshot_data.get("method"),
-            "error_name": screenshot_data.get("error_name"),
-            "suspected_files": screenshot_data.get("suspected_files", []),
-            "line_numbers": screenshot_data.get("line_numbers", []),
-            "stack_traces": screenshot_data.get("stack_traces", []),
-        }
+        code_help["screenshot_vision"] = screenshot_data
     else:
+        if screenshot_path and screenshot_data:
+            code_help["screenshot_vision"] = screenshot_data
         code_help["attachment_note"] = (
             f"Attached {attachment['type']}: {attachment['name']}"
             if attachment
@@ -84,6 +98,9 @@ def analyze_report(data):
     # 3. Priority Estimation
     priority = calculate_priority(full_text)
     sentiment = analyze_sentiment(f"{title} {description}")
+    if screenshot_data and screenshot_data.get("method") == "groq_vision" and vision_confidence >= 60:
+        if str(screenshot_data.get("severity", "")).lower() == "high":
+            priority = "High"
     if sentiment["blocker_signal"] or (screenshot_data and screenshot_data.get("error_name") and "nullpointer" in str(screenshot_data.get("error_name")).lower()):
         priority = "High"
 
@@ -152,6 +169,17 @@ def analyze_report(data):
         },
         diagnostics={
             "error_name": code_help.get("error_name"),
+            "screenshot_visual_analysis": {
+                "method": screenshot_data.get("method"),
+                "success": screenshot_data.get("success", False),
+                "page_type": screenshot_data.get("page_type"),
+                "feature": screenshot_data.get("feature"),
+                "confidence": screenshot_data.get("confidence", 0),
+                "error_message": screenshot_data.get("error_message"),
+                "visual_summary": screenshot_data.get("visual_summary"),
+                "visual_evidence": visual_clues,
+                "fallback_reason": screenshot_data.get("fallback_reason") or screenshot_data.get("error"),
+            } if screenshot_data else None,
             "syntax_status": code_help.get("syntax_status"),
             "steps": code_help.get("steps", []),
             "feature": feature,
