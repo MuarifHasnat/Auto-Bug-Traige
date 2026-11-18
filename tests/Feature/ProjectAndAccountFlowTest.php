@@ -130,7 +130,7 @@ class ProjectAndAccountFlowTest extends TestCase
 
         $signupResponse = $this->get('/signup');
         $signupResponse->assertOk();
-        $signupResponse->assertSee('Create your workspace');
+        $signupResponse->assertSee('Create your account');
 
         $loginResponse = $this->get('/login');
         $loginResponse->assertOk();
