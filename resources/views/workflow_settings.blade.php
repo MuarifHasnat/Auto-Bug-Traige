@@ -7,7 +7,10 @@
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] antialiased">
-<main class="mx-auto max-w-5xl px-5 py-10">
+<div class="flex min-h-screen">
+    @include('components.app-sidebar', ['active' => 'workflow'])
+    <main class="min-w-0 flex-1 px-5 py-8 lg:px-8">
+<div class="mx-auto max-w-5xl">
     <a href="/workspace" class="text-sm font-bold text-indigo-600">← Back to board</a>
     <header class="mb-7 mt-4">
         <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">{{ session('project_name', 'Current project') }}</p>
@@ -72,6 +75,8 @@
             </div>
         </form>
     </div>
+</div>
 </main>
+</div>
 </body>
 </html>

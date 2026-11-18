@@ -7,8 +7,11 @@
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
-<body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] p-4 sm:p-6 lg:p-8 selection:bg-indigo-500 selection:text-white bg-dot-grid">
-    <div class="max-w-7xl mx-auto space-y-6">
+<body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] selection:bg-indigo-500 selection:text-white">
+    <div class="flex min-h-screen">
+        @include('components.app-sidebar', ['active' => 'team'])
+        <main class="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+            <div class="mx-auto max-w-7xl space-y-6">
         <!-- Top Navigation Bar -->
         <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs">
             <div class="flex items-center gap-3">
@@ -243,6 +246,8 @@
                 </div>
             </div>
         </div>
+            </div>
+        </main>
     </div>
 
     <script>

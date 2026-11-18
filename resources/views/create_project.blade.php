@@ -21,9 +21,15 @@
                 </span>
             </div>
 
-            <a href="/logout" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
-                <span>Sign Out</span>
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('profile.show') }}" class="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-white" aria-label="Open my profile">
+                    <span class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700">
+                        @if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" class="h-full w-full object-cover" alt="Profile picture">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif
+                    </span>
+                    <span class="hidden text-left sm:block"><span class="block max-w-32 truncate text-xs font-semibold text-slate-900">{{ auth()->user()->name }}</span><span class="block text-[10px] text-slate-500">{{ ucfirst(auth()->user()->role) }}</span></span>
+                </a>
+                <a href="/logout" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><span>Sign out</span></a>
+            </div>
         </div>
 
         <!-- 3-Step Wizard Progress Bar -->

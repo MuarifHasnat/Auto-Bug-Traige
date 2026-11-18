@@ -15,68 +15,7 @@
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
     <div class="flex min-h-screen">
         <!-- Modern Light Glassmorphic Left Sidebar (250px) -->
-        <aside class="hidden w-[250px] shrink-0 flex-col bg-white/95 backdrop-blur-md text-slate-800 lg:flex border-r border-[#E2E8F0] z-20">
-            <!-- Brand -->
-            <div class="flex h-[60px] items-center justify-between border-b border-[#E2E8F0] px-5 bg-white">
-                <div class="flex items-center gap-2.5">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-black text-xs shadow-md shadow-indigo-600/20">
-                        ⚡
-                    </div>
-                    <span class="text-sm font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></span>
-                </div>
-                <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
-                    AI v1.0
-                </span>
-            </div>
-
-            <!-- Project Switcher Box -->
-            <div class="border-b border-[#E2E8F0] p-4 bg-[#F8FAFC]">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Workspace</p>
-                <p class="mt-1 truncate font-bold text-slate-900 text-xs">{{ session('project_name', 'Software Project') }}</p>
-                <p class="mt-0.5 truncate text-[10px] text-indigo-600 font-mono-code">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
-                @include('components.project-switcher', ['variant' => auth()->user()->role === 'tester' ? 'dark' : 'light'])
-            </div>
-
-            <!-- Navigation Links -->
-            <nav class="flex-1 space-y-1 p-3 text-xs">
-                @if(in_array(auth()->user()->role, ['manager', 'tester'], true))
-                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/dashboard">
-                        <span class="text-sm">▦</span>
-                        <span>Command Center</span>
-                    </a>
-                @endif
-
-                <a aria-current="page" class="relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 px-3.5 py-2.5 font-bold transition border border-indigo-200/60 shadow-2xs" href="/workspace">
-                    <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600"></span>
-                    <span class="text-sm">▤</span>
-                    <span>Kanban Workspace</span>
-                </a>
-                <a class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/notifications">
-                    <span class="flex items-center gap-3"><span>🔔</span><span>Notifications</span></span>
-                    @if(($unreadNotificationCount ?? 0) > 0)<span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white font-bold">{{ $unreadNotificationCount }}</span>@endif
-                </a>
-
-                <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/ai-agent">
-                    <span class="text-sm">⚡</span>
-                    <span>AI Triage Studio</span>
-                </a>
-
-                @if(auth()->user()->role === 'manager')
-                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="{{ route('workflow.settings') }}">
-                        <span class="text-sm">⇄</span><span>Workflow Settings</span>
-                    </a>
-                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/add-developers">
-                        <span class="text-sm">👥</span>
-                        <span>Team & Skills Matrix</span>
-                    </a>
-                    <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition" href="/create-project">
-                        <span class="text-sm">⚙</span>
-                        <span>New Project Wizard</span>
-                    </a>
-                @endif
-            </nav>
-
-        </aside>
+        @include('components.app-sidebar', ['active' => 'workspace'])
 
         <!-- Main Content Area -->
         <main class="min-w-0 flex-1 flex flex-col">
