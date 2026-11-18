@@ -6,8 +6,9 @@
     <title>Notifications · AutoBugTriage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    @if(auth()->user()->role === 'tester')<link rel="stylesheet" href="/css/tester-theme.css">@endif
 </head>
-<body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
+<body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
 <div class="flex min-h-screen">
     <aside class="hidden w-[250px] shrink-0 flex-col border-r border-[#E2E8F0] bg-white/95 text-slate-800 backdrop-blur-md lg:flex">
         <div class="flex h-[60px] items-center justify-between border-b border-[#E2E8F0] bg-white px-5">
@@ -22,11 +23,11 @@
             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Workspace</p>
             <p class="mt-1 truncate text-xs font-bold text-slate-900">{{ session('project_name', 'Software Project') }}</p>
             <p class="mt-0.5 truncate font-mono-code text-[10px] text-indigo-600">{{ session('project_stack', 'Laravel • React • PGSQL') }}</p>
-            @include('components.project-switcher', ['variant' => 'light'])
+            @include('components.project-switcher', ['variant' => auth()->user()->role === 'tester' ? 'dark' : 'light'])
         </div>
 
         <nav class="flex-1 space-y-1 p-3 text-xs" aria-label="Main navigation">
-            @if(auth()->user()->role === 'manager')
+            @if(in_array(auth()->user()->role, ['manager', 'tester'], true))
                 <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 transition hover:bg-slate-100/70 hover:text-slate-900" href="/dashboard"><span class="text-sm">▦</span><span>Command Center</span></a>
             @endif
             <a class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-600 transition hover:bg-slate-100/70 hover:text-slate-900" href="/workspace"><span class="text-sm">▤</span><span>Kanban Workspace</span></a>

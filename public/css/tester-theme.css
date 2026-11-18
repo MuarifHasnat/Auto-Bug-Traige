@@ -1,0 +1,102 @@
+/* Shared tester workspace theme: keeps the same navigation and labels across QA pages. */
+body.tester-shell {
+    color-scheme: dark;
+    background: #090d14 !important;
+    color: #e5e7eb !important;
+}
+body.tester-shell main { background: #090d14 !important; }
+body.tester-shell aside,
+body.tester-shell header {
+    background: rgba(13, 18, 27, .97) !important;
+    color: #e5e7eb !important;
+    border-color: #273140 !important;
+}
+body.tester-shell aside > div:first-child {
+    height: 72px !important;
+    padding-inline: 20px !important;
+}
+body.tester-shell aside > div:first-child > div > div:first-child {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 20px !important;
+}
+body.tester-shell aside > div:first-child > div > span { font-size: 16px !important; }
+body.tester-shell aside > div:first-child > span { font-size: 11px !important; }
+body.tester-shell aside nav a {
+    min-height: 48px !important;
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+    font-size: 14px !important;
+}
+body.tester-shell aside nav a > span.text-sm { font-size: 22px !important; }
+body.tester-shell aside nav a > span.flex > span:first-child { font-size: 20px !important; }
+body.tester-shell aside nav a[aria-current="page"] {
+    background: #232044 !important;
+    background-image: none !important;
+    border-color: #48417f !important;
+    color: #c7d2fe !important;
+}
+body.tester-shell aside nav a[aria-current="page"] > span.absolute { background-color: #818cf8 !important; }
+body.tester-shell [class~="bg-white"],
+body.tester-shell [class*="bg-white/"],
+body.tester-shell [class*="bg-[#F8FAFC]"],
+body.tester-shell [class~="bg-slate-50"],
+body.tester-shell [class*="bg-slate-50/"],
+body.tester-shell [class~="bg-slate-100"] { background-color: #151b26 !important; }
+body.tester-shell [class*="bg-rose-50"],
+body.tester-shell [class*="bg-amber-50"],
+body.tester-shell [class*="bg-indigo-50"],
+body.tester-shell [class*="bg-purple-50"],
+body.tester-shell [class*="bg-sky-50"],
+body.tester-shell [class*="bg-blue-50"],
+body.tester-shell [class*="bg-emerald-50"] { background-color: #18212d !important; }
+body.tester-shell [class*="bg-gradient-to-r"][class*="from-indigo-50"] {
+    background: linear-gradient(110deg, #141d2a, #111823 52%, #132127) !important;
+}
+body.tester-shell [class*="border-[#E2E8F0]"],
+body.tester-shell [class*="border-[#CBD5E1]"],
+body.tester-shell [class~="border-slate-200"],
+body.tester-shell [class~="border-slate-300"],
+body.tester-shell [class*="border-slate-200/"],
+body.tester-shell [class*="border-indigo-100"],
+body.tester-shell [class*="border-indigo-200"],
+body.tester-shell [class*="border-amber-100"],
+body.tester-shell [class*="border-amber-200"],
+body.tester-shell [class*="border-emerald-100"],
+body.tester-shell [class*="border-emerald-200"],
+body.tester-shell [class*="border-rose-200"],
+body.tester-shell [class*="border-sky-200"] { border-color: #303b4b !important; }
+body.tester-shell [class*="text-[#0F172A]"],
+body.tester-shell [class~="text-slate-900"],
+body.tester-shell [class~="text-slate-800"] { color: #f1f5f9 !important; }
+body.tester-shell [class*="text-[#64748B]"],
+body.tester-shell [class~="text-slate-600"],
+body.tester-shell [class~="text-slate-500"],
+body.tester-shell [class~="text-slate-400"] { color: #9ca8ba !important; }
+body.tester-shell [class*="text-[#475569]"],
+body.tester-shell [class~="text-slate-700"] { color: #cbd5e1 !important; }
+body.tester-shell [class~="text-indigo-600"],
+body.tester-shell [class~="text-indigo-700"],
+body.tester-shell [class~="text-indigo-800"] { color: #a5b4fc !important; }
+body.tester-shell [class~="text-emerald-700"],
+body.tester-shell [class~="text-emerald-800"] { color: #6ee7b7 !important; }
+body.tester-shell [class~="text-rose-700"],
+body.tester-shell [class~="text-rose-800"] { color: #fda4af !important; }
+body.tester-shell [class~="text-amber-700"],
+body.tester-shell [class~="text-amber-800"] { color: #fcd34d !important; }
+body.tester-shell [class~="text-purple-700"],
+body.tester-shell [class~="text-purple-800"] { color: #d8b4fe !important; }
+body.tester-shell [class~="text-blue-700"],
+body.tester-shell [class~="text-blue-800"] { color: #93c5fd !important; }
+body.tester-shell input,
+body.tester-shell select,
+body.tester-shell textarea {
+    background-color: #111823 !important;
+    color: #e5e7eb !important;
+    border-color: #354153 !important;
+}
+body.tester-shell input::placeholder,
+body.tester-shell textarea::placeholder { color: #8592a5 !important; }
+body.tester-shell .bug-card { background-color: #131a25 !important; border-color: #303b4b !important; }
+body.tester-shell .bug-card:hover { background-color: #192231 !important; }
+body.tester-shell :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
