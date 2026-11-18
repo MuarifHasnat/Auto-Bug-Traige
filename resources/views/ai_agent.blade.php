@@ -993,6 +993,7 @@
         const workflow = document.getElementById('triageWorkflow');
         if (workflow) workflow.open = true;
         document.getElementById('triageForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     // 1-Click Interactive Sample Bug Loader
     function loadSampleBug(type) {

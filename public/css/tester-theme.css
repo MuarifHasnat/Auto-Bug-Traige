@@ -1,15 +1,15 @@
 /* Shared tester workspace theme: keeps the same navigation and labels across QA pages. */
 body.tester-shell {
-    color-scheme: dark;
-    background: #090d14 !important;
-    color: #e5e7eb !important;
+    color-scheme: light;
+    background: #f8fafc !important;
+    color: #0f172a !important;
 }
-body.tester-shell main { background: #090d14 !important; }
+body.tester-shell main { background: #f8fafc !important; }
 body.tester-shell aside,
 body.tester-shell header {
-    background: rgba(13, 18, 27, .97) !important;
-    color: #e5e7eb !important;
-    border-color: #273140 !important;
+    background: rgba(255, 255, 255, .97) !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
 }
 body.tester-shell aside > div:first-child {
     height: 72px !important;
@@ -31,27 +31,39 @@ body.tester-shell aside nav a {
 body.tester-shell aside nav a > span.text-sm { font-size: 22px !important; }
 body.tester-shell aside nav a > span.flex > span:first-child { font-size: 20px !important; }
 body.tester-shell aside nav a[aria-current="page"] {
-    background: #232044 !important;
+    background: #eef2ff !important;
     background-image: none !important;
-    border-color: #48417f !important;
-    color: #c7d2fe !important;
+    border-color: #c7d2fe !important;
+    color: #4338ca !important;
 }
-body.tester-shell aside nav a[aria-current="page"] > span.absolute { background-color: #818cf8 !important; }
+body.tester-shell aside nav a[aria-current="page"] > span.absolute { background-color: #6366f1 !important; }
 body.tester-shell [class~="bg-white"],
-body.tester-shell [class*="bg-white/"],
+body.tester-shell [class*="bg-white/"] { background-color: #ffffff !important; }
+body.tester-shell [class*="bg-[#111827]"],
+body.tester-shell [class~="bg-slate-900"],
+body.tester-shell [class~="bg-slate-950"] {
+    background-color: #f1f5f9 !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+body.tester-shell [class*="bg-[#111827]"] [class~="text-white"],
+body.tester-shell [class~="bg-slate-900"] [class~="text-white"],
+body.tester-shell [class~="bg-slate-950"] [class~="text-white"] { color: #1e293b !important; }
+body.tester-shell [class*="bg-slate-900/"] { background-color: rgba(15, 23, 42, .35) !important; }
+body.tester-shell pre { color: #334155 !important; }
 body.tester-shell [class*="bg-[#F8FAFC]"],
 body.tester-shell [class~="bg-slate-50"],
-body.tester-shell [class*="bg-slate-50/"],
-body.tester-shell [class~="bg-slate-100"] { background-color: #151b26 !important; }
+body.tester-shell [class*="bg-slate-50/"] { background-color: #f8fafc !important; }
+body.tester-shell [class~="bg-slate-100"] { background-color: #f1f5f9 !important; }
 body.tester-shell [class*="bg-rose-50"],
 body.tester-shell [class*="bg-amber-50"],
 body.tester-shell [class*="bg-indigo-50"],
 body.tester-shell [class*="bg-purple-50"],
 body.tester-shell [class*="bg-sky-50"],
 body.tester-shell [class*="bg-blue-50"],
-body.tester-shell [class*="bg-emerald-50"] { background-color: #18212d !important; }
+body.tester-shell [class*="bg-emerald-50"] { background-color: #f1f5f9 !important; }
 body.tester-shell [class*="bg-gradient-to-r"][class*="from-indigo-50"] {
-    background: linear-gradient(110deg, #141d2a, #111823 52%, #132127) !important;
+    background: linear-gradient(110deg, #eef2ff, #f8fafc 52%, #ecfeff) !important;
 }
 body.tester-shell [class*="border-[#E2E8F0]"],
 body.tester-shell [class*="border-[#CBD5E1]"],
@@ -65,38 +77,51 @@ body.tester-shell [class*="border-amber-200"],
 body.tester-shell [class*="border-emerald-100"],
 body.tester-shell [class*="border-emerald-200"],
 body.tester-shell [class*="border-rose-200"],
-body.tester-shell [class*="border-sky-200"] { border-color: #303b4b !important; }
+body.tester-shell [class*="border-sky-200"] { border-color: #cbd5e1 !important; }
 body.tester-shell [class*="text-[#0F172A]"],
 body.tester-shell [class~="text-slate-900"],
-body.tester-shell [class~="text-slate-800"] { color: #f1f5f9 !important; }
+body.tester-shell [class~="text-slate-800"] { color: #1e293b !important; }
 body.tester-shell [class*="text-[#64748B]"],
 body.tester-shell [class~="text-slate-600"],
 body.tester-shell [class~="text-slate-500"],
-body.tester-shell [class~="text-slate-400"] { color: #9ca8ba !important; }
+body.tester-shell [class~="text-slate-400"],
+body.tester-shell [class~="text-slate-300"] { color: #64748b !important; }
 body.tester-shell [class*="text-[#475569]"],
-body.tester-shell [class~="text-slate-700"] { color: #cbd5e1 !important; }
+body.tester-shell [class~="text-slate-700"] { color: #334155 !important; }
 body.tester-shell [class~="text-indigo-600"],
 body.tester-shell [class~="text-indigo-700"],
-body.tester-shell [class~="text-indigo-800"] { color: #a5b4fc !important; }
+body.tester-shell [class~="text-indigo-800"],
+body.tester-shell [class~="text-indigo-200"],
+body.tester-shell [class~="text-indigo-300"] { color: #4338ca !important; }
 body.tester-shell [class~="text-emerald-700"],
-body.tester-shell [class~="text-emerald-800"] { color: #6ee7b7 !important; }
+body.tester-shell [class~="text-emerald-800"],
+body.tester-shell [class~="text-emerald-300"],
+body.tester-shell [class~="text-emerald-400"] { color: #047857 !important; }
 body.tester-shell [class~="text-rose-700"],
-body.tester-shell [class~="text-rose-800"] { color: #fda4af !important; }
+body.tester-shell [class~="text-rose-800"],
+body.tester-shell [class~="text-rose-200"] { color: #be123c !important; }
 body.tester-shell [class~="text-amber-700"],
-body.tester-shell [class~="text-amber-800"] { color: #fcd34d !important; }
+body.tester-shell [class~="text-amber-800"],
+body.tester-shell [class~="text-amber-200"] { color: #b45309 !important; }
 body.tester-shell [class~="text-purple-700"],
-body.tester-shell [class~="text-purple-800"] { color: #d8b4fe !important; }
+body.tester-shell [class~="text-purple-800"],
+body.tester-shell [class~="text-purple-200"],
+body.tester-shell [class~="text-purple-300"] { color: #7e22ce !important; }
 body.tester-shell [class~="text-blue-700"],
-body.tester-shell [class~="text-blue-800"] { color: #93c5fd !important; }
+body.tester-shell [class~="text-blue-800"],
+body.tester-shell [class~="text-blue-200"],
+body.tester-shell [class~="text-blue-300"],
+body.tester-shell [class~="text-sky-200"],
+body.tester-shell [class~="text-sky-300"] { color: #1d4ed8 !important; }
 body.tester-shell input,
 body.tester-shell select,
 body.tester-shell textarea {
-    background-color: #111823 !important;
-    color: #e5e7eb !important;
-    border-color: #354153 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
 }
 body.tester-shell input::placeholder,
-body.tester-shell textarea::placeholder { color: #8592a5 !important; }
-body.tester-shell .bug-card { background-color: #131a25 !important; border-color: #303b4b !important; }
-body.tester-shell .bug-card:hover { background-color: #192231 !important; }
-body.tester-shell :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+body.tester-shell textarea::placeholder { color: #94a3b8 !important; }
+body.tester-shell .bug-card { background-color: #ffffff !important; border-color: #cbd5e1 !important; }
+body.tester-shell .bug-card:hover { background-color: #f8fafc !important; }
+body.tester-shell :focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
