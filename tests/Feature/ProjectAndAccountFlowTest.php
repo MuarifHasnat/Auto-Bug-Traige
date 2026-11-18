@@ -53,7 +53,7 @@ class ProjectAndAccountFlowTest extends TestCase
         $developer = User::findOrFail($developerId);
         $this->post('/logout')->assertRedirect('/login');
         $this->post('/login', ['email' => $tester->email, 'password' => 'password-123'])
-            ->assertRedirect('/ai-agent');
+            ->assertRedirect('/dashboard');
         $this->assertAuthenticatedAs($tester);
         $this->post('/logout')->assertRedirect('/login');
         $this->post('/login', ['email' => $developer->email, 'password' => 'password-123'])
@@ -82,10 +82,11 @@ class ProjectAndAccountFlowTest extends TestCase
     {
         $manager = User::factory()->create(['role' => 'manager']);
         $projectId = $this->createProject($manager, 'Team project');
-        $tester = User::factory()->create(['role' => 'tester']);
-        DB::table('project_members')->insert(['project_id' => $projectId, 'user_id' => $tester->id]);
+        $developer = User::factory()->create(['role' => 'developer']);
+        DB::table('project_members')->insert(['project_id' => $projectId, 'user_id' => $developer->id]);
 
-        $this->actingAs($tester)->withSession(['project_id' => $projectId])->get('/dashboard')->assertForbidden();
+        $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/dashboard')->assertForbidden();
+        $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/create-project')->assertForbidden();
         $this->post('/team-members', [])->assertForbidden();
         $this->post('/api/bugs/reassign', [])->assertForbidden();
     }
@@ -124,7 +125,7 @@ class ProjectAndAccountFlowTest extends TestCase
         $landingResponse = $this->get('/');
         $landingResponse->assertOk();
         $landingResponse->assertSee('AutoBugTriage');
-        $landingResponse->assertSee('Demo Accounts');
+        $landingResponse->assertSee('Demo');
         $landingResponse->assertSee('GitHub Culprit Locator');
 
         $signupResponse = $this->get('/signup');
