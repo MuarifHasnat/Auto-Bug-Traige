@@ -1,7 +1,7 @@
 import re
 
 FEATURE_MAP = {
-    "Authentication": ["login", "logout", "password", "auth", "authentication", "authorization", "session", "token", "signin", "signup", "credential", "register", "oauth", "jwt", "pass"],
+    "Authentication": ["login", "loging", "logout", "password", "auth", "authentication", "authorization", "session", "token", "signin", "singin", "signup", "singup", "logon", "credential", "register", "oauth", "jwt", "pass"],
     "Payments": ["payment", "invoice", "billing", "discount", "transaction", "checkout", "stripe", "cart", "pay", "order"],
     "Database": ["sql", "database", "query", "migration", "postgres", "mysql", "sqlite", "model", "schema", "table"],
     "API": ["api", "http", "request", "response", "endpoint", "json", "rest", "route", "controller", "fetch", "axios"],

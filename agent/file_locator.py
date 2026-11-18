@@ -142,6 +142,12 @@ ABBREVIATION_EXPANSIONS = {
     'cfg': ['config', 'configuration'],
     'conf': ['config', 'configuration'],
     'repo': ['repository'],
+    'loging': ['login', 'auth', 'authentication'],
+    'login': ['auth', 'authentication', 'signin', 'loging'],
+    'losing': ['login'],
+    'singin': ['signin', 'login', 'auth'],
+    'logon': ['login', 'auth'],
+    'singup': ['signup', 'register', 'auth'],
 }
 
 
@@ -164,7 +170,7 @@ def extract_file_path_tokens(fpath: str) -> set[str]:
 
 FEATURE_KEYWORD_MAP = {
     'payments': ['payment', 'checkout', 'invoice', 'billing', 'stripe', 'order', 'cart', 'transaction', 'gateway', 'pay', 'order'],
-    'authentication': ['auth', 'login', 'signup', 'signin', 'register', 'user', 'session', 'token', 'password', 'member', 'permission', 'role', 'credential', 'oauth', 'jwt'],
+    'authentication': ['auth', 'login', 'loging', 'signup', 'singin', 'singup', 'signin', 'register', 'user', 'session', 'token', 'password', 'member', 'permission', 'role', 'credential', 'oauth', 'jwt'],
     'database': ['database', 'migration', 'seeder', 'model', 'query', 'schema', 'sqlite', 'pgsql', 'table', 'sql', 'dao', 'entity'],
     'frontend': ['view', 'blade', 'component', 'css', 'ui', 'dashboard', 'workspace', 'modal', 'header', 'card', 'activity', 'fragment', 'layout', 'template', 'screen', 'page', 'form'],
     'api': ['controller', 'route', 'api', 'request', 'response', 'resource', 'middleware', 'handler', 'service', 'retrofit', 'endpoint'],
@@ -310,13 +316,75 @@ def build_github_file_url(repo_slug_or_url: Optional[str], file_path: str, branc
 
 def detect_target_tech(selected_language="", project_stack="", source_file_name="", text=""):
     """Determines the target technology stack for file resolution using strict word boundaries."""
+    # 1. If user explicitly selected a language other than auto, honor it directly
+    if selected_language and selected_language.lower() != "auto":
+        sel = selected_language.lower()
+        if "kotlin" in sel:
+            return "kotlin"
+        if "python" in sel:
+            return "python"
+        if any(j in sel for j in ["typescript", "javascript", "react", "node"]):
+            return "typescript"
+        if "java" in sel and "javascript" not in sel:
+            return "java"
+        if "php" in sel:
+            return "php"
+        if "c++" in sel or "cpp" in sel:
+            return "cpp"
+        if "c#" in sel or "csharp" in sel:
+            return "csharp"
+        if "go" in sel:
+            return "go"
+        if "rust" in sel:
+            return "rust"
+        if "dart" in sel or "flutter" in sel:
+            return "flutter"
+        if "swift" in sel:
+            return "swift"
+
+    # 2. Check source file extension if provided
+    if source_file_name:
+        sfn = source_file_name.lower()
+        if sfn.endswith(('.kt', '.kts')):
+            return 'kotlin'
+        if sfn.endswith('.py'):
+            return 'python'
+        if sfn.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            return 'typescript'
+        if sfn.endswith('.java'):
+            return 'java'
+        if sfn.endswith(('.php', '.blade.php')):
+            return 'php'
+        if sfn.endswith('.go'):
+            return 'go'
+        if sfn.endswith('.rs'):
+            return 'rust'
+        if sfn.endswith('.cs'):
+            return 'csharp'
+        if sfn.endswith('.dart'):
+            return 'flutter'
+        if sfn.endswith('.swift'):
+            return 'swift'
+        if sfn.endswith(('.cpp', '.hpp', '.c', '.h', '.cc')):
+            return 'cpp'
+
     probe = f"{selected_language} {project_stack} {source_file_name} {text}".lower()
 
     if re.search(r'\b(kotlin|android|compose|kotlinc|activity|viewmodel|fragment)\b', probe) or re.search(r'\.(kt|kts)\b', probe):
         return 'kotlin'
-    if re.search(r'\b(python|django|flask|fastapi|pytest|celery)\b', probe) or re.search(r'\.py\b', probe):
+
+    has_php = bool(re.search(r'\b(php|laravel|blade|artisan)\b', probe) or re.search(r'\.(php|blade\.php)\b', probe))
+    has_js = bool(re.search(r'\b(typescript|javascript|react|nextjs|vue|node|express)\b', probe) or re.search(r'\.(ts|tsx|js|jsx)\b', probe))
+    has_py = bool(re.search(r'\b(python|django|flask|fastapi|pytest|celery)\b', probe) or re.search(r'\.py\b', probe))
+
+    # In multi-stack projects (e.g. Laravel + React + Python script), do not force single Python stack
+    if (has_php and has_js) or (has_php and has_py) or (has_js and has_py):
+        return 'auto'
+    if has_php:
+        return 'php'
+    if has_py:
         return 'python'
-    if re.search(r'\b(typescript|javascript|react|nextjs|vue|node|express)\b', probe) or re.search(r'\.(ts|tsx|js|jsx)\b', probe):
+    if has_js:
         return 'typescript'
     if re.search(r'\b(java|spring|springboot|maven)\b', probe) or re.search(r'\.java\b', probe):
         return 'java'
@@ -332,8 +400,6 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
         return 'swift'
     if re.search(r'\b(c\+\+|cpp|clang)\b', probe) or re.search(r'\.(cpp|hpp|cc)\b', probe):
         return 'cpp'
-    if re.search(r'\b(php|laravel|blade|artisan)\b', probe) or re.search(r'\.(php|blade\.php)\b', probe):
-        return 'php'
 
     return 'auto'
 
@@ -882,8 +948,17 @@ def _locate_with_groq(
                 score += 10
 
         # 3. Architectural layer priority (Controllers, Services, Models, Views are most bug-prone)
-        if any(k in fp_lower for k in ('controller', 'service', 'repository', 'viewmodel', 'handler', 'screen', 'component')):
-            score += 5
+        if any(k in fp_lower for k in ('controller', 'service', 'repository', 'viewmodel', 'handler', 'screen', 'component', 'page')):
+            score += 10
+
+        # 4. Feature-domain alignment boost
+        f_lower = feature.lower()
+        if 'auth' in f_lower:
+            if any(k in stem_lower for k in ('login', 'auth', 'signin', 'user', 'session', 'token')):
+                score += 40
+        elif 'payment' in f_lower:
+            if any(k in stem_lower for k in ('pay', 'checkout', 'invoice', 'order', 'billing', 'stripe')):
+                score += 40
 
         return score
 
@@ -1047,10 +1122,18 @@ def locate_suspected_files(
         repo_files = compat_files if compat_files else list(KOTLIN_ANDROID_DEFAULT_TREE)
     elif target_tech == 'python':
         compat_files = [f for f in repo_files if f.lower().endswith('.py')]
-        repo_files = compat_files if compat_files else (list(PYTHON_DEFAULT_TREE) if is_default_php_repo else repo_files)
+        if len(compat_files) <= 2 and len(repo_files) > 5 and not is_default_php_repo:
+            # Multi-stack / full-stack repo with mostly non-Python code (e.g. PHP/React with runner script):
+            # Preserve application files so UI, auth, backend, and API culprit files are not hidden.
+            pass
+        else:
+            repo_files = compat_files if compat_files else (list(PYTHON_DEFAULT_TREE) if is_default_php_repo else repo_files)
     elif target_tech in ['typescript', 'javascript']:
         compat_files = [f for f in repo_files if f.lower().endswith(('.ts', '.tsx', '.js', '.jsx'))]
-        repo_files = compat_files if compat_files else (list(TYPESCRIPT_DEFAULT_TREE) if is_default_php_repo else repo_files)
+        if len(compat_files) <= 2 and len(repo_files) > 5 and not is_default_php_repo:
+            pass
+        else:
+            repo_files = compat_files if compat_files else (list(TYPESCRIPT_DEFAULT_TREE) if is_default_php_repo else repo_files)
     elif target_tech == 'java':
         compat_files = [f for f in repo_files if f.lower().endswith('.java')]
         repo_files = compat_files if compat_files else (list(KOTLIN_ANDROID_DEFAULT_TREE) if is_default_php_repo else repo_files)
@@ -1194,6 +1277,12 @@ def locate_suspected_files(
                 score += 12
                 matches.add(q)
 
+        p_stem = Path(fpath).stem.lower()
+        if any(term in p_stem for term in query_keywords if len(term) >= 4):
+            score += 25
+        if 'auth' in feature.lower() and any(w in p_stem for w in ['login', 'signin', 'auth']):
+            score += 35
+
         # High-priority Vision & OCR match from screenshot
         is_screenshot_match = False
         matched_ss_name = None
@@ -1208,15 +1297,27 @@ def locate_suspected_files(
                 break
 
         # Architectural Layer Affinity Boost
-        if any(w in query_keywords for w in ['screen', 'ui', 'button', 'click', 'view', 'layout', 'display', 'open', 'freeze', 'activity', 'fragment']):
+        if any(w in raw_tokens for w in ['screen', 'ui', 'button', 'click', 'view', 'layout', 'display', 'open', 'freeze', 'activity', 'fragment', 'page', 'form']):
             if re.search(r'activity|fragment|component|screen|page|layout|view|blade|widget|modal', fpath, re.I):
-                score += 25
+                score += 35
         if any(w in query_keywords for w in ['database', 'query', 'migration', 'table', 'column', 'sql', 'dao', 'entity']):
             if re.search(r'model|entity|dao|schema|migration|record|table', fpath, re.I):
                 score += 20
+        elif re.search(r'/migrations?/', fpath, re.I):
+            # De-prioritize database migrations when bug is not about DB migrations
+            score -= 25
         if any(w in query_keywords for w in ['service', 'payment', 'token', 'request', 'response', 'timeout', 'network', 'gateway', 'auth', 'login', 'submit', 'borrow']):
             if re.search(r'service|repository|client|api|helper|util|provider|interactor|usecase|controller|viewmodel|model', fpath, re.I):
                 score += 20
+
+        # Feature-domain alignment boost
+        f_lower = feature.lower()
+        if 'auth' in f_lower:
+            if re.search(r'login|auth|signin|user|session|token', fpath, re.I):
+                score += 35
+        elif 'payment' in f_lower:
+            if re.search(r'payment|checkout|invoice|order|billing', fpath, re.I):
+                score += 35
 
         # Technology-specific file type bonus
         if target_tech == 'kotlin':
