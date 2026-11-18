@@ -244,7 +244,7 @@
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">ℹ</span>
-                            <h3 class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wider">How AI Bug Triage Works (কিভাবে সহজে ব্যবহার করবেন)</h3>
+                            <h3 class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wider">How AI Bug Triage Works</h3>
                         </div>
                         <span class="text-[11px] font-semibold text-indigo-600">Zero Configuration • Fully Automated</span>
                     </div>
@@ -252,23 +252,23 @@
                         <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
                             <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
                                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
-                                <span>১. বাগ ও সিম্পটম লিখুন</span>
+                                <span>1. Describe the bug</span>
                             </div>
-                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">বাগের শিরোনাম ও বিবরণ দিন অথবা নিচের ১-ক্লিক QA টেমপ্লেট বেছে নিন। এরর স্ক্রিনশট থাকলে পেস্ট করুন (<kbd class="rounded bg-slate-100 px-1 font-mono text-[10px]">Ctrl+V</kbd>)।</p>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">Enter a title and description, choose a QA template, or paste an error screenshot with <kbd class="rounded bg-slate-100 px-1 font-mono text-[10px]">Ctrl+V</kbd>.</p>
                         </div>
                         <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
                             <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
                                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
-                                <span>২. এআই কোড ও ফাইল অ্যানালাইসিস</span>
+                                <span>2. AI code and file analysis</span>
                             </div>
-                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">এজেন্ট কোড সিনট্যাক্স চেক করবে, গিটহাব রিপোজিটরির ফাইল স্ট্রাকচার স্ক্যান করে সম্ভাব্য ফাইল খুঁজে বের করবে এবং ডুপ্লিকেট বাগ পরীক্ষা করবে।</p>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">The agent checks code syntax, scans the linked GitHub repository for likely files, and checks for duplicate bugs.</p>
                         </div>
                         <div class="rounded-xl border border-indigo-100/70 bg-white/90 p-3 shadow-2xs">
                             <div class="flex items-center gap-2 text-xs font-bold text-[#0F172A]">
                                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">3</span>
-                                <span>৩. অটো-অ্যাসাইন ও কানবান ট্র্যাকিং</span>
+                                <span>3. Assignment and Kanban tracking</span>
                             </div>
-                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">ইঞ্জিনিয়ারদের স্কিল (Kotlin, PHP, Python) অনুযায়ী উপযুক্ত ডেভেলপারকে স্বয়ংক্রিয়ভাবে অ্যাসাইন করে কানবান বোর্ডে কার্ড তৈরি করে দেবে।</p>
+                            <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">The system recommends an engineer based on skills such as Kotlin, PHP, or Python, then tracks the issue on the Kanban board.</p>
                         </div>
                     </div>
                 </div>
@@ -327,7 +327,7 @@
                                    placeholder="https://github.com/username/repository" 
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs font-mono-code text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
                             <p class="text-[10px] text-slate-500 mt-1">
-                                এজেন্ট এই রিপোজিটরির ফাইলগুলো সরাসরি স্ক্যান করে কোন ফাইলে বাগটি হয়েছে তা বের করবে।
+                                The agent scans this repository to identify the file most likely related to the bug.
                             </p>
                         </div>
 
@@ -602,7 +602,7 @@
                                         </span>
                                     </div>
                                     <p class="text-[11px] text-slate-600 mb-2.5">
-                                        বাগের বর্ণনা ও ডোমেইন বিশ্লেষণ করে এআই এজেন্ট আপনার রিপোজিটরি স্ক্যান করেছে এবং এই ফাইলগুলোতে এরর বা কোড পরিবর্তনের সর্বোচ্চ সম্ভাবনা খুঁজে পেয়েছে:
+                                        The AI agent analyzed the bug report and repository and found these files most likely to contain the error or relevant code:
                                     </p>
 
                                     <div class="space-y-2">
@@ -620,7 +620,7 @@
                                                 @php($ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/' . $baseRepoSlug . '/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/')))
                                                 <a href="{{ $ghUrl }}" target="_blank" rel="noopener noreferrer" 
                                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
-                                                    <span>GitHub-এ দেখুন</span>
+                                                    <span>View on GitHub</span>
                                                     <span class="text-xs">↗</span>
                                                 </a>
                                             </div>
@@ -1331,7 +1331,7 @@
                         </div>
                         <a href="${fUrl}" target="_blank" rel="noopener noreferrer" 
                            class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:text-indigo-600 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition shrink-0 shadow-2xs">
-                            <span>GitHub-এ দেখুন</span>
+                            <span>View on GitHub</span>
                             <span class="text-xs">↗</span>
                         </a>
                     `;
@@ -1462,7 +1462,7 @@
                     </div>
                     <a href="${fUrl}" target="_blank" rel="noopener noreferrer" 
                        class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:text-indigo-600 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition shrink-0 shadow-2xs">
-                        <span>GitHub-এ দেখুন</span>
+                        <span>View on GitHub</span>
                         <span class="text-xs">↗</span>
                     </a>
                 `;
@@ -1581,7 +1581,7 @@
                         <div class="flex items-center justify-between mb-0.5">
                             <span class="text-[9px] text-slate-400 block font-mono-code uppercase">CULPRIT FILE</span>
                             <a id="resCulpritGhLink" href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noopener noreferrer" class="hidden text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5">
-                                <span>GitHub-এ দেখুন</span> ↗
+                                <span>View on GitHub</span> ↗
                             </a>
                         </div>
                         <span id="resCulprit" class="font-mono font-bold text-indigo-700 text-[11px] truncate block mt-0.5">PaymentService.php</span>

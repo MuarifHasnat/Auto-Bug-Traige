@@ -92,16 +92,16 @@
                     <div class="flex h-16 w-16 mx-auto items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600 text-3xl mb-3">
                         🎉
                     </div>
-                    <h3 class="text-base font-extrabold text-[#0F172A]">আপনার প্রজেক্টে এখনো কোনো বাগ নেই!</h3>
+                    <h3 class="text-base font-extrabold text-[#0F172A]">There are no bugs in this project yet</h3>
                     <p class="mt-1 max-w-md mx-auto text-xs text-[#64748B] leading-relaxed">
-                        টিম মেম্বারদের যোগ করুন অথবা এআই এজেন্ট স্টুডিও থেকে সরাসরি টেস্ট বাগ সাবমিট করে অটোমেটিক ট্রায়াজ পরীক্ষা করুন।
+                        Add team members or submit a test bug from AI Triage Studio to try automated triage.
                     </p>
                     <div class="mt-5 flex items-center justify-center gap-3">
                         <a href="/add-developers" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 transition">
-                            + প্রথম টিম মেম্বার যোগ করুন
+                            + Add your first team member
                         </a>
                         <a href="/ai-agent" class="rounded-xl border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-bold text-xs px-4 py-2 transition">
-                            🤖 টেস্ট বাগ সাবমিট করুন
+                            🤖 Submit a test bug
                         </a>
                     </div>
                 </div>
@@ -200,7 +200,7 @@
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <div class="flex items-center gap-2">
                         <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
-                        <span>Smart Bug Tracker · দ্রুত কাজের ৪টি ধাপ (Quick Workflow)</span>
+                        <span>Smart Bug Tracker · 4-step quick workflow</span>
                     </div>
                     <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
                 </summary>
@@ -208,33 +208,33 @@
                     <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
-                            <span>প্রজেক্ট ও কোডবেস সেটআপ</span>
+                            <span>Set up the project and codebase</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">GitHub লিঙ্ক দিয়ে প্রজেক্ট তৈরি করুন। এজেন্ট স্বয়ংক্রিয়ভাবে কোডবেসের ফাইল স্ট্রাকচার ইনডেক্স করবে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Create a project with a GitHub link. The agent will index the codebase file structure.</p>
                     </a>
 
                     <a href="/add-developers" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-purple-300 hover:bg-purple-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-purple-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
-                            <span>টিম ও স্কিল ম্যাট্রিক্স</span>
+                            <span>Team and skills</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ডেভেলপারদের স্কিল ট্যাগ (Kotlin, PHP, Python, UI) দিন যাতে AI বাগ অনুযায়ী সেরা ব্যক্তিকে অ্যাসাইন করে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Add developer skills such as Kotlin, PHP, Python, or UI so AI can recommend a suitable assignee.</p>
                     </a>
 
                     <a href="/ai-agent" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-sky-300 hover:bg-sky-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-sky-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-mono text-[11px] font-bold">3</span>
-                            <span>AI ট্রায়াজ ও বাগ ফাইল</span>
+                            <span>AI triage and bug files</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">টেস্টার স্ক্রিনশট বা এরর বিবরণ দিলে AI এজেন্ট সিনট্যাক্স অ্যানালাইসিস করে গিটহাব ফাইল লিংক বের করবে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">When testers attach a screenshot or describe an error, AI checks the syntax and finds relevant GitHub file links.</p>
                     </a>
 
                     <a href="/workspace" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">4</span>
-                            <span>কানবান ড্র্যাগ & ড্রপ ট্র্যাকিং</span>
+                            <span>Track work on the Kanban board</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">কানবান বোর্ডে কার্ড ড্র্যাগ করে স্ট্যাটাস চেঞ্জ করুন, ফিক্স প্রিভিউ দেখুন এবং টিম আলোচনা চালান।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag cards to update status, review fix guidance, and discuss issues with your team.</p>
                     </a>
                 </div>
             </details>

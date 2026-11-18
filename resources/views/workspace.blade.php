@@ -81,9 +81,9 @@
                 @if($bugs->count() === 0 && collect($filters)->filter()->isNotEmpty())
                     <div class="rounded-2xl border border-dashed border-[#CBD5E1] bg-white p-8 text-center my-4">
                         <span class="text-2xl text-slate-400">🔍</span>
-                        <p class="text-sm font-bold text-[#0F172A] mt-2">"{{ request('search') }}" নামে কোনো বাগ পাওয়া যায়নি।</p>
+                        <p class="text-sm font-bold text-[#0F172A] mt-2">No bugs found matching “{{ request('search') }}”.</p>
                         <a href="/workspace" class="inline-block mt-3 text-xs font-bold text-indigo-600 hover:underline">
-                            ↺ সব ফিল্টার মুছে ফেলুন (Clear Filters)
+                            ↺ Clear all filters
                         </a>
                     </div>
                 @endif
@@ -231,8 +231,8 @@
                         <div class="flex items-center gap-2.5">
                             <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 font-bold text-sm">💡</span>
                             <div>
-                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide (সহজে ব্যবহার নির্দেশিকা)</h3>
-                                <p class="text-[11px] text-[#64748B]">বোর্ডের মূল ফিচারগুলো একনজরে দেখে নিন কিভাবে কাজ করে</p>
+                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide</h3>
+                                <p class="text-[11px] text-[#64748B]">A quick overview of the board’s main features.</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -244,33 +244,33 @@
                         <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
                             <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
                                 <span class="text-indigo-600">🖱️</span>
-                                <span>১. ড্র্যাগ অ্যান্ড ড্রপ</span>
+                                <span>1. Drag and drop</span>
                             </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো বাগের কার্ড টেনে অন্য কলামে নিয়ে ছেড়ে দিলেই স্ট্যাটাস সাথে সাথে আপডেট হয়ে যাবে।</p>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag a bug card to another column to update its status.</p>
                         </div>
 
                         <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
                             <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
                                 <span class="text-purple-600">🔍</span>
-                                <span>২. ক্লিক করে ড্রয়ার প্রিভিউ</span>
+                                <span>2. Click to preview</span>
                             </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">যেকোনো কার্ডে ক্লিক করলে ডানে ড্রয়ার ওপেন হবে—যেখানে AI ডায়াগনস্টিক, রুট কজ ও কমেন্টস পাবেন।</p>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Click a card to open its side panel with AI diagnostics, root cause, and comments.</p>
                         </div>
 
                         <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
                             <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
                                 <span class="text-sky-600">📄</span>
-                                <span>৩. ডেডিকেটেড পেজ ও গিটহাব</span>
+                                <span>3. Full issue page and GitHub</span>
                             </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ড্রয়ারের "Open in Full Page" বাটনে ক্লিক করলে পুরো পেজে গিটহাবের ফাইল লিংকসহ কোড দেখা যাবে।</p>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Use “Open in Full Page” to review issue details and linked GitHub files.</p>
                         </div>
 
                         <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
                             <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
                                 <span class="text-emerald-600">⚡</span>
-                                <span>৪. নতুন বাগ সাবমিট</span>
+                                <span>4. Submit a bug</span>
                             </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">উপরের "+ Report Bug" বাটনে চাপলে AI স্টুডিও ওপেন হবে, যা স্বয়ংক্রিয়ভাবে ইঞ্জিনিয়ার অ্যাসাইন করে দেবে।</p>
+                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Select “+ Report Bug” to open AI Triage Studio and get an engineer assignment recommendation.</p>
                         </div>
                     </div>
                 </div>
