@@ -7,138 +7,76 @@
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
-<body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-center items-center p-4 sm:p-6 bg-dot-grid selection:bg-indigo-500 selection:text-white">
-    <div class="w-full max-w-md mx-auto space-y-6">
-        <!-- Top Brand Logo -->
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black shadow-md shadow-indigo-600/20 text-sm">
-                    ⚡
-                </div>
-                <span class="text-lg font-extrabold tracking-tight text-[#0F172A]">
-                    AutoBug<span class="text-indigo-600">Triage</span>
-                </span>
-                <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
-                    AI v1.0
-                </span>
+<body class="min-h-screen bg-white text-[#111827] selection:bg-indigo-500 selection:text-white">
+    <main class="grid min-h-screen lg:grid-cols-2">
+        <aside class="relative hidden min-h-screen overflow-hidden bg-gradient-to-br from-[#302878] via-[#342d83] to-[#28236d] px-10 py-9 text-white lg:flex lg:flex-col lg:justify-between xl:px-[4.7vw]">
+            <a href="/" class="text-xl font-extrabold tracking-tight text-white">AutoBugTriage</a>
+            <div class="max-w-xl py-16">
+                <div class="mb-7 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-2xl">⚡</div>
+                <h2 class="max-w-lg text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl">Find the bug. Locate the file. Fix it faster.</h2>
+                <p class="mt-5 max-w-lg text-base leading-7 text-indigo-100/90 xl:text-lg">An AI agent that detects bugs, points to the exact file and suggests the fix.</p>
+            </div>
+            <p class="text-sm font-medium text-indigo-100/75">AI v1.0</p>
+        </aside>
+
+        <section class="flex min-h-screen flex-col items-center justify-center px-5 py-8 sm:px-10 lg:px-12 xl:px-16">
+            <div class="mb-8 flex w-full max-w-md items-center justify-between lg:hidden">
+                <a href="/" class="text-lg font-extrabold tracking-tight text-[#111827]">AutoBug<span class="text-indigo-600">Triage</span></a>
+                <a href="/signup" class="text-sm font-semibold text-indigo-700 hover:text-indigo-900">Create account <span aria-hidden="true">→</span></a>
             </div>
 
-            <div class="flex items-center gap-2">
-                <a href="/" class="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition shadow-2xs">
-                    ← Home
-                </a>
-                <a href="/signup" class="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs">
-                    Register Workspace →
-                </a>
-            </div>
-        </div>
+            <div class="w-full max-w-md">
+                <h1 class="text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl">Welcome back</h1>
+                <p class="mt-3 text-sm leading-6 text-slate-600">Sign in to your project workspace.</p>
 
-        <!-- Clean Login Card -->
-        <div class="rounded-3xl border border-[#E2E8F0] bg-white p-6 sm:p-8 shadow-sm">
-            <h1 class="text-2xl font-extrabold tracking-tight text-[#0F172A]">
-                Welcome back
-            </h1>
-            <p class="mt-1 text-xs text-[#64748B] leading-relaxed">
-                Sign in to access your project dashboard, kanban board, and AI triage studio.
-            </p>
-
-            @if(isset($errors) && $errors->any())
-                <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-800 flex items-start gap-2">
-                    <span class="text-rose-500 font-bold">⚠</span>
-                    <span>{{ $errors->first() }}</span>
-                </div>
-            @endif
-
-            <form id="loginForm" action="/login" method="POST" class="mt-5 space-y-4">
-                @csrf
-                <div>
-                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="loginEmail">Email Address</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                            </svg>
-                        </span>
-                        <input type="email" id="loginEmail" name="email" value="{{ old('email') }}" required autofocus placeholder="name@company.com" 
-                               class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
+                @if(isset($errors) && $errors->any())
+                    <div class="mt-6 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-rose-800" role="alert">
+                        <span class="font-bold text-rose-600" aria-hidden="true">⚠</span>
+                        <span>{{ $errors->first() }}</span>
                     </div>
-                </div>
+                @endif
 
-                <div>
-                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5" for="loginPass">Password</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                        </span>
-                        <input type="password" id="loginPass" name="password" required placeholder="••••••••" 
-                               class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
-                        <button type="button" data-password-target="loginPass" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
-                            <svg data-eye-visible class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7z"/><circle cx="12" cy="12" r="3" stroke-width="1.8"/>
-                            </svg>
-                            <svg data-eye-hidden class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.25 0 9.75 7 9.75 7a16.7 16.7 0 0 1-3.1 3.9M6.2 6.2C3.7 8 2.25 12 2.25 12s3.5 7 9.75 7a10.8 10.8 0 0 0 4-.75"/>
-                            </svg>
-                        </button>
+                <form id="loginForm" action="/login" method="POST" class="mt-7 space-y-5">
+                    @csrf
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-[#111827]" for="loginEmail">Email address</label>
+                        <input type="email" id="loginEmail" name="email" value="{{ old('email') }}" required autofocus autocomplete="email" placeholder="you@company.com"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-[#111827] outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10">
                     </div>
-                </div>
 
-                <div class="flex items-center justify-between pt-0.5">
-                    <label class="flex items-center gap-2 text-xs text-[#64748B] cursor-pointer select-none">
-                        <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-[#CBD5E1] text-indigo-600 focus:ring-indigo-500/20">
+                    <div>
+                        <div class="mb-2 flex items-center justify-between">
+                            <label class="block text-sm font-semibold text-[#111827]" for="loginPass">Password</label>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="loginPass" name="password" required autocomplete="current-password" placeholder="Password"
+                                   class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-[#111827] outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10">
+                            <button type="button" data-password-target="loginPass" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-500 transition hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+                                <svg data-eye-visible class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7z"/><circle cx="12" cy="12" r="3" stroke-width="1.8"/></svg>
+                                <svg data-eye-hidden class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.25 0 9.75 7 9.75 7a16.7 16.7 0 0 1-3.1 3.9M6.2 6.2A10.8 10.8 0 0 0 2.25 12s3.5 7 9.75 7a10.8 10.8 0 0 0 4-.75"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <label class="flex cursor-pointer select-none items-center gap-2.5 text-sm text-slate-600">
+                        <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20">
                         <span>Remember my session</span>
                     </label>
-                </div>
 
-                <button type="submit" class="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-2.5 px-4 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
-                    <span>Sign In to Workspace</span>
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                    </svg>
-                </button>
-            </form>
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-[#4938d0] px-4 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#3f30ba] focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-600/25 active:scale-[0.99]">
+                        Sign in to workspace
+                    </button>
+                </form>
 
-            <!-- Subtle 1-Click Demo Fill for easy testing -->
-            <div class="mt-6 pt-5 border-t border-[#E2E8F0]">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">Quick Demo Accounts (1-Click Fill)</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button type="button" onclick="fillDemo('demo-manager@example.test', '12345678')" 
-                            class="rounded-xl border border-blue-200 bg-blue-50/50 py-2 px-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100/70 transition text-center shadow-2xs">
-                        👑 Manager
-                    </button>
-                    <button type="button" onclick="fillDemo('demo.alice@example.test', '12345678')" 
-                            class="rounded-xl border border-emerald-200 bg-emerald-50/50 py-2 px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100/70 transition text-center shadow-2xs">
-                        💻 Dev (Alice)
-                    </button>
-                    <button type="button" onclick="fillDemo('demo.bob@example.test', '12345678')" 
-                            class="rounded-xl border border-purple-200 bg-purple-50/50 py-2 px-2 text-[11px] font-bold text-purple-700 hover:bg-purple-100/70 transition text-center shadow-2xs">
-                        🎨 Dev (Bob)
-                    </button>
-                    <button type="button" onclick="fillDemo('demo-tester@example.test', '12345678')" 
-                            class="rounded-xl border border-amber-200 bg-amber-50/50 py-2 px-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100/70 transition text-center shadow-2xs">
-                        🧪 QA Tester
-                    </button>
-                </div>
-                <p class="text-[10px] text-center text-slate-400 mt-2 font-mono-code">Password for all demo accounts: <strong>12345678</strong></p>
+                <p class="mt-7 text-sm text-slate-600">Need a new organization? <a href="/signup" class="font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">Create an account</a></p>
             </div>
-        </div>
-
-        <!-- Footer link -->
-        <p class="text-center text-xs text-[#64748B]">
-            Need a new organization? 
-            <a href="/signup" class="font-bold text-indigo-600 hover:underline">
-                Create an account
-            </a>
-        </p>
-    </div>
+        </section>
+    </main>
 
     <script>
         document.querySelectorAll('[data-password-target]').forEach((button) => {
             const input = document.getElementById(button.dataset.passwordTarget);
             if (!input) return;
-
             button.addEventListener('click', () => {
                 const isRevealed = input.type === 'password';
                 input.type = isRevealed ? 'text' : 'password';
@@ -149,28 +87,6 @@
             });
         });
 
-        function fillDemo(email, pass) {
-            const emailInput = document.getElementById('loginEmail');
-            const passInput = document.getElementById('loginPass');
-            emailInput.value = email;
-            passInput.value = pass;
-            
-            emailInput.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50');
-            passInput.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50');
-            setTimeout(() => {
-                emailInput.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50');
-                passInput.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50');
-            }, 500);
-        }
-
-        // Auto-fill if query parameters passed from landing page
-        document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const email = params.get('email');
-            if (email) {
-                fillDemo(email, '12345678');
-            }
-        });
     </script>
 </body>
 </html>
