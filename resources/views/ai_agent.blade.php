@@ -515,8 +515,15 @@
                                                     <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ $sFile['reason'] }}</p>
                                                 </div>
 
-                                                @php($baseRepoSlug = !empty($projectGithubRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectGithubRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige')
-                                                @php($ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/' . $baseRepoSlug . '/blob/main/' . ltrim($sFile['path'] ?? (is_string($sFile) ? $sFile : ''), '/')))
+                                                @php
+                                                    $baseRepoSlug = !empty($projectGithubRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectGithubRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+                                                    $baseRepoSlug = preg_replace('/\.git$/', '', $baseRepoSlug);
+                                                    $fPathRaw = $sFile['path'] ?? (is_string($sFile) ? $sFile : '');
+                                                    $cleanP = ltrim(str_replace('\\', '/', $fPathRaw), '/');
+                                                    $encodedP = implode('/', array_map('rawurlencode', explode('/', $cleanP)));
+                                                    $fBranch = !empty($sFile['branch']) ? $sFile['branch'] : 'HEAD';
+                                                    $ghUrl = !empty($sFile['github_url']) ? $sFile['github_url'] : ('https://github.com/' . $baseRepoSlug . '/blob/' . rawurlencode($fBranch) . '/' . $encodedP);
+                                                @endphp
                                                 <a href="{{ $ghUrl }}" target="_blank" rel="noopener noreferrer" 
                                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition shrink-0 shadow-2xs">
                                                     <span>GitHub-এ দেখুন</span>
@@ -1089,6 +1096,33 @@
         terminal.scrollTop = terminal.scrollHeight;
     }
 
+    function buildSafeGhUrl(rawPath, itemGhUrl, itemBranch) {
+        if (itemGhUrl && typeof itemGhUrl === 'string' && itemGhUrl.startsWith('http')) {
+            const bIdx = itemGhUrl.indexOf('/blob/');
+            if (bIdx !== -1) {
+                const prefix = itemGhUrl.substring(0, bIdx + 6);
+                const rest = itemGhUrl.substring(bIdx + 6);
+                const parts = rest.split('/');
+                const br = parts[0];
+                const fixedPath = parts.slice(1).join('/').replace(/%2[fF]/g, '/');
+                return `${prefix}${br}/${fixedPath.replace(/^\/+/, '')}`;
+            }
+            return itemGhUrl;
+        }
+        const currentGhRepo = document.getElementById('triageGithubRepo')?.value || '{{ $projectGithubRepo ?? "" }}';
+        let safeRepoSlug = '';
+        if (currentGhRepo) {
+            const m = currentGhRepo.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
+            if (m) safeRepoSlug = `${m[1]}/${m[2].replace(/\.git$/, '')}`;
+            else if (currentGhRepo.includes('/')) safeRepoSlug = currentGhRepo.trim().replace(/\.git$/, '');
+        }
+        const slug = safeRepoSlug || 'MuarifHasnat/Auto-Bug-Traige';
+        const br = itemBranch || 'HEAD';
+        const cleanP = String(rawPath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+        const encodedP = cleanP.split('/').map(seg => encodeURIComponent(seg)).join('/');
+        return `https://github.com/${slug}/blob/${encodeURIComponent(br)}/${encodedP}`;
+    }
+
     // Submit Handler with Streaming Execution (5-Phase Explainable AI Pipeline)
     async function handleTriageSubmit(e) {
         if (e) e.preventDefault();
@@ -1229,17 +1263,9 @@
                 ? ai.code_help.suspected_files 
                 : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
 
-            const currentGhRepo = document.getElementById('triageGithubRepo')?.value || '{{ $projectGithubRepo ?? "" }}';
-            let safeRepoSlug = '';
-            if (currentGhRepo) {
-                const m = currentGhRepo.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
-                if (m) safeRepoSlug = `${m[1]}/${m[2].replace(/\.git$/, '')}`;
-                else if (currentGhRepo.includes('/')) safeRepoSlug = currentGhRepo.trim();
-            }
-            const defaultGhBase = safeRepoSlug ? `https://github.com/${safeRepoSlug}/blob/main/` : '';
             const topCandidate = filesList.length ? filesList[0] : null;
             const suspected = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
-            const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '')) : (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '');
+            const topGhUrl = buildSafeGhUrl(suspected, topCandidate ? topCandidate.github_url : null, topCandidate ? topCandidate.branch : null);
 
             appendTerminalLog('[SUCCESS]', `Triage completed autonomously in ${totalDuration}s!`, 'text-emerald-400 font-bold');
             appendTerminalLog('[DISPATCH]', `Anomaly categorized under module: ${feat} (${priority} Priority)`, 'text-emerald-300');
@@ -1298,7 +1324,7 @@
                     const fPath = fItem.path || fItem;
                     const fConf = fItem.confidence || 92;
                     const fReason = fItem.reason || 'Matched project component';
-                    const fUrl = fItem.github_url || (defaultGhBase + encodeURIComponent(fPath));
+                    const fUrl = buildSafeGhUrl(fPath, fItem.github_url, fItem.branch);
 
                     const itemEl = document.createElement('div');
                     itemEl.className = 'flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 hover:border-indigo-400 transition shadow-2xs';
@@ -1373,17 +1399,9 @@
         const filesList = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files.length) 
             ? ai.code_help.suspected_files 
             : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
-        const currentGhRepo = document.getElementById('triageGithubRepo')?.value || '{{ $projectGithubRepo ?? "" }}';
-        let safeRepoSlug = '';
-        if (currentGhRepo) {
-            const m = currentGhRepo.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
-            if (m) safeRepoSlug = `${m[1]}/${m[2].replace(/\.git$/, '')}`;
-            else if (currentGhRepo.includes('/')) safeRepoSlug = currentGhRepo.trim();
-        }
-        const defaultGhBase = safeRepoSlug ? `https://github.com/${safeRepoSlug}/blob/main/` : '';
         const topCandidate = filesList.length ? filesList[0] : null;
         const susp = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
-        const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase ? defaultGhBase + encodeURIComponent(susp) : '')) : (defaultGhBase ? defaultGhBase + encodeURIComponent(susp) : '');
+        const topGhUrl = buildSafeGhUrl(susp, topCandidate ? topCandidate.github_url : null, topCandidate ? topCandidate.branch : null);
 
         appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300 font-bold');
         document.getElementById('triageProgressBar').style.width = '75%';
@@ -1429,7 +1447,7 @@
                 const fPath = fItem.path || fItem;
                 const fConf = fItem.confidence || 92;
                 const fReason = fItem.reason || 'Matched project component';
-                const fUrl = fItem.github_url || (defaultGhBase + encodeURIComponent(fPath));
+                const fUrl = buildSafeGhUrl(fPath, fItem.github_url, fItem.branch);
 
                 const itemEl = document.createElement('div');
                 itemEl.className = 'flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 hover:border-indigo-400 transition shadow-2xs';

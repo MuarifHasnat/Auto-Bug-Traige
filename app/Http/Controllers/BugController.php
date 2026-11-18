@@ -531,9 +531,13 @@ class BugController extends Controller
             ->map(function ($saved) { $saved->filters = json_decode($saved->filters, true) ?: []; return $saved; });
 
         $projects = $this->accessibleProjects();
+        $currentProject = $projects->firstWhere('id', $projectId);
+        $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
         return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'clarifications', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
             'currentProjectId' => $projectId,
+            'currentProject' => $currentProject,
+            'projectGithubRepo' => $projectGithubRepo,
         ]);
     }
 

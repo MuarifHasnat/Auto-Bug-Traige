@@ -253,7 +253,11 @@
                                     $fConf = $file['confidence'] ?? 92;
                                     $fReason = $file['reason'] ?? 'Matched project repository component';
                                     $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
-                                    $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/main/' . ltrim($fPath, '/'));
+                                    $baseSlug = preg_replace('/\.git$/', '', $baseSlug);
+                                    $cleanP = ltrim(str_replace('\\', '/', $fPath), '/');
+                                    $encodedP = implode('/', array_map('rawurlencode', explode('/', $cleanP)));
+                                    $fBranch = !empty($file['branch']) ? $file['branch'] : 'HEAD';
+                                    $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/' . rawurlencode($fBranch) . '/' . $encodedP);
                                 @endphp
                                 <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white border border-sky-200 p-3.5 shadow-2xs hover:border-indigo-400 transition">
                                     <div class="min-w-0 flex-1">
@@ -277,6 +281,7 @@
                 @else
                     @php
                         $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+                        $baseSlug = preg_replace('/\.git$/', '', $baseSlug);
                         $repoUrl = 'https://github.com/' . $baseSlug;
                     @endphp
                     <section class="rounded-3xl border border-sky-200 bg-sky-50/50 p-6 shadow-xs">

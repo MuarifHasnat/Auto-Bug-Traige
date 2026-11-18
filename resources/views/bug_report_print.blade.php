@@ -57,6 +57,7 @@
         $suspectedFiles = $bug->triage['code_help']['suspected_files'] ?? ($bug->triage['suspected_files'] ?? []);
         $projectRepo = \Illuminate\Support\Facades\DB::table('projects')->where('id', $bug->project_id)->value('github_repo');
         $baseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+        $baseSlug = preg_replace('/\.git$/', '', $baseSlug);
     @endphp
     <h2>Suspected Culprit Files (GitHub Root Cause Locator)</h2>
     <div class="box">
@@ -67,7 +68,10 @@
                         $fPath = $file['path'] ?? (is_string($file) ? $file : '');
                         $fConf = $file['confidence'] ?? 92;
                         $fReason = $file['reason'] ?? 'Matched project repository component';
-                        $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/main/' . ltrim($fPath, '/'));
+                        $cleanP = ltrim(str_replace('\\', '/', $fPath), '/');
+                        $encodedP = implode('/', array_map('rawurlencode', explode('/', $cleanP)));
+                        $fBranch = !empty($file['branch']) ? $file['branch'] : 'HEAD';
+                        $ghLink = !empty($file['github_url']) ? $file['github_url'] : ('https://github.com/' . $baseSlug . '/blob/' . rawurlencode($fBranch) . '/' . $encodedP);
                     @endphp
                     <li style="margin-bottom: 8px;">
                         <b>📄 {{ $fPath }}</b> ({{ $fConf }}% Match) — {{ $fReason }}<br>

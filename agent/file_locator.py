@@ -287,6 +287,27 @@ def parse_github_slug(repo_input):
     return slug
 
 
+def build_github_file_url(repo_slug_or_url: Optional[str], file_path: str, branch: Optional[str] = None) -> str:
+    """
+    Builds a reliable, 404-proof GitHub blob URL for any repository.
+    - Strips leading ./, /, and normalizes backslashes to forward slashes.
+    - Encodes each path segment individually without replacing / with %2F.
+    - Strips any .git suffix from repository slug.
+    - Defaults to 'HEAD' if branch is unknown (GitHub dynamically redirects HEAD to the default branch).
+    """
+    slug, url_branch = parse_github_target(repo_slug_or_url)
+    if not slug:
+        slug = "MuarifHasnat/Auto-Bug-Traige"
+    slug = slug.strip("/").removesuffix(".git")
+
+    effective_branch = branch or url_branch or "HEAD"
+    clean_path = str(file_path).replace("\\", "/").strip()
+    clean_path = re.sub(r'^(?:\./|/)+', '', clean_path)
+    encoded_path = "/".join(quote(part, safe="") for part in clean_path.split("/") if part)
+
+    return f"https://github.com/{slug}/blob/{quote(effective_branch, safe='')}/{encoded_path}"
+
+
 def detect_target_tech(selected_language="", project_stack="", source_file_name="", text=""):
     """Determines the target technology stack for file resolution using strict word boundaries."""
     probe = f"{selected_language} {project_stack} {source_file_name} {text}".lower()
@@ -1113,9 +1134,9 @@ def locate_suspected_files(
 
     if ai_picks:
         results: List[SuspectedFileResult] = []
-        safe_slug = github_slug or "MuarifHasnat/Auto-Bug-Traige"
+        target_repo_ref = github_slug or github_repo or "MuarifHasnat/Auto-Bug-Traige"
         for item in ai_picks:
-            gh_url = f"https://github.com/{safe_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+            gh_url = build_github_file_url(target_repo_ref, item['path'], branch=branch)
             results.append({
                 "path": item["path"],
                 "branch": branch,
@@ -1265,8 +1286,8 @@ def locate_suspected_files(
         item_score = item["score"]
         item_path = item["path"]
         confidence = min(98, max(45, int((item_score / max_score) * 92)))
-        safe_slug = github_slug or "MuarifHasnat/Auto-Bug-Traige"
-        gh_url = f"https://github.com/{safe_slug}/blob/{quote(branch, safe='')}/{quote(item_path, safe='/')}"
+        target_repo_ref = github_slug or github_repo or "MuarifHasnat/Auto-Bug-Traige"
+        gh_url = build_github_file_url(target_repo_ref, item_path, branch=branch)
         
         if item.get("is_screenshot_match"):
             confidence = max(95, confidence)

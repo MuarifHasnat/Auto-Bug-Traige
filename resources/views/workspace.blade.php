@@ -575,6 +575,7 @@
 
     <script>
         window.liveProjectId = @json($currentProjectId);
+        window.projectGithubRepo = @json($projectGithubRepo ?? '');
         function openDrawer(bugId) {
             const container = document.getElementById('drawer-data-' + bugId);
             if (!container) return;
@@ -712,9 +713,14 @@
                         const filePath = typeof f === 'string' ? f : (f.path || '');
                         left.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">📄</span><span class="font-mono text-[11px] font-semibold text-slate-800 truncate">${filePath}</span>`;
                         item.appendChild(left);
+                        let currentRepo = window.projectGithubRepo || 'MuarifHasnat/Auto-Bug-Traige';
+                        let repoSlug = currentRepo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '') || 'MuarifHasnat/Auto-Bug-Traige';
                         let ghUrl = (f && f.github_url) ? f.github_url : null;
                         if (!ghUrl && filePath) {
-                            ghUrl = `https://github.com/MuarifHasnat/Auto-Bug-Traige/blob/main/${filePath.replace(/^\//, '')}`;
+                            let effBranch = (f && f.branch) ? f.branch : 'HEAD';
+                            let cleanPath = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
+                            let encodedPath = cleanPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+                            ghUrl = `https://github.com/${repoSlug}/blob/${encodeURIComponent(effBranch)}/${encodedPath}`;
                         }
                         if (ghUrl) {
                             const link = document.createElement('a');
@@ -729,10 +735,12 @@
                     });
                     suspectedSection.classList.remove('hidden');
                 } else {
+                    const currentRepo = window.projectGithubRepo || 'MuarifHasnat/Auto-Bug-Traige';
+                    const repoSlug = currentRepo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '') || 'MuarifHasnat/Auto-Bug-Traige';
                     const item = document.createElement('div');
                     item.className = 'flex items-center justify-between gap-2 rounded-lg bg-white border border-sky-200 px-2.5 py-1.5 text-xs';
                     item.innerHTML = `<span class="text-slate-600 text-[11px]">Inspect project repository components:</span>
-                        <a href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition">
+                        <a href="https://github.com/${repoSlug}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition">
                             <span>Open in GitHub</span> ↗
                         </a>`;
                     suspectedList.appendChild(item);
