@@ -44,7 +44,9 @@
 
             <div class="space-y-3">
                 @forelse($notifications as $notification)
-                    @php($data = $notification->data)
+                    @php
+                        $data = $notification->data;
+                    @endphp
                     <article class="rounded-2xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50/60' }} p-4 shadow-sm">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">

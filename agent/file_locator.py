@@ -720,7 +720,7 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
         index_data = index_repository_structure(github_slug, branch=req_branch, force=False)
         if index_data and index_data.get("success") and index_data.get("files"):
             cached_files = index_data["files"]
-            cached_branch = index_data.get("branch") or active_branch
+            cached_branch = req_branch or index_data.get("branch") or active_branch
             return cached_files, cached_branch
 
     # 2. Technology-Specific Fallback (Never show Blade files for Kotlin/Python/React projects!)
@@ -1006,12 +1006,13 @@ def locate_suspected_files(
     if not github_slug and target_tech in ['php', 'auto'] and (WORKSPACE_ROOT / "resources" / "views").exists():
         github_slug = "MuarifHasnat/Auto-Bug-Traige"
 
-    repo_files, branch = get_repository_files(
+    repo_files, returned_branch = get_repository_files(
         github_slug=github_slug or github_repo,
         target_tech=target_tech,
         source_file_name=source_file_name,
         branch=active_target_branch
     )
+    branch = active_target_branch or returned_branch or "main"
     if not repo_files and not ss_files:
         if target_tech == 'kotlin':
             repo_files = list(KOTLIN_ANDROID_DEFAULT_TREE)
