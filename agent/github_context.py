@@ -19,10 +19,13 @@ ALLOWED_EXTENSIONS = {
 
 def parse_repo(value: str):
     value = (value or "").strip()
-    match = re.fullmatch(r"(?:https?://github\.com/)?([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?", value)
+    match = re.search(r'(?:https?://github\.com/)?([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:[/#\?:]|$)', value)
     if not match:
         return None
-    return match.group(1), match.group(2)
+    name = match.group(2)
+    if name.endswith('.git'):
+        name = name[:-4]
+    return match.group(1), name
 
 
 def _safe_path(path: str) -> bool:
@@ -40,12 +43,14 @@ def fetch_relevant_source(github_repo: str, candidates: list, token: str = "") -
     if not repo:
         return []
     owner, name = repo
+    tree_match = re.search(r'github\.com/[^/]+/[^/]+/(?:tree|blob)/([^\s#?]+)', github_repo or "")
+    url_req_branch = urllib.parse.unquote(tree_match.group(1)).rstrip('/') if tree_match else None
     results, total_chars = [], 0
     for candidate in candidates[:MAX_FILES]:
         path = str(candidate.get("path", "")) if isinstance(candidate, dict) else str(candidate)
         if not _safe_path(path):
             continue
-        branch = str(candidate.get("branch", "main")) if isinstance(candidate, dict) else "main"
+        branch = str(candidate.get("branch")) if (isinstance(candidate, dict) and candidate.get("branch")) else (url_req_branch or "main")
         if isinstance(candidate, dict) and candidate.get("github_url"):
             url_parts = urllib.parse.urlparse(candidate["github_url"])
             pieces = url_parts.path.strip("/").split("/")

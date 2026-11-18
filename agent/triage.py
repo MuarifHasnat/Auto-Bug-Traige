@@ -114,6 +114,7 @@ def analyze_report(data):
     github_repo = data.get("github_repo")
     project_stack = data.get("project_stack") or ""
     source_file_name = data.get("source_file_name") or ""
+    req_branch = data.get("branch")
     suspected_files = locate_suspected_files(
         title=title,
         description=description,
@@ -125,6 +126,7 @@ def analyze_report(data):
         source_file_name=source_file_name,
         screenshot_data=screenshot_data,
         groq_api_key=groq_api_key,
+        branch=req_branch,
     )
     if suspected_files:
         code_help["suspected_files"] = suspected_files
@@ -263,6 +265,7 @@ def run_agent():
                 selected_language=data.get("selected_language") or "auto",
                 project_stack=data.get("project_stack") or "",
                 groq_api_key=data.get("groq_api_key") or os.environ.get("GROQ_API_KEY"),
+                branch=data.get("branch"),
             )
         except Exception:
             pass

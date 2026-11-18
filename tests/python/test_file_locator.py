@@ -14,6 +14,7 @@ from agent.file_locator import (
     index_repository_structure,
     locate_suspected_files,
     parse_github_slug,
+    parse_github_target,
 )
 
 
@@ -24,6 +25,25 @@ class FileLocatorTests(unittest.TestCase):
         self.assertEqual("MuarifHasnat/Auto-Bug-Traige", parse_github_slug("https://github.com/MuarifHasnat/Auto-Bug-Traige"))
         self.assertEqual("owner/repo", parse_github_slug("owner/repo"))
         self.assertIsNone(parse_github_slug(None))
+
+    def test_parse_github_target_extracts_branches(self):
+        self.assertEqual(("owner/repo", "develop"), parse_github_target("https://github.com/owner/repo/tree/develop"))
+        self.assertEqual(("owner/repo", "feature/auth-v2"), parse_github_target("https://github.com/owner/repo/tree/feature/auth-v2"))
+        self.assertEqual(("owner/repo", "staging"), parse_github_target("https://github.com/owner/repo/blob/staging/src/app.py"))
+        self.assertEqual(("owner/repo", "dev"), parse_github_target("owner/repo:dev"))
+        self.assertEqual(("owner/repo", "release-1.0"), parse_github_target("owner/repo#release-1.0"))
+        self.assertEqual(("owner/repo", None), parse_github_target("https://github.com/owner/repo"))
+
+    def test_locate_suspected_files_preserves_custom_branch(self):
+        results = locate_suspected_files(
+            title="User login rejected on session token",
+            description="When logging in with valid user credentials, session fails.",
+            feature="Authentication",
+            github_repo="https://github.com/MuarifHasnat/Auto-Bug-Traige/tree/develop"
+        )
+        self.assertTrue(len(results) > 0)
+        self.assertIn("/blob/develop/", str(results[0]["github_url"]))
+        self.assertEqual("develop", results[0].get("branch"))
 
     def test_locate_suspected_files_for_authentication_issue(self):
         results = locate_suspected_files(
