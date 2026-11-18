@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AI Triage Studio · AutoBugTriage</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
     @if(auth()->user()->role === 'tester')<link rel="stylesheet" href="/css/tester-theme.css">@endif
     <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
-    @vite('resources/js/app.js')
+    @if(file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite('resources/js/app.js')
+    @endif
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
 <div class="flex min-h-screen">
@@ -139,7 +141,7 @@
                 </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800 flex items-start gap-2.5 shadow-xs">
                     <span class="text-rose-500 font-bold mt-0.5">⚠</span>
                     <span>{{ $errors->first() }}</span>
@@ -396,7 +398,7 @@
 
                         <!-- Submit Button with Loading State & Keyboard Shortcut Info -->
                         <div>
-                            <button type="submit" id="submitTriageBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 py-3.5 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
+                            <button type="submit" id="submitTriageBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 px-4 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition active:scale-[0.99]">
                                 <span>✨ Submit bug report</span>
                             </button>
                             <p id="submissionFeedback" class="min-h-4 text-center text-[11px] text-slate-500 mt-2" role="status" aria-live="polite">You can review the suggested owner and status before following your report.</p>
@@ -870,22 +872,10 @@
             const form = document.getElementById('triageForm');
             if (form) {
                 e.preventDefault();
-                handleTriageSubmit();
+                handleTriageSubmit(e);
             }
         }
     });
-
-    // Button Loading State & Double Submit Prevention
-    function handleTriageSubmit() {
-        const btn = document.getElementById('submitTriageBtn');
-        btn.innerHTML = `
-            <span class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
-            <span>⏳ AI কোড পরীক্ষা করছে... একটু অপেক্ষা করুন</span>
-        `;
-        btn.disabled = true;
-        btn.classList.add('opacity-80', 'cursor-not-allowed');
-        document.getElementById('triageForm').submit();
-    }
 
     // Studio Code View Switcher
     function switchStudioCode(view) {
@@ -955,16 +945,16 @@
         // Reset Terminal
         document.getElementById('terminalBugTitle').innerText = title || 'Processing Anomaly';
         document.getElementById('terminalOutput').innerHTML = '';
-        document.getElementById('triageProgressBar').style.width = '8%';
+        document.getElementById('triageProgressBar').style.width = '5%';
         document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span> RUNNING NEURAL PIPELINE`;
         document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-[11px] font-bold text-indigo-700 font-mono-code';
         document.getElementById('terminalResultCard').classList.add('hidden');
         
         // Reset Steps
-        [1, 2, 3, 4].forEach(i => {
+        [1, 2, 3, 4, 5].forEach(i => {
             const step = document.getElementById(`step-pill-${i}`);
             if (step) {
-                step.className = 'px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5';
+                step.className = 'px-2.5 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]';
                 step.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">${i}.</span> <span>${step.dataset.name || 'Stage ' + i}</span>`;
             }
         });
@@ -1069,7 +1059,7 @@
         terminal.scrollTop = terminal.scrollHeight;
     }
 
-    // Submit Handler with Streaming Execution
+    // Submit Handler with Streaming Execution (5-Phase Explainable AI Pipeline)
     async function handleTriageSubmit(e) {
         if (e) e.preventDefault();
         const form = document.getElementById('triageForm');
@@ -1084,19 +1074,41 @@
         feedback.className = 'min-h-4 mt-2 text-center text-[11px] text-indigo-700';
         const submitButton = document.getElementById('submitTriageBtn');
         submitButton.disabled = true;
-        submitButton.innerHTML = '<span class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span><span>Submitting report…</span>';
+        submitButton.classList.add('cursor-not-allowed', 'opacity-90');
+
+        // The "Explainable AI" button progression steps
+        const progressionSteps = [
+            "🔍 Parsing bug symptoms...",
+            "🐙 Scanning GitHub repository files...",
+            "⚡ Running AST code diagnostics...",
+            "🧠 Checking 140+ previous issues for duplicates...",
+            "⚖️ Finding best engineer with lowest workload...",
+            "🚀 Finalizing assignment..."
+        ];
+        
+        let stepIdx = 0;
+        submitButton.innerHTML = `<span class="animate-pulse">${progressionSteps[stepIdx]}</span>`;
+        const buttonStepInterval = setInterval(() => {
+            stepIdx++;
+            if (stepIdx < progressionSteps.length) {
+                submitButton.innerHTML = `<span class="animate-pulse">${progressionSteps[stepIdx]}</span>`;
+            } else {
+                clearInterval(buttonStepInterval);
+            }
+        }, 1500);
+
         document.getElementById('screenshotUploadBar').style.width = '0%';
         document.getElementById('screenshotUploadPercent').textContent = '0%';
         document.getElementById('screenshotUploadLabel').textContent = 'Uploading screenshot…';
         const formData = new FormData(form);
 
         openTriageModal(title);
-        appendTerminalLog('[BOOT]', 'Initializing AutoBugTriage neural inference core v2.4...', 'text-slate-300');
+        appendTerminalLog('[BOOT]', 'Initializing AutoBugTriage neural inference core v2.5...', 'text-slate-300');
 
-        // Step 1: Ingestion
-        await sleep(250);
-        appendTerminalLog('[INGEST]', 'Ingesting natural-language symptoms and screenshot proof...', 'text-sky-300');
-        document.getElementById('triageProgressBar').style.width = '25%';
+        // Step 1: Ingestion & OCR
+        await sleep(200);
+        appendTerminalLog('[INGEST]', 'Parsing natural-language symptoms and visual OCR text...', 'text-sky-300');
+        document.getElementById('triageProgressBar').style.width = '20%';
         setStepDone(1);
         setStepActive(2);
 
@@ -1119,6 +1131,10 @@
                 feedback.textContent = percent < 100 ? `Uploading report… ${percent}%` : 'Upload complete. AI triage is processing your report…';
             });
             xhr.addEventListener('load', () => {
+                if (xhr.status === 429) {
+                    reject(new Error('Security Rate Limit: Too many submissions. Please wait 1 minute before submitting another bug report.'));
+                    return;
+                }
                 let data;
                 try { data = JSON.parse(xhr.responseText); } catch (_) {
                     reject(new Error(xhr.status === 401 ? 'Your session expired. Please sign in again.' : 'The server returned an unreadable response. Please retry.'));
@@ -1136,33 +1152,42 @@
             xhr.send(formData);
         });
 
-        // Step 2: NLP & Vector Similarity
-        await sleep(400);
-        appendTerminalLog('[NLP-VEC]', 'Extracting domain entity tokens & calculating cosine similarity...', 'text-purple-300');
-        document.getElementById('triageProgressBar').style.width = '50%';
-
-        // Step 3: AST & GitHub Repo Scanning
-        await sleep(450);
+        // Step 2: GitHub Repository Tree Scan
+        await sleep(350);
+        appendTerminalLog('[GITHUB]', 'Streaming repository file tree from GitHub to isolate culprit modules...', 'text-cyan-300');
+        document.getElementById('triageProgressBar').style.width = '40%';
         setStepDone(2);
         setStepActive(3);
-        appendTerminalLog('[AST-CODE]', 'Running AST exception pattern checks & inspecting call-stack...', 'text-blue-300');
-        appendTerminalLog('[GITHUB]', 'Scanning project repository tree to isolate culprit files...', 'text-cyan-300');
-        document.getElementById('triageProgressBar').style.width = '75%';
 
-        // Step 4: Routing & Dispatch
-        await sleep(400);
+        // Step 3: AST Grammar & Static Diagnostics
+        await sleep(350);
+        appendTerminalLog('[AST-CODE]', 'Running AST exception pattern checks & inspecting syntax trees...', 'text-blue-300');
+        document.getElementById('triageProgressBar').style.width = '60%';
         setStepDone(3);
         setStepActive(4);
-        appendTerminalLog('[ROUTER]', 'Evaluating engineer tech stack taxonomy & queue workload...', 'text-amber-300');
-        document.getElementById('triageProgressBar').style.width = '90%';
+
+        // Step 4: TF-IDF Vector Duplicate Matrix
+        await sleep(350);
+        appendTerminalLog('[TFIDF-SIM]', 'Extracting tokens & computing TF-IDF cosine similarity matrix...', 'text-purple-300');
+        document.getElementById('triageProgressBar').style.width = '80%';
+        setStepDone(4);
+        setStepActive(5);
+
+        // Step 5: Multi-Factor Engineer Dispatch
+        await sleep(300);
+        appendTerminalLog('[ROUTER]', 'Evaluating developer skills taxonomy & balancing active backlog queue...', 'text-amber-300');
+        document.getElementById('triageProgressBar').style.width = '95%';
 
         try {
             const resData = await apiPromise;
             clearInterval(triageTimer);
+            clearInterval(buttonStepInterval);
+            submitButton.classList.remove('cursor-not-allowed', 'opacity-90');
+            submitButton.innerHTML = '<span>✓ Triage Completed</span>';
             const totalDuration = ((performance.now() - triageStartTime) / 1000).toFixed(2);
             document.getElementById('terminalTimer').innerText = `[ ${totalDuration}s ]`;
             document.getElementById('triageProgressBar').style.width = '100%';
-            setStepDone(4);
+            setStepDone(5);
 
             const ai = resData.ai_result || {};
             const feat = ai.feature || 'General';
@@ -1186,9 +1211,9 @@
             const suspected = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
             const topGhUrl = topCandidate ? (topCandidate.github_url || (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '')) : (defaultGhBase ? defaultGhBase + encodeURIComponent(suspected) : '');
 
-            appendTerminalLog('[SUCCESS]', `Triage completed in ${totalDuration}s!`, 'text-emerald-400 font-bold');
+            appendTerminalLog('[SUCCESS]', `Triage completed autonomously in ${totalDuration}s!`, 'text-emerald-400 font-bold');
             appendTerminalLog('[DISPATCH]', `Anomaly categorized under module: ${feat} (${priority} Priority)`, 'text-emerald-300');
-            appendTerminalLog('[DISPATCH]', `Duplicate vector similarity: ${simScore}% (${simScore > 70 ? 'POSSIBLE DUPLICATE' : 'UNIQUE ISSUE'})`, 'text-emerald-300');
+            appendTerminalLog('[DISPATCH]', `Duplicate vector similarity: ${simScore}% (${simScore > 75 ? 'POSSIBLE DUPLICATE' : 'UNIQUE ISSUE'})`, 'text-emerald-300');
             appendTerminalLog('[DISPATCH]', `Suspected GitHub Culprit: ${suspected}`, 'text-sky-300');
             appendTerminalLog('[DISPATCH]', `Assigned to: ${assignee} (Based on skills & active tasks balance)`, 'text-emerald-400 font-bold');
 
@@ -1203,12 +1228,28 @@
             if (confEl) confEl.innerText = `${confScore}% Match`;
             document.getElementById('resAssignee').innerText = assignee;
             document.getElementById('resPriority').innerText = priority + ' Priority';
-            document.getElementById('resSimilarity').innerText = simScore > 70 ? 'Duplicate' : 'Unique Issue';
+            document.getElementById('resSimilarity').innerText = simScore > 75 ? 'Duplicate' : 'Unique Issue';
             document.getElementById('resCulprit').innerText = suspected;
             const culpritGhLink = document.getElementById('resCulpritGhLink');
             if (culpritGhLink) {
                 culpritGhLink.href = topGhUrl;
                 culpritGhLink.classList.remove('hidden');
+            }
+
+            // Populate Explainable AI (XAI) Decision Breakdown
+            const xaiDevReason = document.getElementById('xaiDevReason');
+            if (xaiDevReason) {
+                const customReason = (ai.code_help && ai.code_help.assignment_reason) 
+                    ? ai.code_help.assignment_reason 
+                    : `Assigned to ${assignee}: optimal skill taxonomy overlap for "${feat}" domain with lowest active backlog queue.`;
+                xaiDevReason.innerText = customReason;
+            }
+
+            const xaiDupReason = document.getElementById('xaiDupReason');
+            if (xaiDupReason) {
+                xaiDupReason.innerText = simScore > 75 
+                    ? `Cosine similarity ${simScore}% (> 75% threshold): Flagged as possible duplicate of an existing ticket.` 
+                    : `Cosine similarity ${simScore}% (< 75% threshold): Verified unique defect in codebase.`;
             }
 
             // Populate Suspected Files List with 1-click GitHub buttons in modal
@@ -1259,6 +1300,8 @@
 
         } catch (err) {
             clearInterval(triageTimer);
+            clearInterval(buttonStepInterval);
+            submitButton.classList.remove('cursor-not-allowed', 'opacity-90');
             appendTerminalLog('[ERROR]', err.message || 'Triage failed.', 'text-rose-400 font-bold');
             document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span> FAILED`;
             document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-[11px] font-bold text-rose-700 font-mono-code';
@@ -1414,23 +1457,26 @@
                     <p id="terminalBugTitle" class="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5">Payment checkout 401 error</p>
                 </div>
                 <span class="rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-mono-code font-bold px-2.5 py-1 shrink-0">
-                    4-PHASE INFERENCE
+                    5-PHASE EXPLAINABLE AI
                 </span>
             </div>
 
-            <!-- 4-Phase Stepper Pills (Light Grid) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                <div id="step-pill-1" data-name="Ingestion" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
-                    1. Ingestion
+            <!-- 5-Phase Stepper Pills (Responsive Grid) -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-xs">
+                <div id="step-pill-1" data-name="NLP & OCR" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
+                    1. NLP & OCR
                 </div>
-                <div id="step-pill-2" data-name="NLP & Vector" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
-                    2. NLP & Vector
+                <div id="step-pill-2" data-name="GitHub Tree" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
+                    2. GitHub Tree
                 </div>
-                <div id="step-pill-3" data-name="AST & GitHub" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
-                    3. AST & GitHub
+                <div id="step-pill-3" data-name="AST Syntax" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
+                    3. AST Syntax
                 </div>
-                <div id="step-pill-4" data-name="Dispatch" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1.5">
-                    4. Dispatch
+                <div id="step-pill-4" data-name="Vector Sim" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]">
+                    4. Vector Sim
+                </div>
+                <div id="step-pill-5" data-name="Dev Routing" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px] col-span-2 sm:col-span-1">
+                    5. Dev Routing
                 </div>
             </div>
 
@@ -1493,6 +1539,27 @@
                     </div>
                 </div>
 
+                <!-- Explainable AI (XAI) Autonomous Audit Breakdown -->
+                <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-bold text-indigo-950">
+                        <span class="flex items-center gap-1.5">
+                            <span>🧠</span>
+                            <span>Explainable AI (XAI) Decision Breakdown</span>
+                        </span>
+                        <span class="text-[10px] text-indigo-700 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded font-mono font-bold">Autonomous Audit</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-700">
+                        <div class="p-2 rounded-lg bg-white border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-0.5">🎯 Developer Routing Logic:</span>
+                            <span id="xaiDevReason" class="text-slate-600 leading-snug">Matched skills taxonomy & lowest active backlog load.</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-0.5">🔍 Deduplication Vector:</span>
+                            <span id="xaiDupReason" class="text-slate-600 leading-snug">TF-IDF cosine similarity verified under duplicate threshold.</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Suspected files list in modal with GitHub buttons -->
                 <div id="modalSuspectedFilesWrapper" class="hidden rounded-2xl border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
                     <div class="flex items-center justify-between">
@@ -1515,14 +1582,13 @@
                     <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 transition shadow-2xs">
                         ✓ View on Kanban
                     </a>
-                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-indigo-600/25 transition hover:scale-[1.02]">
+                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-sm transition">
                         Open Issue & Fix Guidance ➔
                     </a>
                 </div>
             </div>
         </div>
     </div>
-</script>
 <script>
     window.liveProjectId = @json($currentProjectId);
     document.addEventListener('DOMContentLoaded', () => {

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -34,12 +35,12 @@ class RunBugTriage implements ShouldQueue
         $bug = DB::table('bugs')->where('project_id', $this->projectId)->where('id', $this->bugId)->first();
         if (!$bug || $bug->triage_state === 'complete') return;
         $startedAt = microtime(true);
-        $doneStatuses = DB::table('project_workflow_statuses')->where('project_id', $this->projectId)->where('is_done', true)->pluck('name')->all();
-        $pastBugs = DB::table('bugs')->where('project_id', $this->projectId)->where('id', '!=', $this->bugId)->where('is_duplicate', false)
+        $doneStatuses = DB::table('project_workflow_statuses')->where('project_id', $this->projectId)->whereRaw('is_done = true')->pluck('name')->all();
+        $pastBugs = DB::table('bugs')->where('project_id', $this->projectId)->where('id', '!=', $this->bugId)->whereRaw('is_duplicate = false')
             ->where('triage_state', 'complete')->get(['id', 'title', 'description'])->map(fn ($row) => (array) $row)->all();
         $history = [];
         if ($doneStatuses) {
-            foreach (DB::table('bugs')->where('project_id', $this->projectId)->whereIn('status', $doneStatuses)->where('is_duplicate', false)->whereNotNull('assigned_to')->get(['assigned_to', 'detected_feature', 'triage_result']) as $fixedBug) {
+            foreach (DB::table('bugs')->where('project_id', $this->projectId)->whereIn('status', $doneStatuses)->whereRaw('is_duplicate = false')->whereNotNull('assigned_to')->get(['assigned_to', 'detected_feature', 'triage_result']) as $fixedBug) {
                 $entry = $history[$fixedBug->assigned_to] ?? ['resolved_features' => [], 'resolved_languages' => []];
                 if ($fixedBug->detected_feature) $entry['resolved_features'][] = strtolower($fixedBug->detected_feature);
                 $old = json_decode($fixedBug->triage_result ?: '', true) ?: [];
@@ -51,17 +52,35 @@ class RunBugTriage implements ShouldQueue
         $developers = DB::table('developers')->where('project_id', $this->projectId)->get(['id', 'name', 'skills', 'active_tasks', 'capacity'])
             ->map(fn ($developer) => array_merge((array) $developer, $history[$developer->name] ?? ['resolved_features' => [], 'resolved_languages' => []]))->all();
         $input = [...$this->analysisInput, 'past_bugs' => $pastBugs, 'developers' => $developers];
-        $payloadPath = tempnam(storage_path('app'), 'triage_payload_');
-        if ($payloadPath === false) throw new \RuntimeException('Could not prepare triage payload.');
+
+        // 1. Try persistent microservice first (FastAPI/HTTP server on port 8001) for millisecond latency
+        $analysis = null;
         try {
-            file_put_contents($payloadPath, json_encode($input, JSON_THROW_ON_ERROR));
-            $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $process = Process::timeout(110)->run([$python, base_path('agent/triage.py'), $payloadPath]);
-        } finally {
-            @unlink($payloadPath);
+            $serviceUrl = config('services.ai_microservice.url', 'http://127.0.0.1:8001/api/v1/triage');
+            $response = Http::timeout(20)->post($serviceUrl, $input);
+            if ($response->successful()) {
+                $analysis = $response->json();
+            }
+        } catch (\Throwable) {
+            // Microservice unavailable; fall through gracefully to secure isolated subprocess
+            $analysis = null;
         }
-        if (!$process->successful()) throw new \RuntimeException('Triage failed: '.mb_substr($process->errorOutput(), 0, 1000));
-        $analysis = json_decode($process->output(), true);
+
+        // 2. Subprocess fallback if microservice is offline
+        if (!is_array($analysis)) {
+            $payloadPath = tempnam(storage_path('app'), 'triage_payload_');
+            if ($payloadPath === false) throw new \RuntimeException('Could not prepare triage payload.');
+            try {
+                file_put_contents($payloadPath, json_encode($input, JSON_THROW_ON_ERROR));
+                $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+                $process = Process::timeout(110)->run([$python, base_path('agent/triage.py'), $payloadPath]);
+            } finally {
+                @unlink($payloadPath);
+            }
+            if (!$process->successful()) throw new \RuntimeException('Triage failed: '.mb_substr($process->errorOutput(), 0, 1000));
+            $analysis = json_decode($process->output(), true);
+        }
+
         if (!is_array($analysis)) throw new \RuntimeException('Triage returned an invalid response.');
         $duration = (int) round((microtime(true) - $startedAt) * 1000);
         $isDuplicate = (bool) ($analysis['is_duplicate'] ?? false);

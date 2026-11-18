@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ session('project_name', 'Workspace') }} · Kanban Board</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
     @if(auth()->user()->role === 'tester')<link rel="stylesheet" href="/css/tester-theme.css">@endif
     <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
-    @vite('resources/js/app.js')
+    @if(file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite('resources/js/app.js')
+    @endif
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
     <div class="flex min-h-screen">
@@ -308,7 +310,7 @@
                 @endif
 
                 <!-- Workflow-driven Kanban columns -->
-                <div class="jira-scroll grid gap-4 overflow-x-auto pb-4" style="grid-template-columns: repeat({{ $workflowStatuses->count() }}, minmax(280px, 1fr));">
+                <div class="jira-scroll flex md:grid gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth touch-pan-x" style="grid-template-columns: repeat({{ $workflowStatuses->count() }}, minmax(285px, 1fr));">
                     @foreach($workflowStatuses as $workflowStatus)
                         @php
                             $columnStatus = $workflowStatus->name;
@@ -317,7 +319,7 @@
                                 ? ['dot' => 'bg-emerald-500', 'border' => 'border-t-emerald-500']
                                 : ($loop->first ? ['dot' => 'bg-indigo-500', 'border' => 'border-t-indigo-500'] : ['dot' => 'bg-amber-500', 'border' => 'border-t-amber-500']);
                         @endphp
-                        <section class="rounded-2xl border border-[#E2E8F0] border-t-4 {{ $columnColors['border'] }} bg-[#F1F5F9]/80 p-3.5 flex flex-col min-h-[500px]">
+                        <section class="snap-center shrink-0 w-[290px] md:w-auto rounded-xl border border-slate-200/80 border-t-4 {{ $columnColors['border'] }} bg-slate-100/70 p-3.5 flex flex-col min-h-[500px]">
                             <!-- Column Header -->
                             <div class="mb-3 flex items-center justify-between px-1">
                                 <div class="flex items-center gap-2">
@@ -348,8 +350,9 @@
                                         $priorityClass = $bug->priority === 'High' ? 'priority-strip-high' : ($bug->priority === 'Low' ? 'priority-strip-low' : 'priority-strip-medium');
                                         $prioritySymbol = $bug->priority === 'High' ? '🔥 ▲ High' : ($bug->priority === 'Low' ? '▼ Low' : '● Medium');
                                     @endphp
-                                    <!-- De-cluttered, Modern Card Anatomy (Linear Style) -->
-                                    <article id="bug-{{ $bug->id }}" class="bug-card group rounded-xl border {{ $bug->priority === 'High' ? 'border-rose-200/90 bg-rose-50/20' : 'border-slate-200/90 bg-white' }} p-3.5 shadow-xs hover:border-indigo-300 hover:shadow-md transition card-hover-lift cursor-grab active:cursor-grabbing"
+                                    <!-- Refactored Premium SaaS Card Anatomy (Linear Style) -->
+                                    <article id="bug-{{ $bug->id }}" 
+                                             class="bug-card group block card-hover-lift rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 mb-3 cursor-grab active:cursor-grabbing {{ $priorityClass }}"
                                              data-id="{{ $bug->id }}"
                                              data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to }}"
@@ -359,78 +362,47 @@
                                              ondragend="handleDragEnd(event)"
                                              onclick="openDrawer({{ $bug->id }})">
                                         
-                                        <!-- Top Row: #ABT-X + Priority Pill with glowing dot -->
-                                        <div class="flex items-center justify-between mb-2">
-                                            <a href="/bugs/{{ $bug->id }}" title="Click to open dedicated bug page / PDF" onclick="event.stopPropagation()" class="font-mono-code font-bold text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-md px-1.5 py-0.5 transition inline-flex items-center gap-1">
-                                                <span>#ABT-{{ $bug->id }}</span>
-                                                <span class="text-[9px]">↗</span>
+                                        <!-- Header: ID & Priority (No heavy borders) -->
+                                        <div class="flex items-center justify-between mb-2.5">
+                                            <a href="/bugs/{{ $bug->id }}" title="Open bug page" onclick="event.stopPropagation()" class="text-xs font-medium text-slate-500 font-mono hover:text-indigo-600 transition-colors">
+                                                ABT-{{ $bug->id }}
                                             </a>
-                                            <span class="rounded-md px-2 py-0.5 text-[10px] font-bold flex items-center gap-1.5 {{ $bug->priority === 'High' ? 'bg-rose-100 text-rose-800 border border-rose-200' : ($bug->priority === 'Low' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200') }}">
-                                                <span class="h-1.5 w-1.5 rounded-full {{ $bug->priority === 'High' ? 'bg-rose-500 animate-pulse' : ($bug->priority === 'Low' ? 'bg-slate-400' : 'bg-amber-500') }}"></span>
-                                                <span>{{ $bug->priority }}</span>
+                                            
+                                            <!-- Subtle Priority Badge -->
+                                            <span class="flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 text-[11px] font-medium {{ $bug->priority === 'High' ? 'text-rose-600' : ($bug->priority === 'Medium' ? 'text-amber-600' : 'text-emerald-600') }}">
+                                                <span class="h-1.5 w-1.5 rounded-full {{ $bug->priority === 'High' ? 'bg-rose-500' : ($bug->priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500') }}"></span> 
+                                                {{ $bug->priority }}
                                             </span>
                                         </div>
 
-                                        <!-- Title: Crisp 2-line clamp -->
-                                        <h4 class="text-xs sm:text-[13px] font-bold text-[#0F172A] leading-snug line-clamp-2">
+                                        <!-- Title & Snippet -->
+                                        <h4 class="text-sm font-semibold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
                                             {{ $bug->title }}
                                         </h4>
+                                        <p class="mt-1.5 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                            {{ $bug->description }}
+                                        </p>
 
-                                        <!-- Layer 3: AI Badges & Duplicate Warning with Plain Language Tooltip -->
-                                        <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                            <span class="rounded bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-bold text-purple-700">
-                                                ✨ Feature: {{ $feat }}
-                                            </span>
-                                            @if($bug->is_duplicate)
-                                                <span title="এই বাগটি আগে রিপোর্ট করা #ABT-{{ $bug->duplicate_of }} এর সাথে হুবহু মিলে গেছে, তাই নতুন করে কাজ করার প্রয়োজন নেই।" 
-                                                      class="rounded bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800 cursor-help">
-                                                    ⚠️ Duplicate of #ABT-{{ $bug->duplicate_of }}
-                                                </span>
-                                            @endif
-                                        </div>
-
-                                        <!-- Footer: Avatar with Initial + Tooltip and Hover Quick-Move -->
-                                        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2" onclick="event.stopPropagation()">
-                                            <div class="flex items-center gap-1.5 min-w-0" title="Assigned to {{ $bug->assigned_to ?: 'Unassigned' }}">
-                                                <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white text-[10px] font-mono-code font-bold uppercase shadow-2xs">
-                                                    {{ strtoupper(substr($bug->assigned_to ?: 'U', 0, 1)) }}
+                                        <!-- Footer: Assignee & Module -->
+                                        <div class="mt-4 flex items-center justify-between pt-3 border-t border-slate-100" onclick="event.stopPropagation()">
+                                            <div class="flex items-center gap-2">
+                                                <!-- Text-based Avatar -->
+                                                <div class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 text-[9px] font-bold text-indigo-600 uppercase">
+                                                    {{ substr($bug->assigned_to ?: 'U', 0, 1) }}
                                                 </div>
-                                                <span class="truncate max-w-[95px] text-[11px] font-medium text-slate-500">
-                                                    {{ $bug->assigned_to ?: 'Unassigned' }}
-                                                </span>
+                                                <span class="text-xs font-medium text-slate-600">{{ $bug->assigned_to ?: 'Unassigned' }}</span>
                                             </div>
-
-                                            <div class="flex items-center gap-1.5 shrink-0">
+                                            
+                                            <div class="flex items-center gap-1.5">
                                                 @if($hasAi)
-                                                    <span title="AI কোড ফিক্স ড্রয়ারে প্রস্তুত" class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-mono-code font-bold bg-emerald-50 border border-emerald-200 text-emerald-700 cursor-help">
-                                                        &lt;/&gt; Patch
-                                                    </span>
+                                                    <span title="AI code patch available in drawer" class="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded cursor-help">&lt;/&gt; Patch</span>
                                                 @endif
-
-                                                <!-- 1-Click Quick Move Dropdown (Reveals on hover) -->
-                                                @if(auth()->user()->role === 'tester')
-                                                    <span class="text-[10px] text-slate-400">{{ $bug->status }}</span>
-                                                @elseif($transitionsByStatus->has($bug->status) && $transitionsByStatus->get($bug->status)->isNotEmpty())
-                                                    <div class="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                        <form action="/api/bugs/override" method="POST" class="inline-block">
-                                                            @csrf
-                                                            <input type="hidden" name="id" value="{{ $bug->id }}">
-                                                            <select name="status" onchange="this.form.submit()" 
-                                                                    class="rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-[#0F172A] outline-none hover:bg-white transition cursor-pointer">
-                                                                <option value="" selected disabled>{{ $bug->status }}</option>
-                                                                @foreach($transitionsByStatus->get($bug->status) as $transition)
-                                                                    <option value="{{ $transition->to_status }}">Move to {{ $transition->to_status }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </form>
-                                                    </div>
-                                                @else
-                                                    <span class="text-[10px] text-slate-400">{{ $bug->status }}</span>
+                                                @if(!empty($bug->detected_feature ?? $feat))
+                                                    <span class="text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{{ $bug->detected_feature ?? $feat }}</span>
                                                 @endif
                                             </div>
                                         </div>
                                     </article>
-
                                     <!-- Hidden Drawer Template Content for this Bug -->
                                     <div id="drawer-data-{{ $bug->id }}" class="hidden">
                                         <div data-id="{{ $bug->id }}"
@@ -464,10 +436,18 @@
                                         </div>
                                     </div>
                                 @empty
-                                    <!-- Empty Column Illustration -->
-                                    <div class="py-12 text-center border border-dashed border-[#CBD5E1] rounded-2xl bg-white/60">
-                                        <span class="text-2xl text-slate-300">✓</span>
-                                        <p class="text-xs text-[#64748B] mt-1 font-medium">No issues in this stage</p>
+                                    <!-- Empty Column Illustration (SaaS Zero-Data View) -->
+                                    <div class="py-10 px-4 text-center border border-dashed border-slate-200 rounded-xl bg-white/70 flex flex-col items-center justify-center">
+                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-400 text-lg mb-2">
+                                            ☕
+                                        </div>
+                                        <p class="text-xs font-semibold text-slate-800">You're all caught up!</p>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">No tasks in this queue right now.</p>
+                                        @if($loop->first)
+                                            <a href="/ai-agent" class="mt-3 inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800 transition shadow-xs">
+                                                <span>+ Submit Bug</span>
+                                            </a>
+                                        @endif
                                     </div>
                                 @endforelse
                             </div>
@@ -578,6 +558,15 @@
                     </div>
                     <p class="mt-1 text-[11px] text-sky-700">Agent matched repository files to isolate culprit files:</p>
                     <div id="drawerSuspectedFilesList" class="mt-2 space-y-1.5"></div>
+                </div>
+
+                <!-- Explainable AI (XAI) Assignment Rationale in Drawer -->
+                <div class="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-xs text-indigo-950 space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-indigo-900">
+                        <span>🧠</span>
+                        <span>Explainable AI (XAI) Routing Decision:</span>
+                    </div>
+                    <p id="drawerReason" class="text-[11px] leading-relaxed text-indigo-900/90"></p>
                 </div>
 
                 <!-- Fix Suggestions -->
@@ -765,7 +754,8 @@
             } catch (error) {
                 suggestionsList.textContent = 'Fix suggestions could not be loaded. The submitted code remains unchanged.';
             }
-            document.getElementById('drawerReason').innerText = data.getAttribute('data-reason');
+            const rEl = document.getElementById('drawerReason');
+            if (rEl) rEl.innerText = data.getAttribute('data-reason') || 'Matched developer tech stack skills & backlog workload.';
 
             const suspectedFilesRaw = data.getAttribute('data-suspected-files');
             const suspectedSection = document.getElementById('drawerSuspectedFilesSection');

@@ -1,20 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-    --primary-blue: #0052cc;
-    --primary-hover: #0747a6;
-    --jira-navy: #0f172a;
-    --jira-sidebar: #0747a6;
-    --hairline: #e2e8f0;
-    --canvas-bg: #f8fafc;
+    --canvas-bg: #FAFAFA; /* Soft off-white instead of blueish gray */
 }
 
 body {
     font-family: var(--font-sans);
     background-color: var(--canvas-bg);
-    color: #0f172a;
+    color: #111827;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -23,119 +18,45 @@ body {
     font-family: var(--font-mono);
 }
 
-/* Subtle Dot Matrix Pattern */
-.bg-dot-grid {
-    background-image: radial-gradient(rgba(148, 163, 184, 0.25) 1px, transparent 1px);
-    background-size: 20px 20px;
-}
-
-.bg-dot-grid-dark {
-    background-image: radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 1px);
-    background-size: 24px 24px;
-}
-
-/* Custom Scrollbars */
-.jira-scroll::-webkit-scrollbar,
-.custom-scroll::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-.jira-scroll::-webkit-scrollbar-track,
-.custom-scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.jira-scroll::-webkit-scrollbar-thumb,
-.custom-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 9999px;
-}
-
-.jira-scroll::-webkit-scrollbar-thumb:hover,
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Card Hover Lift */
+/* Premium Soft Hover Lift */
 .card-hover-lift {
-    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+    transition: all 0.2s ease;
 }
-
 .card-hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.06), 0 4px 6px -2px rgba(15, 23, 42, 0.03);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-color: #cbd5e1;
 }
 
-/* Toast Notification Animation */
-@keyframes toastSlideIn {
-    from {
-        transform: translateY(20px) scale(0.95);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-    }
+/* Linear-style smooth scrollbars */
+.custom-scroll::-webkit-scrollbar,
+.jira-scroll::-webkit-scrollbar { 
+    width: 4px; 
+    height: 4px; 
 }
-
-.toast-enter {
-    animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.custom-scroll::-webkit-scrollbar-track,
+.jira-scroll::-webkit-scrollbar-track { 
+    background: transparent; 
 }
-
-/* Tooltip Custom styling */
-.tooltip-custom {
-    position: relative;
+.custom-scroll::-webkit-scrollbar-thumb,
+.jira-scroll::-webkit-scrollbar-thumb { 
+    background: #e2e8f0; 
+    border-radius: 4px; 
 }
-
-.tooltip-custom:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #0f172a;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 6px;
-    white-space: nowrap;
-    z-index: 50;
-    pointer-events: none;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-/* Code Editor Line Numbers */
-.code-editor-wrapper {
-    position: relative;
-    display: flex;
-    background: #0f172a;
-    border-radius: 0.75rem;
-    overflow: hidden;
-}
-
-.line-numbers {
-    padding: 0.875rem 0.625rem;
-    text-align: right;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    line-height: 1.5rem;
-    color: #475569;
-    user-select: none;
-    background: #090d16;
-    border-right: 1px solid #1e293b;
+.custom-scroll::-webkit-scrollbar-thumb:hover,
+.jira-scroll::-webkit-scrollbar-thumb:hover { 
+    background: #cbd5e1; 
 }
 
 /* 4px Left Priority Strips */
 .priority-strip-high {
-    border-left: 4px solid #ef4444 !important;
+    border-left: 3px solid #ef4444 !important;
 }
 
 .priority-strip-medium {
-    border-left: 4px solid #f59e0b !important;
+    border-left: 3px solid #f59e0b !important;
 }
 
 .priority-strip-low {
-    border-left: 4px solid #10b981 !important;
+    border-left: 3px solid #10b981 !important;
 }

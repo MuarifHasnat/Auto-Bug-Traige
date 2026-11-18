@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <title>QA Home · AutoBugTriage</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
-    @vite('resources/js/app.js')
+    @if(file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite('resources/js/app.js')
+    @endif
     <style>
         :root { color-scheme: dark; }
         body { background: #090d14; color: #e5e7eb; }

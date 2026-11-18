@@ -15,9 +15,15 @@ POSITIVE_TERMS = {"works", "working", "resolved", "fixed", "ধন্যবা�
 
 def analyze_sentiment(text):
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
-    blocker_terms = sorted(term for term in BLOCKER_TERMS if term in normalized)
-    negative_count = sum(1 for term in NEGATIVE_TERMS if term in normalized)
-    positive_count = sum(1 for term in POSITIVE_TERMS if term in normalized)
+
+    def _matches_term(term: str, target: str) -> bool:
+        # Use regex word boundaries for clean word matching (supports non-ASCII/Bengali cleanly)
+        pattern = rf"(?:\b|^){re.escape(term)}(?:\b|$)"
+        return bool(re.search(pattern, target, re.IGNORECASE))
+
+    blocker_terms = sorted(term for term in BLOCKER_TERMS if _matches_term(term, normalized))
+    negative_count = sum(1 for term in NEGATIVE_TERMS if _matches_term(term, normalized))
+    positive_count = sum(1 for term in POSITIVE_TERMS if _matches_term(term, normalized))
     if blocker_terms:
         sentiment = "urgent"
     elif negative_count > positive_count:

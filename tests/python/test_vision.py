@@ -1,10 +1,52 @@
+import sys
 import unittest
-from agent.vision import parse_ocr_text
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+# Add project root and agent directory to sys.path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "agent") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "agent"))
+
+from agent.vision import parse_ocr_text, analyze_screenshot
 from agent.file_locator import locate_suspected_files
 from agent.triage import analyze_report
 
 
 class VisionAndScreenshotTest(unittest.TestCase):
+    @patch("agent.vision._perform_gemini_request")
+    @patch("agent.vision._load_image_base64", return_value="fake_b64")
+    @patch("os.path.isfile", return_value=True)
+    def test_gemini_vision_mocked_success(self, mock_isfile, mock_b64, mock_request):
+        # 1. Arrange: Mock the file reading and the Gemini JSON response
+        mock_payload = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": '{"error_name": "NullPointerException", "suspected_files": ["PaymentActivity.kt"], "line_numbers": [42], "detected_language": "Kotlin", "extracted_text": "FATAL EXCEPTION at PaymentActivity.kt:42"}'
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        import json
+        mock_request.return_value = json.dumps(mock_payload).encode("utf-8")
+
+        # 2. Act: Call analyze_screenshot without real network or API keys
+        result = analyze_screenshot("dummy_screenshot.png", "dummy_key")
+
+        # 3. Assert: Verify logic without spending API credits
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "gemini_vision")
+        self.assertEqual(result["error_name"], "NullPointerException")
+        self.assertIn("PaymentActivity.kt", result["suspected_files"])
+        self.assertIn(42, result["line_numbers"])
+
     def test_parse_ocr_text_extracts_stack_trace_and_files(self):
         mock_ocr_lines = [
             "FATAL EXCEPTION: main",

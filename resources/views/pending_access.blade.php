@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting for Project Access · AutoBugTriage</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] bg-dot-grid flex items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">

@@ -1,14 +1,23 @@
 import os
 import re
 import urllib.request
+import urllib.error
 import json
 import tempfile
 import zipfile
 import io
 import subprocess
 from pathlib import Path
+import sys
+
+# Ensure agent directory is in sys.path
+AGENT_DIR = Path(__file__).resolve().parent
+if str(AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(AGENT_DIR))
+
 from urllib.parse import quote
 from typing import TypedDict, Optional, List, Dict, Any
+from resilience import exponential_backoff
 
 class FileCandidateScore(TypedDict):
     path: str
@@ -24,6 +33,40 @@ class SuspectedFileResult(TypedDict):
     github_url: Optional[str]
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+
+# Try connecting to Redis for distributed in-memory caching
+_REDIS_CLIENT = None
+try:
+    import importlib
+    redis_mod = importlib.import_module("redis")
+    redis_host = os.environ.get("REDIS_HOST", "127.0.0.1")
+    redis_port = int(os.environ.get("REDIS_PORT", 6379))
+    redis_password = os.environ.get("REDIS_PASSWORD", None)
+    _client = redis_mod.Redis(host=redis_host, port=redis_port, password=redis_password, db=0, socket_connect_timeout=0.5)
+    _client.ping()
+    _REDIS_CLIENT = _client
+except Exception:
+    _REDIS_CLIENT = None
+
+
+def _get_distributed_cache(key: str) -> Optional[dict]:
+    if _REDIS_CLIENT:
+        try:
+            cached = _REDIS_CLIENT.get(f"abt_repo_tree:{key}")
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+    return None
+
+
+def _set_distributed_cache(key: str, data: dict, ttl_seconds: int = 86400) -> None:
+    if _REDIS_CLIENT:
+        try:
+            _REDIS_CLIENT.setex(f"abt_repo_tree:{key}", ttl_seconds, json.dumps(data))
+        except Exception:
+            pass
+
 
 def _resolve_cache_dir():
     # 1. Try Laravel storage/app/.repo_cache
@@ -54,7 +97,8 @@ CACHE_DIR = _resolve_cache_dir()
 
 IGNORED_DIRS = {
     '.git', 'vendor', 'node_modules', 'storage', '__pycache__', '.vscode',
-    'dist', 'build', '.idea', 'coverage', '.gradle'
+    'dist', 'build', '.idea', 'coverage', '.gradle', 'agent', '.claude',
+    '.github', 'database/seeders', 'database/factories', '.repo_cache', 'tests', 'test'
 }
 
 IGNORED_FILE_NAMES = {
@@ -74,7 +118,8 @@ IGNORED_TEST_AND_BUILD_EXTENSIONS = (
 )
 
 IGNORED_PATH_SEGMENTS = {
-    'test', 'tests', 'androidtest', 'testfixtures', '.gradle', 'gradle', 'docs', 'doc', 'documentation'
+    'test', 'tests', 'androidtest', 'testfixtures', '.gradle', 'gradle', 'docs', 'doc', 'documentation',
+    'agent', '.claude', '.github', 'seeders', 'factories', '.repo_cache'
 }
 
 ABBREVIATION_EXPANSIONS = {
@@ -227,6 +272,18 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
     return 'auto'
 
 
+def _should_retry_http(exc: Exception) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        # Do not retry client errors (400, 401, 403, 404, 422)
+        return exc.code >= 500
+    return True
+
+
+@exponential_backoff(max_retries=2, base_delay=1.0, max_delay=3.0, should_retry=_should_retry_http)
+def _open_http_request(req: urllib.request.Request, timeout: float = 6.0):
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
 def _fetch_files_via_codeload(slug):
     """
     Downloads zip archive from GitHub codeload (no token required, no rate limit)
@@ -239,7 +296,7 @@ def _fetch_files_via_codeload(slug):
             req = urllib.request.Request(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AutoBugTriage/2.0"
             })
-            with urllib.request.urlopen(req, timeout=8.0) as resp:
+            with _open_http_request(req, timeout=8.0) as resp:
                 if resp.status == 200:
                     zf = zipfile.ZipFile(io.BytesIO(resp.read()))
                     raw_names = zf.namelist()
@@ -257,7 +314,7 @@ def _fetch_files_via_codeload(slug):
                         if p.name in IGNORED_FILE_NAMES:
                             continue
                         parts = rel_path.split('/')
-                        if any(part in parts for part in ['storage', 'vendor', 'node_modules', '.git']):
+                        if any(part in parts for part in ['storage', 'vendor', 'node_modules', '.git', 'agent', '.claude', '.github', '.repo_cache']):
                             continue
                         clean_files.append(rel_path)
                     if clean_files:
@@ -278,7 +335,7 @@ def _fetch_files_via_api(slug):
     try:
         repo_meta_url = f"https://api.github.com/repos/{slug}"
         req = urllib.request.Request(repo_meta_url, headers=gh_headers)
-        with urllib.request.urlopen(req, timeout=3.0) as resp:
+        with _open_http_request(req, timeout=3.5) as resp:
             meta = json.loads(resp.read().decode())
             default_branch = meta.get("default_branch") or "main"
     except Exception:
@@ -289,12 +346,12 @@ def _fetch_files_via_api(slug):
         try:
             tree_url = f"https://api.github.com/repos/{slug}/git/trees/{quote(b, safe='')}?recursive=1"
             req = urllib.request.Request(tree_url, headers=gh_headers)
-            with urllib.request.urlopen(req, timeout=3.5) as resp:
+            with _open_http_request(req, timeout=4.0) as resp:
                 payload = json.loads(resp.read().decode())
                 raw_files = [item["path"] for item in payload.get("tree", []) if item.get("type") == "blob"]
                 clean_files = [
                     f for f in raw_files
-                    if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git'])
+                    if Path(f).name not in IGNORED_FILE_NAMES and not any(part in f.split('/') for part in ['storage', 'vendor', 'node_modules', '.git', 'agent', '.claude', '.github', '.repo_cache'])
                 ]
                 if clean_files:
                     return b, clean_files
@@ -344,6 +401,15 @@ def index_repository_structure(github_repo, force=False):
     if not slug:
         return {"success": False, "error": "Invalid GitHub repository link."}
 
+    # Check distributed Redis cache first if available
+    if not force:
+        dist_cached = _get_distributed_cache(slug)
+        if dist_cached and isinstance(dist_cached, dict) and dist_cached.get("total_files", 0) > 0:
+            dist_cached["success"] = True
+            dist_cached["cached"] = True
+            dist_cached["cache_backend"] = "redis"
+            return dist_cached
+
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
     except Exception:
@@ -357,13 +423,25 @@ def index_repository_structure(github_repo, force=False):
                 if isinstance(data, dict) and data.get("total_files", 0) > 0:
                     data["success"] = True
                     data["cached"] = True
+                    data["cache_backend"] = "disk"
                     return data
         except Exception:
             pass
 
-    active_branch, files = _fetch_files_via_codeload(slug)
-    if not files:
+    # Multi-tier indexing strategy:
+    # 1. If GITHUB_TOKEN is configured in environment, use REST Tree API first (zero download, metadata-only)
+    # 2. Otherwise use Codeload ZIP archive streaming (no token needed, zero rate limits)
+    # 3. Fallback to REST API / Codeload / Shallow Git clone as needed
+    has_token = bool(os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN"))
+    if has_token:
         active_branch, files = _fetch_files_via_api(slug)
+        if not files:
+            active_branch, files = _fetch_files_via_codeload(slug)
+    else:
+        active_branch, files = _fetch_files_via_codeload(slug)
+        if not files:
+            active_branch, files = _fetch_files_via_api(slug)
+
     if not files:
         active_branch, files = _fetch_files_via_git(slug)
     if not active_branch:
@@ -432,6 +510,9 @@ def index_repository_structure(github_repo, force=False):
         "files": files,
     }
 
+    # Save to distributed Redis cache
+    _set_distributed_cache(slug, result, ttl_seconds=86400)
+
     try:
         with open(cache_file, "w", encoding="utf-8") as cf:
             json.dump(result, cf)
@@ -484,8 +565,17 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
                 tree.insert(0, inferred)
         return tree, branch
 
-    # 3. Only scan local workspace if NO custom github_slug was provided OR it explicitly targets Auto-Bug-Traige
-    if not github_slug or github_slug.lower() == "muarifhasnat/auto-bug-traige":
+    # 3. Scan local workspace if NO custom github_slug or slug refers to Auto-Bug-Traige / current workspace
+    is_local_workspace = (
+        not github_slug or
+        github_slug.lower() in [
+            "muarifhasnat/auto-bug-traige",
+            "muarifhasnat/smart-bug-tracking-system-sbts-",
+            "smart-bug-tracker",
+            "auto-bug-traige"
+        ]
+    )
+    if is_local_workspace:
         if target_tech in ['php', 'auto']:
             file_list = []
             try:
@@ -495,6 +585,9 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
                         if f.startswith('.'):
                             continue
                         rel = Path(root, f).relative_to(WORKSPACE_ROOT).as_posix()
+                        parts = rel.split('/')
+                        if any(p.lower() in IGNORED_PATH_SEGMENTS for p in parts):
+                            continue
                         file_list.append(rel)
                 if file_list:
                     return file_list, branch
@@ -502,6 +595,154 @@ def get_repository_files(github_slug=None, target_tech='auto', source_file_name=
                 pass
 
     return [], branch
+
+
+def _get_gemini_api_key(passed_key: Optional[str] = None) -> Optional[str]:
+    if passed_key and passed_key.strip():
+        return passed_key.strip()
+    env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if env_key and env_key.strip():
+        return env_key.strip()
+    dotenv_path = WORKSPACE_ROOT / ".env"
+    if dotenv_path.exists():
+        try:
+            with open(dotenv_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("GEMINI_API_KEY="):
+                        k = line.strip().split("=", 1)[1].strip('"\'')
+                        if k:
+                            return k
+                    elif line.startswith("GOOGLE_API_KEY="):
+                        k = line.strip().split("=", 1)[1].strip('"\'')
+                        if k:
+                            return k
+        except Exception:
+            pass
+    return None
+
+
+def _locate_with_gemini(
+    repo_files: List[str],
+    title: str,
+    description: str,
+    feature: str = "General",
+    code_snippet: str = "",
+    project_stack: str = "",
+    screenshot_data: Optional[dict] = None,
+    api_key: Optional[str] = None,
+    limit: int = 3
+) -> Optional[List[dict]]:
+    """
+    Leverages Gemini LLM to semantically analyze the bug report, stack traces,
+    and repository structure to pinpoint exact root cause culprit files.
+    """
+    if not api_key or not repo_files:
+        return None
+
+    # Filter repo_files to only production source code files (exclude tests, docs, assets, dot-folders)
+    valid_candidates = []
+    for f in repo_files:
+        p = Path(f)
+        parts = [part.lower() for part in p.parts]
+        if any(part.startswith('.') for part in p.parts):
+            continue
+        if any(seg in parts for seg in IGNORED_PATH_SEGMENTS or ['agent', 'storage', 'vendor', '.claude']):
+            continue
+        if f.lower().endswith(IGNORED_ASSET_EXTENSIONS) or f.lower().endswith(IGNORED_TEST_AND_BUILD_EXTENSIONS):
+            continue
+        if any(seg in parts for seg in ['androidtest', 'test', 'tests', 'testfixtures']):
+            continue
+        ext = p.suffix.lower()
+        if ext in ('.php', '.kt', '.kts', '.java', '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.dart', '.swift', '.cs', '.cpp', '.c', '.xml', '.blade.php'):
+            valid_candidates.append(f)
+
+    if not valid_candidates:
+        return None
+
+    ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
+    ss_error = screenshot_data.get("error_name", "") if screenshot_data else ""
+    ss_lines = screenshot_data.get("line_numbers", []) if screenshot_data else []
+
+    # Score and rank candidates by relevance to the bug description and screenshot trace
+    all_context_terms = set(re.findall(r'[a-zA-Z0-9_]{3,}', f"{title} {description} {feature} {ss_error} {ss_text} {code_snippet}".lower()))
+    def _rank_candidate(fpath: str) -> int:
+        score = 0
+        fp_lower = fpath.lower()
+        for term in all_context_terms:
+            if term in fp_lower:
+                score += 10
+        return score
+
+    valid_candidates.sort(key=_rank_candidate, reverse=True)
+    candidate_sample = valid_candidates[:45]
+
+    prompt = (
+        "You are an expert AI software debugging and root-cause localization agent.\n"
+        "Analyze this bug report, error traces, and the repository files to identify the top culprit source files "
+        "where this bug originates or must be fixed.\n\n"
+        f"Bug Title: {title}\n"
+        f"Bug Description: {description}\n"
+        f"Feature Area: {feature}\n"
+        f"Technology Stack: {project_stack}\n"
+    )
+    if ss_error or ss_text:
+        prompt += f"Error/Stack Trace from Screenshot: {ss_error}\n{ss_text[:600]}\n"
+    if code_snippet:
+        prompt += f"Code Snippet:\n{code_snippet[:400]}\n"
+
+    prompt += (
+        f"\nRepository File List (Choose ONLY from these {len(candidate_sample)} files):\n"
+        + "\n".join(candidate_sample) + "\n\n"
+        f"Select the top {min(limit, len(candidate_sample))} most relevant culprit files.\n"
+        "Return a strictly valid JSON array of objects with this schema:\n"
+        "[\n"
+        "  {\n"
+        '    "path": "exact path matching one from the list above",\n'
+        '    "confidence": 92,\n'
+        '    "reason": "Detailed technical reason explaining why this file is responsible for the bug"\n'
+        "  }\n"
+        "]\n"
+        "Return JSON only without markdown formatting or preamble."
+    )
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    # Try modern active Gemini models in order (gemini-3.5-flash-lite is fastest and most responsive)
+    candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+    for model_name in candidate_models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=22.0) as resp:
+                res_json = json.loads(resp.read().decode("utf-8"))
+                candidate = res_json.get("candidates", [{}])[0]
+                text_out = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
+                json_match = re.search(r'\[\s*\{.*\}\s*\]', text_out, re.DOTALL)
+                raw_json = json_match.group(0) if json_match else text_out.strip()
+                parsed = json.loads(raw_json)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    valid_results = []
+                    candidate_set = set(candidate_sample)
+                    for item in parsed:
+                        if isinstance(item, dict) and item.get("path") in candidate_set:
+                            valid_results.append({
+                                "path": item["path"],
+                                "confidence": max(50, min(98, int(item.get("confidence", 85)))),
+                                "reason": str(item.get("reason", "Identified by Gemini semantic root cause analysis."))
+                            })
+                    if valid_results:
+                        return valid_results[:limit]
+        except Exception:
+            continue
+
+    return None
 
 
 def locate_suspected_files(
@@ -514,12 +755,13 @@ def locate_suspected_files(
     project_stack="",
     source_file_name="",
     screenshot_data=None,
+    gemini_api_key=None,
     limit=3
 ) -> List[SuspectedFileResult]:
     """
     Identifies the top repository files most likely containing or causing the bug.
     Guarantees strict technology alignment (e.g. Kotlin files for Kotlin projects).
-    Supports Vision/OCR screenshot intelligence for instant crash trace pinpointing.
+    Supports Gemini AI semantic root cause localization + Vision/OCR crash trace pinpointing.
     """
     github_slug = parse_github_slug(github_repo)
     ss_text = screenshot_data.get("extracted_text", "") if screenshot_data else ""
@@ -613,7 +855,7 @@ def locate_suspected_files(
             if ext:
                 ext_counts[ext] = ext_counts.get(ext, 0) + 1
         if ext_counts:
-            top_ext = max(ext_counts, key=ext_counts.get)
+            top_ext = max(ext_counts, key=lambda k: ext_counts[k])
             if top_ext in ('.kt', '.kts'):
                 target_tech = 'kotlin'
             elif top_ext in ('.php',):
@@ -646,6 +888,34 @@ def locate_suspected_files(
                 priority_file = fpath
                 break
 
+    # Tier 1: Gemini AI Semantic Root Cause Locator
+    active_gemini_key = _get_gemini_api_key(gemini_api_key)
+    if active_gemini_key and active_repo_files:
+        gemini_picks = _locate_with_gemini(
+            repo_files=active_repo_files,
+            title=title,
+            description=description,
+            feature=feature,
+            code_snippet=code_snippet,
+            project_stack=project_stack,
+            screenshot_data=screenshot_data,
+            api_key=active_gemini_key,
+            limit=limit
+        )
+        if gemini_picks:
+            results: List[SuspectedFileResult] = []
+            safe_slug = github_slug or "MuarifHasnat/Auto-Bug-Traige"
+            for item in gemini_picks:
+                gh_url = f"https://github.com/{safe_slug}/blob/{quote(branch, safe='')}/{quote(item['path'], safe='/')}"
+                results.append({
+                    "path": item["path"],
+                    "confidence": item["confidence"],
+                    "reason": item["reason"],
+                    "github_url": gh_url
+                })
+            return results
+
+    # Tier 2: Heuristic Architectural Keyword Matching
     raw_tokens = set(re.findall(r'[a-zA-Z0-9_]{3,}', combined_text))
 
     # Add domain terms based on detected feature
@@ -654,8 +924,14 @@ def locate_suspected_files(
         if domain in feature_lower:
             raw_tokens.update(terms)
 
-    # Filter out common stop words
-    stop_words = {'the', 'and', 'for', 'with', 'this', 'that', 'when', 'does', 'not', 'have', 'from', 'what', 'page', 'error', 'bug', 'code'}
+    # Filter out common stop words and generic report noise terms
+    stop_words = {
+        'the', 'and', 'for', 'with', 'this', 'that', 'when', 'does', 'not', 'have', 'from',
+        'what', 'page', 'error', 'bug', 'code', 'file', 'files', 'issue', 'fail', 'failed',
+        'problem', 'fix', 'step', 'steps', 'expected', 'observed', 'behavior', 'reproduce',
+        'app', 'application', 'kre', 'kare', 'kor', 'kore', 'hoy', 'na', 'hoi', 'hoye',
+        'dekhi', 'dekhay', 'shob', 'kisu', 'kicui', 'null', 'undefined', 'test', 'status'
+    }
     query_keywords = raw_tokens - stop_words
 
     # Expand abbreviations and domain synonyms (e.g. req -> request, sub -> submit)
@@ -741,12 +1017,13 @@ def locate_suspected_files(
             if fpath_lower.endswith(('.cpp', '.hpp', '.c', '.h', '.cc')):
                 score += 25
         elif target_tech == 'php':
-            if 'controller' in fpath_lower:
-                score += 20
-            if 'model' in fpath_lower or 'database' in fpath_lower:
-                score += 15
-            if 'blade' in fpath_lower or 'view' in fpath_lower:
-                score += 15
+            if score > 0:
+                if 'controller' in fpath_lower and any(w in query_keywords for w in ['route', 'request', 'controller', 'api', 'action']):
+                    score += 20
+                if ('model' in fpath_lower or 'database' in fpath_lower) and any(w in query_keywords for w in ['database', 'data', 'model', 'query', 'user']):
+                    score += 15
+                if ('blade' in fpath_lower or 'view' in fpath_lower) and any(w in query_keywords for w in ['view', 'page', 'ui', 'button', 'form']):
+                    score += 15
 
         if priority_file and fpath == priority_file:
             score += 100
@@ -827,6 +1104,7 @@ if __name__ == "__main__":
             selected_language=pdata.get("selected_language", "auto"),
             project_stack=pdata.get("project_stack", ""),
             source_file_name=pdata.get("source_file_name", ""),
+            gemini_api_key=pdata.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY"),
         )
         print(json.dumps(located))
         sys.exit(0)

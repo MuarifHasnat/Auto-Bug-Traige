@@ -1,0 +1,102 @@
+name: AutoBugTriage CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Python AI Agent Test Suite & Linting
+  # -------------------------------------------------------------
+  python-tests:
+    name: Python AI Agents (Unit & AST Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Python Unit Test Suite
+        run: |
+          python -m unittest discover -s tests/python -v
+
+  # -------------------------------------------------------------
+  # Job 2: Laravel PHP Application Test Suite
+  # -------------------------------------------------------------
+  php-tests:
+    name: Laravel Backend & Feature Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo, pdo_sqlite, bcmath, json, curl
+          coverage: none
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Cache Composer dependencies
+        id: composer-cache
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare Laravel Environment
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            echo "APP_ENV=testing" > .env
+            echo "APP_KEY=base64:u3GZzYx2k7oW1XgH4z0K5Q2wE1rT3yU5i7oP9aS1dF3=" >> .env
+            echo "DB_CONNECTION=sqlite" >> .env
+            echo "DB_DATABASE=:memory:" >> .env
+          fi
+          php artisan key:generate --ansi || true
+
+      - name: Execute PHPUnit Tests
+        run: ./vendor/bin/phpunit --colors=always || php artisan test
+
+  # -------------------------------------------------------------
+  # Job 3: Automated Zero-Downtime Deployment (Render / Cloud)
+  # -------------------------------------------------------------
+  deploy:
+    name: Deploy to Production
+    needs: [python-tests, php-tests]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render Deployment Webhook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Triggering deployment on Render..."
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+            echo "Deployment webhook triggered successfully."
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not configured. Skipping deploy trigger."
+          fi
+

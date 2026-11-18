@@ -18,7 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile', [BugController::class, 'updateProfile'])->name('profile.update');
     Route::get('/profile', [BugController::class, 'profilePage'])->name('profile.show');
     Route::get('/profile/photo', [BugController::class, 'profilePhoto'])->name('profile.photo');
-    Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->name('projects.sync-github');
+    Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->middleware('throttle:10,1')->name('projects.sync-github');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);
     Route::post('/team-members', [BugController::class, 'addTeamMember']);
@@ -38,7 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::match(['get', 'post'], '/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
     Route::match(['get', 'post'], '/notifications/{id}/read', [BugController::class, 'markNotificationRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [BugController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
-    Route::post('/api/bugs/store', [BugController::class, 'store']);
+    Route::post('/api/bugs/store', [BugController::class, 'store'])->middleware('throttle:10,1');
     Route::post('/api/bugs/override', [BugController::class, 'override']);
     Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
     Route::post('/api/bugs/recommendation/accept', [BugController::class, 'acceptRecommendation'])->name('bugs.recommendation.accept');

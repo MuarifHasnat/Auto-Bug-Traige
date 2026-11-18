@@ -6,6 +6,12 @@ import re
 import urllib.request
 import urllib.error
 from pathlib import Path
+import sys
+
+# Ensure agent directory is in sys.path
+AGENT_DIR = Path(__file__).resolve().parent
+if str(AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(AGENT_DIR))
 
 # Supported source file extensions in software repositories
 SOURCE_EXTENSIONS = (
@@ -136,15 +142,32 @@ def _run_rapid_ocr(image_path: str) -> dict:
         }
 
 
+from resilience import exponential_backoff
+
+
+@exponential_backoff(max_retries=2, base_delay=1.5, max_delay=6.0)
+def _perform_gemini_request(req: urllib.request.Request, timeout: float = 20.0) -> bytes:
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return response.read()
+
+
+def _load_image_base64(image_path: str) -> str:
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+
 def _run_gemini_vision(image_path: str, api_key: str) -> dict:
     """Calls Google Gemini Vision API to analyze bug screenshot."""
     try:
-        mime_type, _ = mimetypes.guess_type(image_path)
-        if not mime_type or not mime_type.startswith("image/"):
+        lower_path = str(image_path).lower()
+        if lower_path.endswith(".jpg") or lower_path.endswith(".jpeg"):
+            mime_type = "image/jpeg"
+        elif lower_path.endswith(".webp"):
+            mime_type = "image/webp"
+        else:
             mime_type = "image/png"
 
-        with open(image_path, "rb") as f:
-            b64_data = base64.b64encode(f.read()).decode("utf-8")
+        b64_data = _load_image_base64(image_path)
 
         prompt = (
             "You are an automated software triage vision agent analyzing a bug report screenshot.\n"
@@ -161,7 +184,6 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
             "Return JSON only without Markdown formatting or fences."
         )
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         payload = {
             "contents": [
                 {
@@ -182,19 +204,38 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
             }
         }
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
+        # Try active Gemini models in order (gemini-3.5-flash-lite is fastest and active)
+        candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+        raw_bytes = None
+        last_err = None
 
-        with urllib.request.urlopen(req, timeout=12) as response:
-            res_json = json.loads(response.read().decode("utf-8"))
-            candidate = res_json.get("candidates", [{}])[0]
-            content_part = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
+        for model_name in candidate_models:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                raw_bytes = _perform_gemini_request(req, timeout=20.0)
+                if raw_bytes:
+                    break
+            except Exception as e:
+                last_err = e
+                continue
+
+        if not raw_bytes:
+            raise Exception(f"All Gemini models failed. Last error: {last_err}")
+        res_json = json.loads(raw_bytes.decode("utf-8"))
+        candidate = res_json.get("candidates", [{}])[0]
+        content_part = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
             
-            # Clean possible markdown fences
+        # Robust JSON extraction using Regex to handle introductory or trailing conversational text
+        json_match = re.search(r'\{.*\}', content_part, re.DOTALL)
+        if json_match:
+            clean_json_str = json_match.group(0).strip()
+        else:
             clean_json_str = content_part.strip()
             if clean_json_str.startswith("```json"):
                 clean_json_str = clean_json_str[7:]
@@ -202,12 +243,12 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
                 clean_json_str = clean_json_str[3:]
             if clean_json_str.endswith("```"):
                 clean_json_str = clean_json_str[:-3]
-            
-            parsed = json.loads(clean_json_str.strip())
-            parsed["success"] = True
-            parsed["method"] = "gemini_vision"
-            parsed["summary"] = f"Gemini Vision detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
-            return parsed
+        
+        parsed = json.loads(clean_json_str.strip())
+        parsed["success"] = True
+        parsed["method"] = "gemini_vision"
+        parsed["summary"] = f"Gemini Vision detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
+        return parsed
 
     except Exception as exc:
         return {
@@ -219,12 +260,92 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
         }
 
 
+def _run_openai_vision(image_path: str, api_key: str) -> dict:
+    """Fallback Tier 2: OpenAI GPT-4o-mini Vision."""
+    try:
+        with open(image_path, "rb") as img_file:
+            b64_image = base64.b64encode(img_file.read()).decode("utf-8")
+
+        prompt = (
+            "You are an expert software developer and QA engineer inspecting a bug report screenshot. "
+            "Extract error names, line numbers, culprit files, and stack trace. Output strictly JSON matching: "
+            '{"error_name": "...", "suspected_files": ["..."], "line_numbers": [1], "detected_language": "...", "extracted_text": "..."}'
+        )
+        url = "https://api.openai.com/v1/chat/completions"
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_image}"}},
+                    ],
+                }
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+            method="POST",
+        )
+        raw_bytes = _perform_gemini_request(req, timeout=12.0)
+        res_json = json.loads(raw_bytes.decode("utf-8"))
+        content = res_json["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+        parsed["success"] = True
+        parsed["method"] = "openai_vision"
+        parsed["summary"] = f"OpenAI GPT-4o-mini detected {parsed.get('error_name')} with {len(parsed.get('suspected_files', []))} files."
+        return parsed
+    except Exception as exc:
+        return {"success": False, "method": "openai_vision", "error": str(exc), "extracted_text": "", "suspected_files": []}
+
+
+def _run_ollama_vision(image_path: str, host: str = "http://127.0.0.1:11434") -> dict:
+    """Fallback Tier 3: Local Ollama (llava / qwen-vl)."""
+    try:
+        with open(image_path, "rb") as img_file:
+            b64_image = base64.b64encode(img_file.read()).decode("utf-8")
+
+        prompt = (
+            "Analyze this crash screenshot. Return JSON with error_name, suspected_files, line_numbers, and extracted_text."
+        )
+        url = f"{host.rstrip('/')}/api/generate"
+        payload = {
+            "model": "llava",
+            "prompt": prompt,
+            "images": [b64_image],
+            "format": "json",
+            "stream": False,
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            content = data.get("response", "")
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            parsed = json.loads(match.group(0)) if match else {}
+            parsed["success"] = True
+            parsed["method"] = "ollama_vision"
+            return parsed
+    except Exception as exc:
+        return {"success": False, "method": "ollama_vision", "error": str(exc), "extracted_text": "", "suspected_files": []}
+
+
 def analyze_screenshot(image_path: str, gemini_api_key: str = None) -> dict:
     """
-    Main entrypoint for analyzing a bug report screenshot.
-    1. Tries Gemini Vision if API key is provided.
-    2. Falls back to local RapidOCR (ONNX) if Gemini is unavailable or fails.
-    3. Gracefully returns empty result if neither succeeds.
+    Multi-LLM Tiered Fallback Chain for Screenshot Perception:
+    1. Tier 1: Gemini 1.5 Flash (via gemini_api_key or GEMINI_API_KEY env)
+    2. Tier 2: OpenAI GPT-4o-mini (via OPENAI_API_KEY env)
+    3. Tier 3: Local Ollama VLM (if Ollama daemon running on 11434)
+    4. Tier 4: On-device Deep Learning OCR (RapidOCR ONNX runtime - 100% offline)
     """
     if not image_path or not os.path.isfile(image_path):
         return {
@@ -235,13 +356,28 @@ def analyze_screenshot(image_path: str, gemini_api_key: str = None) -> dict:
             "error": "Image file not found on disk."
         }
 
-    # 1. Try Gemini Vision if API key is present
-    if gemini_api_key and gemini_api_key.strip():
-        gemini_result = _run_gemini_vision(image_path, gemini_api_key.strip())
+    # Tier 1: Try Gemini Vision
+    g_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
+    if g_key and g_key.strip():
+        gemini_result = _run_gemini_vision(image_path, g_key.strip())
         if gemini_result.get("success"):
             return gemini_result
 
-    # 2. Try local RapidOCR
+    # Tier 2: Try OpenAI Vision
+    o_key = os.environ.get("OPENAI_API_KEY")
+    if o_key and o_key.strip():
+        openai_result = _run_openai_vision(image_path, o_key.strip())
+        if openai_result.get("success"):
+            return openai_result
+
+    # Tier 3: Try Local Ollama Vision (if host responds within 1s)
+    ollama_host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+    if os.environ.get("ENABLE_OLLAMA_VISION", "").lower() in ["1", "true"]:
+        ollama_result = _run_ollama_vision(image_path, ollama_host)
+        if ollama_result.get("success"):
+            return ollama_result
+
+    # Tier 4: On-device RapidOCR Fallback
     rapid_result = _run_rapid_ocr(image_path)
     if rapid_result.get("success"):
         return rapid_result

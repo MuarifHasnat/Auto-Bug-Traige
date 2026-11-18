@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoBugTriage · Bug report triage for QA and engineering teams</title>
     <meta name="description" content="Turn bug reports into reviewable next steps. See reproduction details, syntax-check clues, and likely repository files in one place.">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind.js"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

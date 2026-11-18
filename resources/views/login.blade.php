@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In · AutoBugTriage AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-center items-center p-4 sm:p-6 bg-dot-grid selection:bg-indigo-500 selection:text-white">
@@ -42,7 +42,7 @@
                 Sign in to access your project dashboard, kanban board, and AI triage studio.
             </p>
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-800 flex items-start gap-2">
                     <span class="text-rose-500 font-bold">⚠</span>
                     <span>{{ $errors->first() }}</span>
@@ -103,20 +103,25 @@
             <!-- Subtle 1-Click Demo Fill for easy testing -->
             <div class="mt-6 pt-5 border-t border-[#E2E8F0]">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">Quick Demo Accounts (1-Click Fill)</p>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button type="button" onclick="fillDemo('demo-manager@example.test', '12345678')" 
-                            class="rounded-xl border border-blue-200 bg-blue-50/50 py-1.5 px-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100/70 transition text-center">
-                        Manager
+                            class="rounded-xl border border-blue-200 bg-blue-50/50 py-2 px-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100/70 transition text-center shadow-2xs">
+                        👑 Manager
                     </button>
                     <button type="button" onclick="fillDemo('demo.alice@example.test', '12345678')" 
-                            class="rounded-xl border border-emerald-200 bg-emerald-50/50 py-1.5 px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100/70 transition text-center">
-                        Developer
+                            class="rounded-xl border border-emerald-200 bg-emerald-50/50 py-2 px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100/70 transition text-center shadow-2xs">
+                        💻 Dev (Alice)
+                    </button>
+                    <button type="button" onclick="fillDemo('demo.bob@example.test', '12345678')" 
+                            class="rounded-xl border border-purple-200 bg-purple-50/50 py-2 px-2 text-[11px] font-bold text-purple-700 hover:bg-purple-100/70 transition text-center shadow-2xs">
+                        🎨 Dev (Bob)
                     </button>
                     <button type="button" onclick="fillDemo('demo-tester@example.test', '12345678')" 
-                            class="rounded-xl border border-purple-200 bg-purple-50/50 py-1.5 px-2 text-[11px] font-bold text-purple-700 hover:bg-purple-100/70 transition text-center">
-                        QA Tester
+                            class="rounded-xl border border-amber-200 bg-amber-50/50 py-2 px-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100/70 transition text-center shadow-2xs">
+                        🧪 QA Tester
                     </button>
                 </div>
+                <p class="text-[10px] text-center text-slate-400 mt-2 font-mono-code">Password for all demo accounts: <strong>12345678</strong></p>
             </div>
         </div>
 

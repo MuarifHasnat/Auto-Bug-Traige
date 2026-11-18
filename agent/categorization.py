@@ -9,20 +9,35 @@ FEATURE_MAP = {
     "Performance": ["slow", "timeout", "memory", "performance", "latency", "lag", "freeze"],
 }
 
-DANGER_WORDS = [
+DANGER_WORDS = {
     "crash",
+    "crashes",
+    "crashed",
+    "crashing",
     "fatal",
     "blocker",
     "broken",
     "error",
+    "errors",
     "exception",
+    "exceptions",
     "undeclared",
     "mismatch",
-]
+    "mismatches",
+}
+NEGATION_WORDS = {"no", "not", "never", "without", "dont", "didnt"}
 
 
 def detect_feature(text: str) -> str:
-    tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
+    raw_tokens = re.findall(r"[a-z0-9+#_]+", text.lower())
+    tokens = set()
+    for t in raw_tokens:
+        tokens.add(t)
+        if "_" in t:
+            for sub in t.split("_"):
+                if sub:
+                    tokens.add(sub)
+
     for name, keywords in FEATURE_MAP.items():
         if any(keyword in tokens for keyword in keywords):
             return name
@@ -30,8 +45,12 @@ def detect_feature(text: str) -> str:
 
 
 def calculate_priority(text: str) -> str:
-    combined_text = text.lower()
-    for word in DANGER_WORDS:
-        if word in combined_text:
+    words = re.findall(r"[a-z0-9_]+", text.lower())
+    for i, w in enumerate(words):
+        if w in DANGER_WORDS:
+            # Check context window of previous 2 words for negation
+            window = words[max(0, i - 2) : i]
+            if any(neg in NEGATION_WORDS for neg in window):
+                continue
             return "High"
     return "Medium"

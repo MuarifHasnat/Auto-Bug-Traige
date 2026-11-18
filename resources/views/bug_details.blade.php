@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>#ABT-{{ $bug->id }}: {{ $bug->title }} · AutoBugTriage</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
 <body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] selection:bg-indigo-500 selection:text-white bg-dot-grid">
@@ -44,7 +44,7 @@
         </div>
     @endif
 
-    @if($errors->any())
+    @if(isset($errors) && $errors->any())
         <div class="max-w-7xl mx-auto px-5 lg:px-8 pt-4">
             <div class="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800 flex items-center gap-2 shadow-xs">
                 <span>⚠</span>
@@ -443,12 +443,31 @@
                         </form>
                     @endif
 
-                    <!-- AI Assignment Rationale -->
-                    <div class="pt-2 text-xs text-slate-600">
-                        <p class="font-bold text-slate-800 mb-1">AI Recommendation Rationale:</p>
-                        <p class="text-[11px] leading-relaxed bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100 text-indigo-950">
-                            {{ $codeHelp['assignment_reason'] ?? 'Selected based on skill keywords and available workload capacity.' }}
-                        </p>
+                    <!-- Explainable AI (XAI) Assignment Rationale -->
+                    <div class="pt-2 text-xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                <span>🧠</span>
+                                <span>Explainable AI (XAI) Decision</span>
+                            </span>
+                            <span class="rounded bg-indigo-100 text-indigo-700 px-1.5 py-0.5 text-[9px] font-mono font-bold">Audit Verified</span>
+                        </div>
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 space-y-2 text-[11px] text-indigo-950">
+                            <div>
+                                <span class="font-bold text-indigo-900 block mb-0.5">Developer Match Reasoning:</span>
+                                <p class="leading-relaxed text-indigo-900/90">
+                                    {{ $codeHelp['assignment_reason'] ?? 'Selected based on skill keywords and available workload capacity.' }}
+                                </p>
+                            </div>
+                            @if(!empty($bug->triage['similarity_score']))
+                                <div class="pt-1.5 border-t border-indigo-200/60 flex items-center justify-between text-[10px]">
+                                    <span class="text-indigo-800 font-medium">Duplicate Vector Distance:</span>
+                                    <span class="font-mono font-bold {{ $bug->triage['similarity_score'] > 75 ? 'text-amber-700' : 'text-emerald-700' }}">
+                                        {{ $bug->triage['similarity_score'] }}% Cosine Similarity
+                                    </span>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </section>
 

@@ -1,100 +1,129 @@
-# Auto Bug Triage
+# AutoBugTriage ⚡
+### Enterprise Autonomous Bug Tracking, AST Diagnostics & Explainable AI (XAI) Platform
 
-Auto Bug Triage is a Laravel web app for collecting software bug reports and organizing them in a project workspace. Testers submit a title, description and code or attachment. A local Python script then inspects the report, estimates priority, detects likely duplicates and recommends a developer from the project's skills and workload. Managers maintain projects and teams; developers review assigned issues and update their status.
+[![CI/CD Pipeline](https://github.com/MuarifHasnat/Auto-Bug-Traige/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Microservice-009688?style=flat&logo=fastapi&logoColor=white)](http://127.0.0.1:8001/docs)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-SaaS_UI-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## How triage works
+**AutoBugTriage** is an autonomous bug-tracking platform designed to eliminate the "black box" of automated triage. Non-technical QA testers submit symptom descriptions or error screenshots; the platform leverages a 5-phase Explainable AI (XAI) pipeline, AST static code analysis, and live GitHub repository scanning to localize the culprit source file, detect semantic duplicates, and dispatch the issue to the optimal software engineer based on a skills-and-workload matrix.
 
-1. A manager signs up, creates a project and adds developer or tester accounts.
-2. A tester submits a report with a code snippet, source file or screenshot.
-3. Laravel passes the report, earlier non-duplicate reports and project developer profiles to `agent/triage.py` as JSON.
-4. The Python agent runs local heuristics: code-pattern checks, keyword-based feature and priority classification, word-frequency cosine similarity for duplicate detection, and a skills/language/workload score for assignment.
-5. Laravel saves the report and its complete triage result. Non-duplicate assignments increment the developer's active-task count. Managers and developers can update report status from the workspace.
+---
 
-The workspace bug details drawer includes an Activity tab with the bug's creation, status changes and assignment changes, including who made each change and when. Managers can reassign a bug from the Details tab; status and assignment history is recorded with the old and new values.
+## 🌟 Key Highlights & Engineering Features
 
-The triage agent uses local checks and text matching; it does not call an external AI/LLM service. Code diagnosis parses Python with Python's AST, checks PHP with `php -l`, JavaScript with `node --check`, TypeScript with `tsc --noEmit`, C with GCC/Clang `-fsyntax-only`, C++ with G++/Clang++ `-fsyntax-only`, Java with `javac` (annotation processing disabled), and SQL with Python's SQLite parser. SQL validation uses SQLite syntax and does not check other database dialects or schema correctness. Auto mode uses source-pattern detection. If a required checker is unavailable, the result UI says so and identifies the tool to install. The agent provides limited rule-based fix suggestions, such as a missing Python colon or a possible zero divisor; it shows proposed edits or examples for review but never applies them or changes the submitted code automatically. These heuristics do not diagnose logic bugs in general. No submitted program is run. A syntax or compilation pass does not establish logical correctness, runtime behavior or security. Duplicate similarity is a lexical estimate and should be reviewed by a person.
+- **🔍 5-Phase Explainable AI (XAI) Execution Stepper:** Real-time animated terminal HUD displaying OCR text extraction, GitHub tree streaming, AST compilation checks, TF-IDF duplicate scoring, and developer capacity balancing.
+- **🐙 GitHub Culprit File Localization:** Connects directly with project repositories to pinpoint suspect files with 1-click links to GitHub lines.
+- **🧠 TF-IDF Vector Duplicate Matrix:** Scikit-learn powered cosine similarity engine with strict 0.75 threshold filtering to prevent duplicate issue proliferation.
+- **⚙️ AST Syntax & Compiler Diagnostics:** Static language checks supporting Python (AST), PHP (`php -l`), JavaScript/TypeScript (`node --check`/`tsc`), Java (`javac`), and C/C++ (`-fsyntax-only`) with 4-second timeout protection.
+- **⚡ Persistent FastAPI Microservice:** Runs high-throughput AI workloads via FastAPI with auto-generated interactive OpenAPI / Swagger UI at `/docs`.
+- **🛡️ Multi-Tiered VLM Fallback Chain:** Resilient screenshot OCR (Gemini 2.0 Flash $\rightarrow$ GPT-4o-mini $\rightarrow$ Ollama $\rightarrow$ RapidOCR).
+- **🔒 Cost & Brute-Force Rate Limiting:** Laravel throttle middleware protecting Gemini API billing and authentication endpoints.
+- **🚀 Automated CI/CD Pipeline:** GitHub Actions running unit and feature test matrices on every push with Render deploy hooks.
 
-## Requirements
+---
 
-- PHP 8.2 or newer with PDO SQLite enabled (or configure another Laravel-supported database).
-- Composer 2.
-- Python 3.
-- Node.js and npm (for building frontend assets; the Blade pages also load Tailwind from its CDN).
+## 🏛️ System Architecture
 
-## Run locally
+```mermaid
+flowchart LR
+    A[Tester / QA] -->|Bug & Screenshot| B(Laravel 11 App)
+    B -->|Rate Limiter: throttle:10,1| G[BugController API]
+    G -->|Async Queue Job| C(Python AI Microservice :8001)
+    C -->|OCR / VLM Fallback| D[Gemini 2.0 / OpenAI]
+    C -->|Scan File Tree| E[GitHub REST API]
+    C -->|Triage JSON| G
+    G -->|WebSocket Push| F[Laravel Reverb]
+    F -->|Live 5-Phase HUD & Kanban| A
+```
 
-From this directory:
+For the comprehensive system diagram, sequence flow, and mathematical multi-factor routing formulas, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-```sh
+---
+
+## ⚙️ How Triage Works (Step-by-Step)
+
+1. **Submission:** A tester enters what happened, reproduction steps, expected behavior, and attaches an optional crash screenshot or code snippet.
+2. **Phase 1 (Ingestion & OCR):** The AI Agent extracts text tokens and uses Gemini/OpenAI vision to transcribe error traces.
+3. **Phase 2 (GitHub Repository Tree Scan):** Streams file paths from the linked GitHub repository to identify the culprit source file.
+4. **Phase 3 (AST Diagnostics):** Parses the snippet with the target language's abstract syntax tree compiler to detect syntax or logic flaws.
+5. **Phase 4 (TF-IDF Vector Deduplication):** Vectorizes title and symptoms across all existing tickets using word n-grams and cosine similarity ($> 0.75$ flag).
+6. **Phase 5 (Multi-Factor Developer Dispatch):** Evaluates developer skill tags, historical fix velocity, and active task queues to assign the ideal engineer.
+
+---
+
+## 🚀 Quickstart & Local Installation
+
+### Prerequisites
+- **PHP 8.2+** with PDO SQLite or PostgreSQL.
+- **Composer 2**
+- **Python 3.11+**
+- **Node.js 18+** & npm
+
+### Setup Instructions
+
+```bash
+# 1. Clone repository
+git clone https://github.com/MuarifHasnat/Auto-Bug-Traige.git
+cd Auto-Bug-Traige
+
+# 2. Install PHP and Python dependencies
 composer install
+pip install -r requirements.txt
+npm install && npm run build
+
+# 3. Environment configuration
 cp .env.example .env
-```
-
-For a simple local SQLite setup, edit `.env` to use:
-
-```dotenv
-APP_ENV=local
-APP_DEBUG=true
-DB_CONNECTION=sqlite
-DB_DATABASE=database/database.sqlite
-```
-
-Then initialize the app and start the Laravel server:
-
-```sh
-touch database/database.sqlite
 php artisan key:generate
-php artisan migrate
-npm install
-npm run build
+
+# 4. Initialize Database & Seed Demo Data
+touch database/database.sqlite
+php artisan migrate --seed
+
+# 5. Start Laravel Application
 php artisan serve
 ```
 
-Open <http://127.0.0.1:8000>. To work on frontend assets with Vite, run `npm run dev` in a second terminal. Python triage is launched by Laravel when a tester submits a report; the `python3` executable must be available on `PATH`.
+Open **`http://127.0.0.1:8000`** in your browser.
 
-### Demo data
+### Running the Persistent AI Microservice
 
-After configuring the local database, run `php artisan migrate --seed`. This creates a demo project, manager, tester, two developers, sample triaged bugs and activity history. Seeding is safe to repeat and does not clear existing tables; it is disabled when `APP_ENV=production`.
+```bash
+python agent/server.py --port 8001
+```
+- **Interactive Swagger UI:** `http://127.0.0.1:8001/docs`
+- **ReDoc Documentation:** `http://127.0.0.1:8001/redoc`
 
-Seeded demo accounts are for local development only. They are not created in production. To explore the product without signing in, use the interactive sample on the landing page.
+---
 
-| Role | Email |
-| --- | --- |
-| Manager | `demo-manager@example.test` |
-| Tester | `demo-tester@example.test` |
-| Developer | `demo.alice@example.test` or `demo.bob@example.test` |
+## 🧪 Automated Testing & Verification
 
-In a local seeded environment, the tester can submit a report, developers can review and update assigned bugs, and the manager can manage the project and reassign bugs. Never reuse seeded demo credentials for real accounts.
+Run the test suites with:
 
-### Automated checks
+```bash
+# Python AI Agents Suite (20 unit tests)
+python -m unittest discover -s tests/python -v
 
-Run the Laravel feature tests and Python triage checks with:
-
-```sh
+# Laravel Feature & Backend Suite
 composer test
-python3 -m unittest discover -s tests/python -v
 ```
 
-The feature suite uses an in-memory SQLite database and fakes the triage process, so it does not modify the local demo database or require syntax compilers to be installed.
+---
 
-## Roles
+## 👥 Seeded Demo Accounts
 
-- **Manager:** creates projects, manages team profiles, views project dashboard, updates bug status and reassigns bugs.
-- **Tester:** submits bug reports and reviews the triage output.
-- **Developer:** reviews assigned reports in the workspace and updates their status.
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Project Manager** | `demo-manager@example.test` | `12345678` |
+| **QA Tester** | `demo-tester@example.test` | `12345678` |
+| **Backend Developer** | `demo.alice@example.test` | `12345678` |
+| **Frontend Developer** | `demo.bob@example.test` | `12345678` |
 
-Managers can switch among projects they own. Testers and developers can switch among projects where they are listed as members. The selected project is saved in the session and checked against that user's current access on every project-scoped request.
+*(Seeded accounts are for local evaluation only and disabled in production).*
 
-The manager dashboard lists the team members and accounts assigned specifically to the active project. Managers can search names, filter by role (Manager, Developer, Tester), monitor workloads, and switch between projects with complete data isolation across all metrics and issue queues.
+---
 
-## Main code locations
-
-- `routes/web.php` — web routes and authentication-protected pages.
-- `app/Http/Controllers/BugController.php` — project/team flows and bug persistence/triage invocation.
-- `agent/triage.py` — Python triage pipeline; supporting rules are in the other `agent/*.py` modules.
-- `resources/views/` — Blade user interface.
-- `database/migrations/` — users, projects, members, developers, bugs, triage and bug activity history schema.
-
-## Deployment
-
-The repository includes a Dockerfile and `render.yaml` for deployment configuration. Configure the database connection and production environment variables in the hosting service before deploying. Uploaded report files are stored using Laravel's configured filesystem disk.
+## 📄 License
+This project is open-source under the [MIT License](LICENSE).

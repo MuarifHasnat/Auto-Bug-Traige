@@ -15,6 +15,9 @@ import tempfile
 from pathlib import Path
 
 
+# Security limits to protect compiler subprocesses from resource exhaustion / hanging
+MAX_SOURCE_LENGTH = 50_000  # Cap submitted code snippet at 50KB
+COMPILER_TIMEOUT_SECONDS = 4  # Strict timeout against infinite loops / compilation bombs
 LANGUAGES = {
     "php": "PHP",
     "c++": "C++",
@@ -271,11 +274,18 @@ def _sqlite_sql_syntax_check(source):
     except sqlite3.Error as error:
         return "failed", f"SQLite SQL parser rejected the statement: {error}"
 
-    return "passed", "Checker: Python sqlite3 (SQLite dialect). SQL statements parsed without execution; schema-dependent name resolution is not checked."
+    return (
+        "passed",
+        "Checker: Python sqlite3 (SQLite dialect). SQL statements parsed without execution. "
+        "Note: Advanced PostgreSQL/MySQL specific extensions (e.g. JSONB, RETURNING) may differ from standard ANSI SQL."
+    )
 
 
 def check_code_error(code, description, selected_language="auto"):
     source = (code or "").strip()
+    if len(source) > MAX_SOURCE_LENGTH:
+        source = source[:MAX_SOURCE_LENGTH]
+
     reported_language = (selected_language or "auto").strip()
     language = detect_language(source) if reported_language.lower() == "auto" else LANGUAGES.get(reported_language.lower(), reported_language)
 

@@ -114,6 +114,7 @@ class BugController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
+        $credentials['email'] = strtolower(trim($credentials['email']));
 
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'The email or password is incorrect.'])->withInput();
@@ -635,6 +636,7 @@ class BugController extends Controller
                 'selected_language' => 'auto',
                 'project_stack' => DB::table('projects')->where('id', $bug->project_id)->value('stack') ?: '',
                 'source_file_name' => $bug->source_file_name ?? '',
+                'gemini_api_key' => config('services.gemini.key', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
             ], JSON_THROW_ON_ERROR));
 
             $result = Process::run([$python, base_path('agent/file_locator.py'), '--locate', $payloadPath]);
@@ -759,7 +761,7 @@ class BugController extends Controller
         })->where('bug_triage_metrics.project_id', $projectId)
             ->where(function ($query) {
                 $query->where(function ($duplicate) {
-                    $duplicate->where('bug_triage_metrics.predicted_duplicate', true)->whereNull('bug_triage_metrics.actual_duplicate');
+                    $duplicate->whereRaw('bug_triage_metrics.predicted_duplicate IS TRUE')->whereNull('bug_triage_metrics.actual_duplicate');
                 })->orWhere(function ($assignment) {
                     $assignment->whereNotNull('bug_triage_metrics.recommended_assignee')->whereNull('bug_triage_metrics.assignment_feedback');
                 });
