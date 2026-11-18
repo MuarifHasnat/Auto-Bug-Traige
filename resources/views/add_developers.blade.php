@@ -36,9 +36,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                     </svg>
                 </a>
-                <a href="/logout" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
-                    Log out
-                </a>
+                @include('components.profile-header')
             </div>
         </div>
 
@@ -159,17 +157,17 @@
 
                                     <!-- Safe Confirm Popover (Zero Ugly Native Alert) -->
                                     <div id="delete-confirm-{{ $dev->id }}" class="hidden my-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-                                        <p class="font-bold">ডেভেলপারকে রিমুভ করবেন?</p>
-                                        <p class="text-[11px] text-rose-700 mt-0.5">রিমুভ করলে তার কাজগুলো আন-অ্যাসাইন হয়ে যাবে।</p>
+                                        <p class="font-bold">Remove this developer?</p>
+                                        <p class="text-[11px] text-rose-700 mt-0.5">Their assigned issues will become unassigned.</p>
                                         <div class="mt-2.5 flex items-center justify-end gap-2">
                                             <button type="button" onclick="toggleDeleteConfirm({{ $dev->id }})" class="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                                                বাতিল
+                                                Cancel
                                             </button>
                                             <form action="/developers/{{ $dev->id }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="rounded-lg bg-rose-600 text-white px-2.5 py-1 text-[11px] font-bold hover:bg-rose-700">
-                                                    হ্যাঁ, রিমুভ করুন
+                                                    Yes, remove developer
                                                 </button>
                                             </form>
                                         </div>

@@ -1,168 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step 1: Configure Project · AutoBugTriage AI</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New project wizard · AutoBugTriage</title>
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
-<body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-indigo-500 selection:text-white bg-dot-grid">
-    <div class="w-full max-w-2xl">
-        <!-- Top Nav & Header Controls -->
-        <div class="mb-5 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white font-black text-xs shadow-sm">
-                    ⚡
-                </div>
-                <span class="text-sm font-extrabold tracking-tight text-[#0F172A]">AutoBugTriage</span>
-                <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
-                    Wizard
-                </span>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <a href="{{ route('profile.show') }}" class="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-white" aria-label="Open my profile">
-                    <span class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700">
-                        @if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" class="h-full w-full object-cover" alt="Profile picture">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif
-                    </span>
-                    <span class="hidden text-left sm:block"><span class="block max-w-32 truncate text-xs font-semibold text-slate-900">{{ auth()->user()->name }}</span><span class="block text-[10px] text-slate-500">{{ ucfirst(auth()->user()->role) }}</span></span>
-                </a>
-                <a href="/logout" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><span>Sign out</span></a>
-            </div>
-        </div>
-
-        <!-- 3-Step Wizard Progress Bar -->
-        <div class="mb-6 rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-xs">
-            <div class="flex items-center justify-between text-xs font-bold">
-                <!-- Step 1 (Active) -->
-                <div class="flex items-center gap-2 text-indigo-600">
-                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white text-xs">1</span>
-                    <span class="font-bold">Project Setup</span>
-                </div>
-                <div class="h-0.5 flex-1 mx-3 bg-[#E2E8F0]"></div>
-                <!-- Step 2 -->
-                <div class="flex items-center gap-2 text-slate-400">
-                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-500">2</span>
-                    <span>Team & Skill Mapping</span>
-                </div>
-                <div class="h-0.5 flex-1 mx-3 bg-[#E2E8F0]"></div>
-                <!-- Step 3 -->
-                <div class="flex items-center gap-2 text-slate-400">
-                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-500">3</span>
-                    <span>Workspace Launch</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Form Card -->
-        <div class="rounded-3xl border border-[#E2E8F0] bg-white p-6 sm:p-10 shadow-sm card-hover-lift">
-            <div class="flex items-start justify-between mb-6">
-                <div>
-                    <span class="inline-block rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-bold text-indigo-700">
-                        Manager: {{ session('manager_name', 'Lead') }}
-                    </span>
-                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0F172A] mt-2">
-                        Configure Your Project Environment
-                    </h1>
-                    <p class="text-xs sm:text-sm text-[#64748B] mt-1">
-                        Define project identity and tech stack dependencies for precision AI triage matching.
-                    </p>
-                </div>
-                <div class="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 text-2xl border border-indigo-100">
-                    📁
-                </div>
-            </div>
-
-            @if(isset($errors) && $errors->any())
-                <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800 flex items-start gap-2.5">
-                    <span class="text-rose-500 font-bold mt-0.5">⚠</span>
-                    <span>{{ $errors->first() }}</span>
-                </div>
-            @endif
-
-            <form action="/create-project" method="POST" class="space-y-6">
-                @csrf
-                <div>
-                    <label class="block text-xs font-bold text-[#0F172A] mb-1.5">Project Name</label>
-                    <input type="text" name="project_name" required value="{{ old('project_name') }}" placeholder="e.g. Core SaaS Platform" 
-                           class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10">
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold text-[#0F172A]">Technology Stack & Frameworks</label>
-                        <span class="text-[11px] font-mono-code text-indigo-600 font-semibold">Selected Chips Auto-Fill Below</span>
-                    </div>
-                    <input type="text" id="techStackInput" name="project_stack" required value="{{ old('project_stack') }}" placeholder="e.g. Laravel, React, PostgreSQL, Docker" 
-                           class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10 font-mono-code">
-                    
-                    <!-- 15 Clickable Tech Chips -->
-                    <div class="mt-3">
-                        <p class="text-[11px] font-bold text-[#64748B] mb-2 uppercase tracking-wider">Quick Select Stack Chips:</p>
-                        <div class="flex flex-wrap gap-1.5" id="chipContainer">
-                            @php
-                                $presetTechs = ['Laravel', 'React', 'Vue.js', 'Python', 'FastAPI', 'PostgreSQL', 'MySQL', 'Docker', 'Node.js', 'TypeScript', 'TailwindCSS', 'Kotlin', 'C++', 'Java', 'SQL'];
-                            @endphp
-                            @foreach($presetTechs as $tech)
-                                <button type="button" onclick="toggleChip('{{ $tech }}', this)" 
-                                        class="tech-chip rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-xs font-semibold text-[#475569] hover:border-indigo-400 hover:text-indigo-600 transition">
-                                    + {{ $tech }}
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <!-- AI Note -->
-                    <div class="mt-4 rounded-xl bg-amber-50 border border-amber-200/80 p-3 text-xs text-amber-900 flex items-start gap-2">
-                        <span class="text-base shrink-0">💡</span>
-                        <span><b>AI Agent Tip:</b> AI Agent এই টেক স্ট্যাকের ওপর ভিত্তি করেই ভবিষ্যতে বাগের ভাষা ও ক্যাটাগরি শনাক্ত করবে।</span>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
-                            <span class="text-slate-800">🐙</span>
-                            <span>GitHub Repository Link</span>
-                            <span class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-mono-code font-bold">Auto Pre-Indexer</span>
-                        </label>
-                        <span class="text-[10px] text-indigo-600 font-mono-code font-semibold">Understands Architecture & Links</span>
-                    </div>
-                    <input type="text" name="github_repo" value="{{ old('github_repo', '') }}" placeholder="https://github.com/your-username/your-repository" 
-                           class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 outline-none transition focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10 font-mono-code">
-                    <p class="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-                        গিটহাব লিংক দিলে এজেন্ট সাথে সাথে পুরো রিপোজিটরি স্ক্যান করে এর <b>UI Layers, Controllers, Services, Models</b> ও ফাইল স্ট্রাকচার ইনডেক্স করে ফেলবে—যাতে ভবিষ্যতে যেকোনো বাগে কোনো ভুল ছাড়াই আসল ফাইল নির্দেশ করতে পারে!
-                    </p>
-                </div>
-
-                <div class="pt-2 border-t border-[#E2E8F0]">
-                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-3 px-4 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99]">
-                        <span>Save & Proceed to Team Setup ➔</span>
-                    </button>
-                </div>
-            </form>
-        </div>
+<body class="min-h-screen bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-indigo-500 selection:text-white bg-dot-grid">
+<main class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:py-10">
+    <div class="mb-5 flex items-center justify-between gap-4">
+        <a href="/" class="text-base font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></a>
+        @include('components.profile-header')
     </div>
 
-    <script>
-        function toggleChip(tech, btn) {
-            const input = document.getElementById('techStackInput');
-            let current = input.value.split(',').map(s => s.trim()).filter(Boolean);
-            
-            if (current.includes(tech)) {
-                current = current.filter(t => t !== tech);
-                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
-                btn.classList.add('bg-[#F8FAFC]', 'text-[#475569]', 'border-[#E2E8F0]');
-                btn.innerText = '+ ' + tech;
-            } else {
-                current.push(tech);
-                btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
-                btn.classList.remove('bg-[#F8FAFC]', 'text-[#475569]', 'border-[#E2E8F0]');
-                btn.innerText = '✓ ' + tech;
-            }
-            input.value = current.join(', ');
-        }
-    </script>
+    <nav aria-label="Project setup progress" class="mb-6 rounded-2xl border border-[#E2E8F0] bg-white px-5 py-4 shadow-xs">
+        <ol class="flex items-center justify-between gap-3 text-xs font-semibold sm:text-sm">
+            <li aria-current="step" class="flex items-center gap-2 text-indigo-700"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white">1</span><span>Project setup</span></li>
+            <li class="mx-1 h-px flex-1 bg-slate-200" aria-hidden="true"></li>
+            <li class="flex items-center gap-2 text-slate-500"><span class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-slate-50">2</span><span class="hidden sm:inline">Team and skills</span></li>
+            <li class="mx-1 h-px flex-1 bg-slate-200" aria-hidden="true"></li>
+            <li class="flex items-center gap-2 text-slate-500"><span class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-slate-50">3</span><span class="hidden sm:inline">Launch</span></li>
+        </ol>
+    </nav>
+
+    <section class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm sm:p-8">
+        <header class="mb-6">
+            <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Configure your project</h1>
+            <p class="mt-2 text-sm text-[#64748B]">The AI uses your tech stack to detect the bug language and category.</p>
+        </header>
+
+        @if(isset($errors) && $errors->any())
+            <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-rose-800"><span aria-hidden="true" class="font-bold text-rose-500">⚠</span><span>{{ $errors->first() }}</span></div>
+        @endif
+
+        <form action="/create-project" method="POST" class="space-y-5">
+            @csrf
+            <div>
+                <label for="projectName" class="mb-2 block text-sm font-bold">Project name</label>
+                <input id="projectName" type="text" name="project_name" required maxlength="150" value="{{ old('project_name') }}" placeholder="e.g. Core SaaS Platform" class="w-full rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
+            </div>
+
+            <div>
+                <label for="techStackInput" class="mb-2 block text-sm font-bold">Technology stack</label>
+                <input id="techStackInput" type="text" name="project_stack" required value="{{ old('project_stack') }}" placeholder="e.g. Laravel, React, PostgreSQL" class="w-full rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
+                <div class="mt-3 flex flex-wrap gap-2" id="chipContainer" aria-label="Quick select technology stack">
+                    @foreach(['Java', 'Python', 'React', 'Laravel', 'MySQL', 'PostgreSQL', 'Docker', 'Kotlin'] as $tech)
+                        <button type="button" data-tech="{{ $tech }}" onclick="toggleChip('{{ $tech }}', this)" aria-pressed="false" class="tech-chip rounded-full border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#334155] transition hover:border-indigo-400 hover:text-indigo-700">+ {{ $tech }}</button>
+                    @endforeach
+                </div>
+            </div>
+
+            <div>
+                <label for="githubRepo" class="mb-2 block text-sm font-bold">GitHub repository link</label>
+                <input id="githubRepo" type="url" name="github_repo" value="{{ old('github_repo', '') }}" placeholder="https://github.com/your-username/your-repository" class="w-full rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
+                <p class="mt-2 text-xs leading-5 text-slate-500">The AI scans the repository so it can point to the exact file for each bug.</p>
+            </div>
+
+            <div class="border-t border-[#E2E8F0] pt-5">
+                <button type="submit" class="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-indigo-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Save and continue to team setup →</button>
+            </div>
+        </form>
+    </section>
+</main>
+<script>
+    function toggleChip(tech, button) {
+        const input = document.getElementById('techStackInput');
+        const selected = input.value.split(',').map(item => item.trim()).filter(Boolean);
+        const existing = selected.findIndex(item => item.toLowerCase() === tech.toLowerCase());
+        if (existing >= 0) selected.splice(existing, 1); else selected.push(tech);
+        input.value = selected.join(', ');
+        const active = existing < 0;
+        button.setAttribute('aria-pressed', String(active));
+        button.textContent = `${active ? '✓ ' : '+ '}${tech}`;
+        button.classList.toggle('border-indigo-600', active);
+        button.classList.toggle('bg-indigo-600', active);
+        button.classList.toggle('text-white', active);
+        button.classList.toggle('text-[#334155]', !active);
+    }
+    document.getElementById('techStackInput').addEventListener('input', event => {
+        const values = event.target.value.split(',').map(item => item.trim().toLowerCase());
+        document.querySelectorAll('.tech-chip').forEach(button => {
+            const active = values.includes(button.dataset.tech.toLowerCase());
+            button.setAttribute('aria-pressed', String(active));
+            button.textContent = `${active ? '✓ ' : '+ '}${button.dataset.tech}`;
+            button.classList.toggle('border-indigo-600', active);
+            button.classList.toggle('bg-indigo-600', active);
+            button.classList.toggle('text-white', active);
+            button.classList.toggle('text-[#334155]', !active);
+        });
+    });
+</script>
 </body>
 </html>

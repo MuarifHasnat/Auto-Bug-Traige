@@ -32,15 +32,6 @@
             <a href="/ai-agent" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"><span class="w-7 text-center text-2xl leading-none">⚡</span><span>AI Triage Studio</span></a>
             <a href="/notifications" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"><span class="w-7 text-center text-2xl leading-none">♧</span><span>Notifications</span></a>
         </nav>
-        <div class="mx-3 border-t border-slate-800 pt-3">
-            <a href="{{ route('profile.show') }}" class="mb-2 flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-slate-800" aria-label="Open my profile">
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-indigo-400/40 bg-indigo-500/15 text-sm font-bold text-indigo-200">
-                    @if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" alt="Profile picture" class="h-full w-full object-cover">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif
-                </span>
-                <span class="min-w-0"><span class="block truncate text-xs font-semibold text-white">{{ auth()->user()->name }}</span><span class="block text-[11px] text-slate-400">{{ ucfirst(auth()->user()->role) }}</span></span>
-            </a>
-            <a href="/logout" class="flex min-h-11 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-400 transition hover:bg-rose-950/50 hover:text-rose-300"><span class="w-7 text-center text-2xl leading-none">⇥</span><span>Sign Out</span></a>
-        </div>
     </aside>
 
     <main class="min-w-0 flex-1">

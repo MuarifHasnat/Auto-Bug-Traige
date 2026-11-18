@@ -20,15 +20,6 @@
     <main class="min-w-0 flex-1 flex flex-col">
         <!-- Sticky Top Header (60px) -->
         <header class="sticky top-0 z-10 flex h-[60px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 lg:px-8">
-            <!-- Breadcrumb -->
-            <div class="flex items-center gap-2 text-xs font-semibold text-[#64748B]">
-                <span>Workspace</span>
-                <span class="text-slate-300">/</span>
-                <span class="text-[#0F172A] font-bold">{{ session('project_name', 'Project') }}</span>
-                <span class="text-slate-300">/</span>
-                <span class="text-indigo-600">Command Center</span>
-            </div>
-
             <!-- Center Search with Ctrl+K shortcut -->
             <div class="hidden md:flex items-center">
                 <div class="relative">
@@ -42,64 +33,34 @@
             </div>
             <form id="dashboardQuickSearchForm" action="/workspace" method="GET" class="hidden"></form>
 
-            <!-- Right Live Status Pill -->
             <div class="flex items-center gap-3">
-                @include('components.project-switcher', ['variant' => 'mobile'])
-                <div class="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="font-mono-code">Python Triage Agent: Ready</span>
-                </div>
                 <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
-                <a href="{{ route('profile.show') }}" class="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-50"><div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-indigo-50 text-sm font-bold text-indigo-700">@if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" class="h-full w-full object-cover" alt="Profile">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif</div><div class="hidden sm:block"><p class="max-w-36 truncate text-sm font-bold text-slate-900">{{ auth()->user()->name }}</p><p class="text-xs text-slate-500">{{ ucfirst(auth()->user()->role) }}</p></div></a>
-                <a href="/logout" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Log out</a>
+                @include('components.profile-header')
             </div>
         </header>
 
         <!-- Command Center Body -->
         <div class="flex-1 mx-auto w-full max-w-7xl px-5 py-6 lg:px-8 space-y-6">
-            <!-- Role-Aware Contextual Greeting Banner -->
-            <div class="rounded-xl bg-white p-5 shadow-xs ring-1 ring-slate-900/5 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3.5">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 text-lg">
-                        👋
-                    </div>
-                    <div>
-                        <h2 class="text-sm sm:text-base font-semibold text-slate-900">
-                            Good Day, {{ auth()->user()->name }}!
-                            @if($stats['high'] > 0)
-                                <span class="text-rose-600 font-semibold">{{ $stats['high'] }} High-Priority</span> bugs require attention today.
-                            @else
-                                All project queues are healthy and under control.
-                            @endif
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Automated AST parsing and skill-based developer routing active across {{ $developers->count() }} profiles.</p>
-                    </div>
+            <section class="flex flex-wrap items-center justify-between gap-4" aria-labelledby="command-center-title">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500">{{ session('project_name', 'Project') }} / Command Center</p>
+                    <h1 id="command-center-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Good day, {{ auth()->user()->name }}</h1>
                 </div>
-
-                <div class="flex items-center gap-2">
-                    @if($stats['high'] > 0)
-                        <a href="/workspace?priority=High" class="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 px-3 py-2 text-xs font-medium text-rose-700 transition">
-                            <span>🔥 View Critical Bugs ({{ $stats['high'] }})</span>
-                        </a>
-                    @endif
-                    <a href="/workspace" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-xs font-medium text-white shadow-sm transition">
-                        <span>Open Kanban Board ➔</span>
-                    </a>
-                </div>
-            </div>
+                <a href="/workspace" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">Open Kanban board <span aria-hidden="true">→</span></a>
+            </section>
 
             <!-- AI Autonomous Performance & Value Impact Strip -->
-            <div class="rounded-xl bg-slate-900 p-5 text-white shadow-sm ring-1 ring-slate-800 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3.5">
+            <div class="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-sm ring-1 ring-slate-800 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex min-w-0 flex-1 items-center gap-3.5">
                     <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-indigo-400 font-medium text-lg shrink-0">
                         ⚡
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-sm font-semibold text-white">Autonomous AI Triage Efficiency & Impact</h3>
+                            <h3 class="text-sm font-semibold text-white">AI triage impact</h3>
                             <span class="rounded-md bg-emerald-500/10 text-emerald-400 px-2 py-0.5 text-[10px] font-mono-code font-medium">Active Engine</span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-0.5">Automated NLP symptom categorization, GitHub culprit localization, and workload-aware developer dispatch.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Categorizes bugs, finds likely files, and recommends a developer.</p>
                     </div>
                 </div>
 
@@ -109,18 +70,18 @@
                     $dupFiltered = (int) ($priorityCounts['Duplicate'] ?? 0);
                 @endphp
 
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <div class="rounded-lg bg-slate-800/80 px-3.5 py-2 text-center min-w-[105px]">
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="min-w-[90px] px-1 py-1 text-left">
                         <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Triage Accuracy</span>
-                        <span class="text-sm font-semibold text-emerald-400 font-mono-code">{{ $accuracyRate }}%</span>
+                        <span class="text-xl font-extrabold text-emerald-400 font-mono-code">{{ $accuracyRate }}%</span>
                     </div>
-                    <div class="rounded-lg bg-slate-800/80 px-3.5 py-2 text-center min-w-[105px]">
+                    <div class="min-w-[90px] px-1 py-1 text-left">
                         <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Est. Time Saved</span>
-                        <span class="text-sm font-semibold text-slate-200 font-mono-code">~{{ $devHoursSaved }} hrs</span>
+                        <span class="text-xl font-extrabold text-white font-mono-code">{{ $devHoursSaved }} hrs</span>
                     </div>
-                    <div class="rounded-lg bg-slate-800/80 px-3.5 py-2 text-center min-w-[105px]">
+                    <div class="min-w-[90px] px-1 py-1 text-left">
                         <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Duplicate Defense</span>
-                        <span class="text-sm font-semibold text-amber-400 font-mono-code">{{ $dupFiltered }} Caught</span>
+                        <span class="text-xl font-extrabold text-white font-mono-code">{{ $dupFiltered }}</span>
                     </div>
                 </div>
             </div>
@@ -229,35 +190,6 @@
                 </div>
             </section>
 
-            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
-                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
-                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
-                    @endif
-                </div>
-                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
-                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
-                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
-                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
-                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
-                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
-                </form>
-            </section>
-
             <!-- 4-Step Quick Workflow Guide for Team & Managers -->
             <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -308,16 +240,16 @@
                     <div class="flex h-16 w-16 mx-auto items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600 text-3xl mb-3">
                         🎉
                     </div>
-                    <h3 class="text-base font-extrabold text-[#0F172A]">আপনার প্রজেক্টে এখনো কোনো বাগ নেই!</h3>
+                    <h3 class="text-base font-extrabold text-[#0F172A]">There are no bugs in this project yet</h3>
                     <p class="mt-1 max-w-md mx-auto text-xs text-[#64748B] leading-relaxed">
-                        টিম মেম্বারদের যোগ করুন অথবা এআই এজেন্ট স্টুডিও থেকে সরাসরি টেস্ট বাগ সাবমিট করে অটোমেটিক ট্রায়াজ পরীক্ষা করুন।
+                        Add team members or submit a test bug from AI Triage Studio to try automated triage.
                     </p>
                     <div class="mt-5 flex items-center justify-center gap-3">
                         <a href="/add-developers" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 transition">
-                            + প্রথম টিম মেম্বার যোগ করুন
+                            + Add your first team member
                         </a>
                         <a href="/ai-agent" class="rounded-xl border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-bold text-xs px-4 py-2 transition">
-                            🤖 টেস্ট বাগ সাবমিট করুন
+                            🤖 Submit a test bug
                         </a>
                     </div>
                 </div>
@@ -381,6 +313,79 @@
                     <p class="mt-1 text-[11px] text-rose-800 font-semibold group-hover:underline">Filter critical issues →</p>
                 </a>
             </div>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
+                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
+                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
+                    @endif
+                </div>
+                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
+                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
+                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
+                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
+                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
+                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
+                </form>
+            </section>
+
+            <!-- 4-Step Quick Workflow Guide for Team & Managers -->
+            <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
+                        <span>Smart Bug Tracker · 4-step quick workflow</span>
+                    </div>
+                    <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
+                </summary>
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
+                            <span>Set up the project and codebase</span>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Create a project with a GitHub link. The agent will index the codebase file structure.</p>
+                    </a>
+
+                    <a href="/add-developers" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-purple-300 hover:bg-purple-50/30 transition shadow-2xs">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-purple-600">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
+                            <span>Team and skills</span>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Add developer skills such as Kotlin, PHP, Python, or UI so AI can recommend a suitable assignee.</p>
+                    </a>
+
+                    <a href="/ai-agent" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-sky-300 hover:bg-sky-50/30 transition shadow-2xs">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-sky-600">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-mono text-[11px] font-bold">3</span>
+                            <span>AI triage and bug files</span>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">When testers attach a screenshot or describe an error, AI checks the syntax and finds relevant GitHub file links.</p>
+                    </a>
+
+                    <a href="/workspace" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">4</span>
+                            <span>Track work on the Kanban board</span>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag cards to update status, review fix guidance, and discuss issues with your team.</p>
+                    </a>
+                </div>
+            </details>
 
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs xl:col-span-5" aria-labelledby="bug-trend-title">
