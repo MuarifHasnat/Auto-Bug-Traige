@@ -20,10 +20,15 @@
         <!-- Main Content Area -->
         <main class="min-w-0 flex-1 flex flex-col">
             <!-- Sticky Header (60px) -->
-            <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 py-3 lg:px-8">
-                <div class="ml-auto flex items-center gap-2.5">
-                    @include('components.project-switcher', ['variant' => 'header'])
-                    <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
+            <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between gap-4 border-b border-[#E2E8F0] bg-white/90 px-5 py-3 backdrop-blur-md lg:px-8">
+                <div class="min-w-0 truncate text-xs font-semibold text-slate-500"><a href="/dashboard" class="hover:text-indigo-700">Workspace</a><span class="mx-2 text-slate-300">/</span><span>{{ $currentProject?->name ?? session('project_name', 'Project') }}</span><span class="mx-2 text-slate-300">/</span><span class="text-indigo-700">Kanban Workspace</span></div>
+                <div class="ml-auto flex shrink-0 items-center gap-2.5">
+                    @if(auth()->user()->role !== 'tester')
+                        @include('components.project-switcher', ['variant' => 'header'])
+                    @else
+                        <span class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:inline-flex">● AI Agent Ready</span>
+                    @endif
+                    @if(auth()->user()->role !== 'tester')<a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>@endif
                     @include('components.profile-header')
                 </div>
             </header>
@@ -36,11 +41,15 @@
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
                 <section class="flex flex-wrap items-end justify-between gap-4" aria-labelledby="kanban-title">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-500">Workspace / {{ session('project_name', 'Project') }}</p>
-                        <h1 id="kanban-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Kanban board</h1>
+                    <div><h1 id="kanban-title" class="text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1></div>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        @if(auth()->user()->role === 'tester')
+                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
+                        @else
+                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50"><span>Show Only Assigned to Me ({{ $assignedToMeCount }})</span></button>
+                        @endif
+                        <a href="/ai-agent" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">＋ Report Bug</a>
                     </div>
-                    <a href="/ai-agent" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">⚡ Report bug</a>
                 </section>
 
                 <!-- Compact Board Filters -->
@@ -57,18 +66,18 @@
                         <select id="kanbanAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All assignees</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach</select>
                         <label class="sr-only" for="kanbanLabelFilter">Label</label>
                         <select id="kanbanLabelFilter" name="label" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All labels</option>@foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach</select>
+                        <label class="sr-only" for="kanbanIssueTypeFilter">Issue type</label>
+                        <select id="kanbanIssueTypeFilter" name="issue_type" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All issue types</option>@foreach(['Bug','Task','Story','Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach</select>
                         <label class="sr-only" for="savedFilterSelect">Saved filters</label>
                         <select id="savedFilterSelect" class="min-w-36 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">Saved filters…</option>@foreach($savedFilters as $savedFilter)<option value="{{ $savedFilter->id }}" data-filters="{{ json_encode($savedFilter->filters) }}">{{ $savedFilter->name }}</option>@endforeach</select>
                         <button type="button" id="clear-filters" class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Clear</button>
+                        <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" aria-pressed="false" class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Hide Duplicates</button>
                     </form>
                     <details class="w-full border-t border-slate-100 pt-2">
                             <summary class="w-fit cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">More filters and saved filter actions <span aria-hidden="true">⌄</span></summary>
                             <div class="mt-3 flex flex-wrap items-center gap-2.5">
                                 @if(auth()->user()->role === 'manager' && $stats['high'] > 0)<a href="/workspace?priority=High" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">🔥 Critical {{ $stats['high'] }}</a>@endif
-                                <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50">👤 Assigned to me ({{ $myAssignedCount }})</button>
-                                <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" aria-pressed="false" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100">🚫 Hide duplicates</button>
                                 <label class="sr-only" for="kanbanStatusFilter">Status</label><select id="kanbanStatusFilter" name="status" form="issue-filters" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"><option value="">All statuses</option>@foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach</select>
-                                <label class="sr-only" for="kanbanIssueTypeFilter">Issue type</label><select id="kanbanIssueTypeFilter" name="issue_type" form="issue-filters" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"><option value="">All issue types</option>@foreach(['Bug','Task','Story','Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach</select>
                                 <button type="button" id="loadSavedFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
                                 <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
                                 <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">@csrf<div id="savedFilterPayload"></div><input type="hidden" name="name" id="savedFilterName"><button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white">Save current filter</button></form>
@@ -135,6 +144,7 @@
                                              data-id="{{ $bug->id }}"
                                              data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to }}"
+                                             data-reporter-id="{{ $bug->reporter_id }}"
                                              data-duplicate="{{ $bug->is_duplicate ? 'true' : 'false' }}"
                                              draggable="true"
                                              ondragstart="handleDragStart(event, {{ $bug->id }}, '{{ $bug->status }}')"
@@ -848,11 +858,18 @@
         // Quick Toggles
         let onlyMyIssuesActive = false;
         let hideDuplicatesActive = false;
+        const myIssueFilterUsesReporter = @json(auth()->user()->role === 'tester');
+        const myIssueFilterLabel = @json(auth()->user()->role === 'tester' ? 'Reported by Me' : 'Assigned to Me');
+        const myIssueFilterCount = @json(auth()->user()->role === 'tester' ? $reportedByMeCount : $assignedToMeCount);
         function applyQuickIssueFilters() {
             document.querySelectorAll('.bug-card').forEach(card => {
                 const assignee = card.getAttribute('data-assignee');
+                const reporterId = card.getAttribute('data-reporter-id');
                 const isDuplicate = card.getAttribute('data-duplicate') === 'true';
-                card.style.display = (onlyMyIssuesActive && assignee !== @json(auth()->user()->name)) || (hideDuplicatesActive && isDuplicate) ? 'none' : '';
+                const isMine = myIssueFilterUsesReporter
+                    ? reporterId === @json((string) auth()->id())
+                    : assignee === @json(auth()->user()->name);
+                card.style.display = (onlyMyIssuesActive && !isMine) || (hideDuplicatesActive && isDuplicate) ? 'none' : '';
             });
         }
 
@@ -862,7 +879,7 @@
             btn.classList.toggle('bg-indigo-600', onlyMyIssuesActive);
             btn.classList.toggle('text-white', onlyMyIssuesActive);
             btn.setAttribute('aria-pressed', String(onlyMyIssuesActive));
-            btn.querySelector('span').textContent = `${onlyMyIssuesActive ? '👤 Showing Only Assigned to Me' : '👤 Show Only Assigned to Me'} ({{ $myAssignedCount }})`;
+            btn.querySelector('span').textContent = `${onlyMyIssuesActive ? 'Showing Only ' : 'Show Only '}${myIssueFilterLabel} (${myIssueFilterCount})`;
             applyQuickIssueFilters();
         }
 

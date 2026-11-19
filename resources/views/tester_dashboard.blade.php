@@ -13,9 +13,9 @@
     <style>
         :root { color-scheme: light; }
         body { background: #f8fafc; color: #0f172a; }
-        .qa-panel { background: linear-gradient(145deg, #ffffff, #f8fafc); border: 1px solid #e2e8f0; box-shadow: 0 14px 40px rgba(15,23,42,.06); }
+        .qa-panel { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 8px 24px rgba(15,23,42,.035); }
         .qa-muted { color: #64748b; }
-        .qa-grid { background-image: linear-gradient(rgba(100,116,139,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,.045) 1px, transparent 1px); background-size: 28px 28px; }
+        .qa-grid { background: #f5f7fb; }
         :focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
     </style>
 </head>
@@ -27,7 +27,8 @@
             <span class="text-base font-extrabold tracking-tight text-slate-900">AutoBug<span class="text-emerald-400">Triage</span></span>
         </a>
         <nav class="flex flex-1 flex-col gap-2 px-3" aria-label="Main navigation">
-            <a href="/dashboard" aria-current="page" class="flex min-h-12 items-center gap-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700"><span class="w-7 text-center text-2xl leading-none">⌂</span><span>Command Center</span></a>
+            <a href="/dashboard" aria-current="page" class="flex min-h-12 items-center gap-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700"><span class="w-7 text-center text-2xl leading-none">⌂</span><span>Dashboard</span></a>
+            <a href="{{ route('my-reports.index') }}" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">▤</span><span>My Reported Bugs</span></a>
             <a href="/workspace" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">▤</span><span>Kanban Workspace</span></a>
             <a href="/ai-agent" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">⚡</span><span>AI Triage Studio</span></a>
             <a href="/notifications" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">♧</span><span>Notifications</span></a>
@@ -40,6 +41,7 @@
             <div class="hidden h-8 w-px bg-slate-200 md:block"></div>
             <div class="hidden md:block">@include('components.project-switcher', ['variant' => 'light'])</div>
             <form action="/dashboard" method="GET" class="order-3 w-full flex-1 md:order-none md:min-w-[220px]">
+                <input type="hidden" name="status" value="{{ $statusFilter }}">
                 <label class="sr-only" for="testerSearch">Search your reports</label>
                 <div class="relative"><span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">⌕</span><input id="testerSearch" type="search" name="q" value="{{ $query }}" placeholder="Search your bug reports…" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"></div>
             </form>
@@ -52,48 +54,62 @@
         </header>
 
         <div class="qa-grid min-h-[calc(100vh-72px)] px-4 py-6 sm:px-6 xl:px-9">
-            <div class="mx-auto max-w-[1500px] space-y-6">
-                <section class="flex flex-wrap items-end justify-between gap-4">
-                    <div><p class="text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400">Quality workspace · {{ $project?->name ?? 'Project' }}</p><h1 class="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Good to see you, {{ auth()->user()->name }}</h1><p class="mt-1 text-sm qa-muted">Your reports, triage progress, and recent fixes in one place.</p></div>
-                    <a href="/ai-agent" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-200/60 transition hover:brightness-110">＋ Report a bug <span aria-hidden="true">→</span></a>
+            <div class="mx-auto max-w-[1500px] space-y-5">
+                <section class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-white px-5 py-4 shadow-sm sm:px-7">
+                    <div><p class="text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">{{ $project?->name ?? 'Project' }} · Tester workspace</p><h1 class="mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">Good day, {{ auth()->user()->name }}! Found a bug?</h1><p class="mt-1 text-sm qa-muted">Report it and the AI will find the file, suggest a fix, and route it to a developer.</p></div>
+                    <a href="/ai-agent" class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700">＋ Report Bug</a>
                 </section>
 
-                <section aria-labelledby="qa-kpi-title">
-                    <h2 id="qa-kpi-title" class="mb-3 text-xs font-bold uppercase tracking-[.16em] text-slate-400">Your QA overview</h2>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-                        <article class="qa-panel rounded-2xl p-5"><p class="text-xs font-semibold text-slate-400">Reports submitted</p><p class="mt-3 text-3xl font-extrabold text-slate-900">{{ $totalReports }}</p><p class="mt-1 text-xs text-slate-500">In this project</p></article>
-                        <article class="qa-panel rounded-2xl p-5"><p class="text-xs font-semibold text-slate-400">Still in progress</p><p class="mt-3 text-3xl font-extrabold text-indigo-700">{{ $openReports }}</p><p class="mt-1 text-xs text-slate-500">Not in a completed status</p></article>
-                        <article class="qa-panel rounded-2xl p-5"><p class="text-xs font-semibold text-slate-400">Resolved</p><p class="mt-3 text-3xl font-extrabold text-emerald-700">{{ $resolvedReports }}</p><p class="mt-1 text-xs text-slate-500">Marked complete by the team</p></article>
-                        <article class="qa-panel rounded-2xl p-5"><p class="text-xs font-semibold text-slate-400">Assigned to a developer</p><p class="mt-3 text-3xl font-extrabold text-violet-700">{{ $assignedReports }}</p><p class="mt-1 text-xs text-slate-500">{{ $highPriorityReports }} high priority</p></article>
-                    </div>
+                <section aria-label="Tester dashboard summary" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <article class="qa-panel rounded-2xl p-4 sm:p-5"><p class="text-xs font-semibold text-slate-500">Reported by me</p><p class="mt-2 text-3xl font-extrabold text-slate-900">{{ $totalReports }}</p><p class="mt-1 text-xs text-slate-500">In this project</p></article>
+                    <article class="qa-panel rounded-2xl p-4 sm:p-5"><p class="text-xs font-semibold text-slate-500">Open</p><p class="mt-2 text-3xl font-extrabold text-amber-600">{{ $openReports }}</p><p class="mt-1 text-xs text-slate-500">Still being worked on</p></article>
+                    <article class="qa-panel rounded-2xl p-4 sm:p-5"><p class="text-xs font-semibold text-slate-500">Waiting for my retest</p><p class="mt-2 text-3xl font-extrabold text-indigo-700">{{ $retestReports->count() }}</p><p class="mt-1 text-xs text-slate-500">Ready for QA verification</p></article>
+                    <article class="qa-panel rounded-2xl p-4 sm:p-5"><p class="text-xs font-semibold text-slate-500">Verified and closed</p><p class="mt-2 text-3xl font-extrabold text-emerald-700">{{ $resolvedReports }}</p><p class="mt-1 text-xs text-slate-500">Completed by the team</p></article>
                 </section>
 
-                <div class="grid grid-cols-1 gap-4 2xl:grid-cols-12">
-                    <section class="qa-panel rounded-2xl p-5 2xl:col-span-7" aria-labelledby="my-reports-title">
-                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4"><div><h2 id="my-reports-title" class="text-base font-bold text-slate-900">My bug reports</h2><p class="mt-1 text-xs qa-muted">Track status, owner, and the latest update.</p></div><span class="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700">{{ $reports->count() }} shown</span></div>
-                        <div class="space-y-2.5">
-                            @forelse($reports as $report)
-                                <a href="{{ route('bugs.show', $report->id) }}" class="block rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-                                    <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><p class="font-mono text-[10px] font-bold text-indigo-700">ABT-{{ $report->id }} <span class="mx-1 text-slate-400">·</span> {{ $report->priority }} priority</p><h3 class="mt-1 truncate text-sm font-bold text-slate-900">{{ $report->title }}</h3></div><span class="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">{{ $report->status }}</span></div>
-                                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500"><span>Developer: <strong class="font-semibold text-slate-700">{{ $report->assigned_to ?: 'Unassigned' }}</strong></span><span>{{ ($report->triage_state ?? 'complete') === 'complete' ? 'Triage complete' : 'Triage in progress' }} · {{ \Illuminate\Support\Carbon::parse($report->updated_at)->diffForHumans() }}</span></div>
-                                </a>
-                            @empty
-                                <div class="rounded-xl border border-dashed border-slate-300 px-5 py-10 text-center"><span class="text-3xl" aria-hidden="true">🧪</span><h3 class="mt-3 text-sm font-bold text-slate-900">No reports yet</h3><p class="mt-1 text-xs qa-muted">Create your first report and follow triage here.</p><a href="/ai-agent" class="mt-4 inline-flex min-h-10 items-center rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-700">Create a report</a></div>
-                            @endforelse
+                <div class="grid grid-cols-1 items-start gap-4 2xl:grid-cols-12">
+                    <section class="qa-panel min-w-0 overflow-hidden rounded-2xl 2xl:col-span-8" aria-labelledby="my-reports-title">
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                            <div><h2 id="my-reports-title" class="text-base font-bold text-slate-900">My reported bugs</h2><p class="mt-1 text-xs qa-muted">Check priority, status, AI file match, and assignee.</p></div>
+                            <form action="/dashboard" method="GET"><input type="hidden" name="q" value="{{ $query }}"><label class="sr-only" for="testerStatus">Filter reports by status</label><select id="testerStatus" name="status" onchange="this.form.submit()" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"><option value="">All statuses</option>@foreach($availableStatuses as $availableStatus)<option value="{{ $availableStatus }}" @selected($statusFilter === $availableStatus)>{{ $availableStatus }}</option>@endforeach</select></form>
                         </div>
-                        @if($totalReports > 12)<p class="mt-3 text-center text-[11px] text-slate-500">Showing the 12 most recently updated reports.</p>@endif
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[760px] text-left text-sm">
+                                <thead class="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500"><tr><th scope="col" class="px-5 py-3">Title</th><th scope="col" class="px-3 py-3">Priority</th><th scope="col" class="px-3 py-3">Status</th><th scope="col" class="px-3 py-3">File found by AI</th><th scope="col" class="px-5 py-3">Assignee</th></tr></thead>
+                                <tbody class="divide-y divide-slate-200">
+                                @forelse($reports as $report)
+                                    @php($reportTriage = json_decode($report->triage_result ?: '', true) ?: [])
+                                    @php($reportSuspectedFile = data_get($reportTriage, 'code_help.suspected_files.0', data_get($reportTriage, 'suspected_files.0')))
+                                    @php($reportFile = is_array($reportSuspectedFile) ? ($reportSuspectedFile['path'] ?? $reportSuspectedFile['file'] ?? null) : $reportSuspectedFile)
+                                    @php($reportFile = $reportFile ?: $report->source_file_path ?: $report->source_file_name)
+                                    <tr class="transition hover:bg-indigo-50/50"><th scope="row" class="max-w-[290px] px-5 py-4 font-semibold"><a href="{{ route('bugs.show', $report->id) }}" class="block truncate text-slate-900 hover:text-indigo-700">{{ $report->title }}</a><span class="mt-1 block font-mono text-[10px] font-normal text-slate-400">ABT-{{ $report->id }}</span></th><td class="whitespace-nowrap px-3 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-bold @class(['bg-rose-50 text-rose-700' => strtolower($report->priority) === 'high', 'bg-amber-50 text-amber-700' => strtolower($report->priority) === 'medium', 'bg-blue-50 text-blue-700' => strtolower($report->priority) === 'low', 'bg-slate-100 text-slate-600' => !in_array(strtolower($report->priority), ['high','medium','low'], true)])">{{ strtoupper($report->priority) }}</span></td><td class="whitespace-nowrap px-3 py-4"><span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700">{{ $report->status }}</span></td><td class="max-w-[220px] px-3 py-4"><span class="block truncate font-mono text-xs text-slate-700" title="{{ $reportFile ?: 'No file identified' }}">{{ $reportFile ?: 'Not identified yet' }}</span></td><td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $report->assigned_to ?: 'Unassigned' }}</td></tr>
+                                @empty
+                                    <tr><td colspan="5" class="px-5 py-12 text-center"><span class="text-3xl" aria-hidden="true">🧪</span><h3 class="mt-2 font-bold text-slate-900">No reports found</h3><p class="mt-1 text-xs qa-muted">Try a different search or report your first bug.</p><a href="/ai-agent" class="mt-3 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Report Bug</a></td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        @if($totalReports > 12)<p class="border-t border-slate-200 px-5 py-3 text-center text-xs text-slate-500">Showing the 12 most recently updated reports.</p>@endif
                     </section>
 
-                    <div class="space-y-4 2xl:col-span-5">
-                        <section class="qa-panel rounded-2xl p-5" aria-labelledby="quick-actions-title">
-                            <div class="mb-4 border-b border-slate-200 pb-3"><h2 id="quick-actions-title" class="text-base font-bold text-slate-900">QA actions</h2><p class="mt-1 text-xs qa-muted">Pick up where you left off.</p></div>
-                            <div class="grid gap-2.5">
-                                <a href="/ai-agent" class="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3.5 hover:bg-indigo-100"><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-lg text-indigo-700">＋</span><span><strong class="block text-xs text-slate-900">Submit a bug report</strong><span class="mt-0.5 block text-[10px] text-slate-400">Add steps, expected result, and a screenshot.</span></span><span class="ml-auto text-slate-500">→</span></a>
-                                <a href="/workspace" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-600"><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-lg text-emerald-700">▤</span><span><strong class="block text-xs text-slate-900">Browse project issues</strong><span class="mt-0.5 block text-[10px] text-slate-400">See the shared project board.</span></span><span class="ml-auto text-slate-500">→</span></a>
+                    <aside class="space-y-4 2xl:col-span-4">
+                        <section class="qa-panel rounded-2xl p-5" aria-labelledby="retest-queue-title"><div class="mb-4"><h2 id="retest-queue-title" class="text-base font-bold text-slate-900">Retest queue</h2><p class="mt-1 text-xs qa-muted">Reports in review or QA status are ready for verification.</p></div>
+                            <div class="space-y-2">
+                                @forelse($retestReports as $retestReport)
+                                    <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"><div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-800">{{ $retestReport->title }}</p><p class="mt-1 text-xs text-slate-500">{{ $retestReport->status }}</p></div><a href="{{ route('bugs.show', $retestReport->id) }}" class="shrink-0 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-700">Verify</a></div>
+                                @empty
+                                    <div class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center"><p class="text-sm font-semibold text-slate-700">Nothing to retest</p><p class="mt-1 text-xs text-slate-500">We’ll show reports here when they enter review.</p></div>
+                                @endforelse
                             </div>
                         </section>
-                        <section class="qa-panel rounded-2xl p-5" aria-labelledby="triage-help-title"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">✦</span><div><h2 id="triage-help-title" class="text-sm font-bold text-slate-900">What happens after you report?</h2><p class="mt-2 text-xs leading-relaxed qa-muted">The triage assistant checks your description for likely priority and duplicate reports, then suggests an owner. Your report status and developer assignment appear in the list.</p><p class="mt-2 text-[10px] text-slate-500">Suggestions can be reviewed by your project team.</p></div></div></section>
-                    </div>
+                        <section class="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5" aria-labelledby="latest-triage-title"><h2 id="latest-triage-title" class="text-base font-bold text-slate-900">Last AI triage result</h2>
+                            @if($latestTriageBug)
+                                <p class="mt-3 text-sm text-slate-600">Category: <strong class="font-semibold text-slate-800">{{ $latestTriageBug->detected_feature ?: data_get($latestTriage, 'feature', 'General') }}</strong></p><p class="mt-1 text-sm text-slate-600">File: <span class="font-mono text-xs text-slate-800">{{ $latestTriageFile ?: ($latestTriageBug->source_file_path ?: $latestTriageBug->source_file_name) ?: 'No file identified' }}</span></p><p class="mt-1 text-sm text-slate-600">Priority: <strong class="font-semibold text-slate-800">{{ data_get($latestTriage, 'priority', 'Not available') }}</strong></p><a href="{{ route('bugs.show', $latestTriageBug->id) }}" class="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-900">Open triage details →</a>
+                            @else
+                                <p class="mt-3 text-sm text-slate-600">Your AI analysis will appear here after you submit a bug report.</p><a href="/ai-agent" class="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-900">Submit a bug report →</a>
+                            @endif
+                        </section>
+                    </aside>
                 </div>
             </div>
         </div>

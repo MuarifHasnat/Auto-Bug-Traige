@@ -480,6 +480,8 @@ class BugController extends Controller
         if (!empty($filters['label'])) $query->whereJsonContains('labels', $filters['label']);
 
         $bugs = $query->get();
+        $reportedByMeCount = DB::table('bugs')->where('project_id', $projectId)->where('reporter_id', Auth::id())->count();
+        $assignedToMeCount = DB::table('bugs')->where('project_id', $projectId)->where('assigned_to', Auth::user()->name)->count();
         $doneStatuses = $workflowStatuses->where('is_done', true)->pluck('name')->all();
         $activeStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
         $stats = [
@@ -534,11 +536,58 @@ class BugController extends Controller
         $currentProject = $projects->firstWhere('id', $projectId);
         $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
-        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'clarifications', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus') + [
+        return view('workspace', compact('developers', 'bugs', 'stats', 'assignedBugs', 'projects', 'bugActivity', 'bugComments', 'clarifications', 'watchingBugIds', 'projectMembers', 'bugMetrics', 'filters', 'availableAssignees', 'availableLabels', 'savedFilters', 'workflowStatuses', 'transitionsByStatus', 'reportedByMeCount', 'assignedToMeCount') + [
             'currentProjectId' => $projectId,
             'currentProject' => $currentProject,
             'projectGithubRepo' => $projectGithubRepo,
         ]);
+    }
+
+    public function myReportedBugsPage(Request $request): View
+    {
+        abort_unless(Auth::user()?->role === 'tester', 403);
+
+        $projectId = $this->currentProjectId();
+        $projects = $this->accessibleProjects();
+        $project = $projects->firstWhere('id', $projectId);
+        $workflowStatuses = $this->ensureProjectWorkflow($projectId);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:200'],
+            'status' => ['nullable', Rule::in($workflowStatuses->pluck('name')->all())],
+            'priority' => ['nullable', Rule::in(['High', 'Medium', 'Low'])],
+            'date' => ['nullable', 'date'],
+            'selected' => ['nullable', 'integer'],
+        ]);
+
+        $reportsQuery = DB::table('bugs')->where('project_id', $projectId)->where('reporter_id', Auth::id());
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $reportsQuery->where(fn ($builder) => $builder->where('title', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%"));
+        }
+        if (!empty($filters['status'])) $reportsQuery->where('status', $filters['status']);
+        if (!empty($filters['priority'])) $reportsQuery->where('priority', $filters['priority']);
+        if (!empty($filters['date'])) $reportsQuery->whereDate('created_at', $filters['date']);
+
+        $reports = (clone $reportsQuery)->orderByDesc('created_at')->orderByDesc('id')->limit(50)
+            ->get(['id', 'title', 'description', 'status', 'priority', 'assigned_to', 'source_file_path', 'source_file_name', 'detected_feature', 'triage_result', 'created_at']);
+        $selectedReport = $reports->firstWhere('id', (int) ($filters['selected'] ?? 0)) ?: $reports->first();
+        $selectedTriage = json_decode($selectedReport?->triage_result ?: '', true) ?: [];
+        $selectedFiles = data_get($selectedTriage, 'code_help.suspected_files', data_get($selectedTriage, 'suspected_files', []));
+        $selectedFile = is_array($selectedFiles) && isset($selectedFiles[0])
+            ? (is_array($selectedFiles[0]) ? ($selectedFiles[0]['path'] ?? $selectedFiles[0]['file'] ?? null) : $selectedFiles[0])
+            : null;
+        $selectedDiagnosis = data_get($selectedTriage, 'code_help.llm_analysis.root_cause')
+            ?: data_get($selectedTriage, 'code_help.fix_suggestions.0.detail')
+            ?: data_get($selectedTriage, 'code_help.diagnostics.0.message');
+        $selectedComments = $selectedReport
+            ? DB::table('bug_comments')->where('project_id', $projectId)->where('bug_id', $selectedReport->id)->orderByDesc('created_at')->limit(4)->get()
+            : collect();
+
+        return view('my_reported_bugs', compact(
+            'projects', 'project', 'projectId', 'workflowStatuses', 'filters', 'reports',
+            'selectedReport', 'selectedTriage', 'selectedFile', 'selectedDiagnosis', 'selectedComments'
+        ) + ['currentProjectId' => $projectId]);
     }
 
     public function showBug(int $id): View
@@ -663,23 +712,40 @@ class BugController extends Controller
             $project = DB::table('projects')->where('id', $projectId)->first();
             $workflow = $this->ensureProjectWorkflow($projectId);
             $doneStatuses = $workflow->where('is_done', true)->pluck('name')->all();
-            $searchFilters = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+            $availableStatuses = $workflow->pluck('name')->all();
+            $searchFilters = $request->validate([
+                'q' => ['nullable', 'string', 'max:100'],
+                'status' => ['nullable', 'string', 'max:80'],
+            ]);
             $query = trim($searchFilters['q'] ?? '');
+            $statusFilter = $searchFilters['status'] ?? '';
             $reportsQuery = DB::table('bugs')->where('project_id', $projectId)->where('reporter_id', Auth::id());
             $totalReports = (clone $reportsQuery)->count();
             $openReports = (clone $reportsQuery)->whereNotIn('status', $doneStatuses)->count();
             $resolvedReports = (clone $reportsQuery)->whereIn('status', $doneStatuses)->count();
             $highPriorityReports = (clone $reportsQuery)->where('priority', 'High')->count();
             $assignedReports = (clone $reportsQuery)->whereNotNull('assigned_to')->where('assigned_to', '!=', 'Unassigned')->count();
+            $retestStatuses = collect($availableStatuses)->filter(fn ($status) => preg_match('/review|retest|qa|verify|testing/i', $status))->values()->all();
+            $retestReports = (clone $reportsQuery)->when($retestStatuses, fn ($builder) => $builder->whereIn('status', $retestStatuses), fn ($builder) => $builder->whereRaw('1 = 0'))
+                ->orderByDesc('updated_at')->limit(5)->get(['id', 'title', 'status']);
             if ($query !== '') {
                 $reportsQuery->where(function ($search) use ($query) {
                     $search->where('title', 'like', '%'.$query.'%')->orWhere('description', 'like', '%'.$query.'%');
                 });
             }
+            if ($statusFilter !== '' && in_array($statusFilter, $availableStatuses, true)) {
+                $reportsQuery->where('status', $statusFilter);
+            }
             $reports = $reportsQuery->orderByDesc('updated_at')->orderByDesc('id')->limit(12)
-                ->get(['id', 'title', 'description', 'status', 'priority', 'assigned_to', 'triage_state', 'updated_at']);
+                ->get(['id', 'title', 'description', 'status', 'priority', 'assigned_to', 'triage_state', 'source_file_path', 'source_file_name', 'detected_feature', 'triage_result', 'updated_at']);
+            $latestTriageBug = (clone $reportsQuery)->whereNotNull('triage_result')->orderByDesc('updated_at')->first(['id', 'triage_result', 'detected_feature']);
+            $latestTriage = json_decode($latestTriageBug?->triage_result ?: '', true) ?: [];
+            $latestTriageFiles = data_get($latestTriage, 'code_help.suspected_files', data_get($latestTriage, 'suspected_files', []));
+            $latestTriageFile = is_array($latestTriageFiles) && isset($latestTriageFiles[0])
+                ? (is_array($latestTriageFiles[0]) ? ($latestTriageFiles[0]['path'] ?? $latestTriageFiles[0]['file'] ?? null) : $latestTriageFiles[0])
+                : null;
 
-            return view('tester_dashboard', compact('projects', 'project', 'projectId', 'totalReports', 'openReports', 'resolvedReports', 'highPriorityReports', 'assignedReports', 'reports', 'query') + [
+            return view('tester_dashboard', compact('projects', 'project', 'projectId', 'totalReports', 'openReports', 'resolvedReports', 'highPriorityReports', 'assignedReports', 'reports', 'query', 'statusFilter', 'availableStatuses', 'retestReports', 'latestTriageBug', 'latestTriage', 'latestTriageFile') + [
                 'currentProjectId' => $projectId,
             ]);
         }
