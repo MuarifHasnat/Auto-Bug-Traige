@@ -1449,6 +1449,7 @@ class BugController extends Controller
         if ($notificationType !== 'all') {
             $events = match ($notificationType) {
                 'mention' => ['mention', 'mentioned', 'comment_mention'],
+                'comment' => ['comment', 'comment_added', 'comment_mention'],
                 'assignment' => ['assigned', 'assignment_changed', 'reassigned'],
                 'status' => ['status_changed'],
                 default => [],
@@ -1569,7 +1570,7 @@ class BugController extends Controller
 
         $transitionPairs = [];
         foreach (preg_split('/\R/', $data['transitions'] ?? '') as $line) {
-            $line = trim($line);
+            $line = trim(str_replace('→', '->', $line));
             if ($line === '') continue;
             $pair = preg_split('/\s*->\s*/', $line);
             if (count($pair) !== 2 || !in_array($pair[0], $statuses, true) || !in_array($pair[1], $statuses, true) || $pair[0] === $pair[1]) {

@@ -26,7 +26,7 @@
         </header>
 
         <div class="mx-auto max-w-5xl px-5 py-8 lg:px-8">
-            <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-extrabold">Notifications</h1>
                     <p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes.</p>
@@ -37,16 +37,43 @@
             </div>
 
             <nav class="mb-4 flex flex-wrap gap-2" aria-label="Filter notifications">
-                @foreach(['all' => 'All', 'mention' => 'Mentions', 'assignment' => 'Assignments', 'status' => 'Status changes'] as $type => $label)
+                @php
+                    $notificationFilters = auth()->user()->role === 'tester'
+                        ? ['all' => 'All', 'mention' => 'Mentions', 'comment' => 'Comments', 'status' => 'Status changes']
+                        : ['all' => 'All', 'mention' => 'Mentions', 'assignment' => 'Assignments', 'status' => 'Status changes'];
+                @endphp
+                @foreach($notificationFilters as $type => $label)
                     <a href="{{ route('notifications.index', $type === 'all' ? [] : ['type' => $type], false) }}" @if($notificationType === $type) aria-current="page" @endif class="rounded-xl border px-4 py-2 text-xs font-semibold transition {{ $notificationType === $type ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
                 @endforeach
             </nav>
 
             <div class="space-y-3">
-                @forelse($notifications as $notification)
+                @if($notifications->isNotEmpty())
+                @foreach($notifications as $notification)
                     @php
                         $data = $notification->data;
+                        $event = strtolower((string) ($data['event'] ?? ''));
+                        $notificationLabel = match (true) {
+                            str_contains($event, 'mention') => 'Mention',
+                            str_contains($event, 'comment') => 'Comment',
+                            in_array($event, ['assigned', 'assignment_changed', 'reassigned'], true) => 'Assigned',
+                            $event === 'status_changed' => 'Retest',
+                            in_array($event, ['ai_triage', 'triaged', 'bug_created'], true) => 'AI',
+                            default => 'Update',
+                        };
                     @endphp
+                    @if(auth()->user()->role === 'tester')
+                    <article class="rounded-2xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-white' }} p-4 shadow-sm">
+                        <a href="{{ route('notifications.open', $notification->id, false) }}" class="flex items-center gap-3 sm:gap-4">
+                            <span class="inline-flex w-24 shrink-0 justify-center rounded-full px-3 py-1 text-xs font-medium {{ $notificationLabel === 'Retest' ? 'bg-amber-100 text-amber-800' : ($notificationLabel === 'Assigned' ? 'bg-emerald-50 text-emerald-800' : 'bg-indigo-50 text-indigo-700') }}">{{ $notificationLabel }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-center gap-2"><span class="truncate text-sm font-bold text-slate-900">{{ $data['title'] ?? 'Bug update' }}</span>@unless($notification->read_at)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-600" aria-label="Unread"></span>@endunless</span>
+                                <span class="mt-0.5 block truncate text-sm text-slate-600">{{ $data['message'] ?? '' }}</span>
+                            </span>
+                            <time class="shrink-0 text-xs text-slate-500">{{ $notification->created_at->diffForHumans() }}</time>
+                        </a>
+                    </article>
+                    @else
                     <article class="rounded-2xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50/60' }} p-4 shadow-sm">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
@@ -60,9 +87,11 @@
                             </div>
                         </div>
                     </article>
-                @empty
+                    @endif
+                @endforeach
+                @else
                     <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center" role="status"><p class="text-lg font-bold">You’re all caught up</p><p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes will appear here.</p></div>
-                @endforelse
+                @endif
             </div>
             <div class="mt-6">{{ $notifications->links() }}</div>
         </div>

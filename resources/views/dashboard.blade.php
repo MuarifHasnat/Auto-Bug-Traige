@@ -34,6 +34,7 @@
             <form id="dashboardQuickSearchForm" action="/workspace" method="GET" class="hidden"></form>
 
             <div class="flex items-center gap-3">
+                <span class="hidden rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 lg:inline-flex">● Python Triage Agent: Ready</span>
                 <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
                 @include('components.profile-header')
             </div>
@@ -41,10 +42,11 @@
 
         <!-- Command Center Body -->
         <div class="flex-1 mx-auto w-full max-w-7xl px-5 py-6 lg:px-8 space-y-6">
-            <section class="flex flex-wrap items-center justify-between gap-4" aria-labelledby="command-center-title">
+            <section class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs" aria-labelledby="command-center-title">
                 <div>
                     <p class="text-xs font-semibold text-slate-500">{{ session('project_name', 'Project') }} / Command Center</p>
-                    <h1 id="command-center-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Good day, {{ auth()->user()->name }}</h1>
+                    <h1 id="command-center-title" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Good day, {{ auth()->user()->name }}! All project queues are healthy and under control.</h1>
+                    <p class="mt-1 text-xs text-slate-600">Automated AST parsing and skill-based developer routing active across {{ $developers->count() }} profiles.</p>
                 </div>
                 <a href="/workspace" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">Open Kanban board <span aria-hidden="true">→</span></a>
             </section>
@@ -57,10 +59,10 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-sm font-semibold text-white">AI triage impact</h3>
+                            <h3 class="text-sm font-semibold text-white">Autonomous AI Triage Efficiency &amp; Impact</h3>
                             <span class="rounded-md bg-emerald-500/10 text-emerald-400 px-2 py-0.5 text-[10px] font-mono-code font-medium">Active Engine</span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-0.5">Categorizes bugs, finds likely files, and recommends a developer.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Automated NLP symptom categorization, GitHub culprit localization, and workload-aware developer dispatch.</p>
                     </div>
                 </div>
 
@@ -86,108 +88,33 @@
                 </div>
             </div>
 
-            <!-- AI Agent 5-Engine Execution Matrix (Crystal Clear Architecture Guide) -->
-            <section class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/40 p-4 sm:p-5 shadow-xs">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-indigo-100/80 pb-3">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-xs">
-                            🧠
-                        </span>
-                        <div>
-                            <h2 class="text-sm font-extrabold text-[#0F172A] flex items-center gap-2">
-                                <span>AI Agent Forensic Architecture</span>
-                                <span class="rounded bg-indigo-100 text-indigo-700 px-2 py-0.5 text-[9px] font-mono-code font-bold">5 Autonomous Modules</span>
-                            </h2>
-                            <p class="text-xs text-[#64748B]">How incoming bug reports are autonomously investigated, located in code, and assigned:</p>
-                        </div>
-                    </div>
-                    <button type="button" onclick="toggleAgentFlow()" id="btnToggleAgentFlow" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition shadow-2xs flex items-center gap-1.5">
-                        <span id="agentFlowIcon">👁️</span>
-                        <span id="agentFlowText">View Visual Pipeline Flow</span>
-                    </button>
+            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
+                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
+                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
+                    @endif
                 </div>
-
-                <!-- 5 Modules Status Grid -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
-                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-900 flex items-center gap-1">📸 Vision OCR</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 leading-snug">Groq Llama 3.2 Vision parses crash screens & extracts stack traces.</p>
-                        <span class="text-[9px] font-mono-code text-indigo-600 font-bold block pt-1">No code required</span>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-900 flex items-center gap-1">🐙 GitHub Tree</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 leading-snug">Scans any branch (<code class="font-mono text-[9px]">main</code>, <code class="font-mono text-[9px]">dev</code>) to isolate culprit file & line.</p>
-                        <span class="text-[9px] font-mono-code text-sky-600 font-bold block pt-1">Zero rate limits</span>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-900 flex items-center gap-1">⚡ AST Parser</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 leading-snug">Validates code syntax for Python, PHP, JS, Kotlin, and SQL.</p>
-                        <span class="text-[9px] font-mono-code text-purple-600 font-bold block pt-1">AST Diagnostics</span>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-900 flex items-center gap-1">🔍 Vector Sim</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 leading-snug">TF-IDF Cosine similarity prevents duplicate tickets automatically.</p>
-                        <span class="text-[9px] font-mono-code text-amber-600 font-bold block pt-1">90%+ match alert</span>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-900 flex items-center gap-1">👤 Dev Router</span>
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 leading-snug">Taxonomy match + current workload balances dev assignments.</p>
-                        <span class="text-[9px] font-mono-code text-emerald-600 font-bold block pt-1">Optimal Capacity</span>
-                    </div>
-                </div>
-
-                <!-- Expandable Visual Flowchart Banner -->
-                <div id="agentVisualFlowchart" class="hidden mt-3 pt-3 border-t border-indigo-100">
-                    <div class="rounded-xl bg-slate-950 p-3.5 text-white font-mono-code text-[11px] space-y-2">
-                        <div class="flex items-center justify-between text-indigo-400 font-bold pb-1 border-b border-white/10 text-xs">
-                            <span>⚡ END-TO-END AUTONOMOUS AGENT PIPELINE FLOW</span>
-                            <span class="text-emerald-400">Average Latency: ~2.1s</span>
-                        </div>
-                        <div class="flex flex-wrap items-center justify-between gap-2 py-2 text-slate-300">
-                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
-                                <span>1. Ingest Bug</span>
-                            </div>
-                            <span class="text-indigo-400">➔</span>
-                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
-                                <span>2. Groq Vision OCR</span>
-                            </div>
-                            <span class="text-indigo-400">➔</span>
-                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
-                                <span>3. GitHub Culprit Locator</span>
-                            </div>
-                            <span class="text-indigo-400">➔</span>
-                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
-                                <span>4. TF-IDF Dedupe</span>
-                            </div>
-                            <span class="text-indigo-400">➔</span>
-                            <div class="flex items-center gap-1.5 p-1.5 rounded bg-white/5 border border-white/10">
-                                <span>5. Dev Assignment & Fix</span>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-slate-400 font-sans leading-relaxed">
-                            Every bug submitted through the AI Workbench runs through this 5-stage explainable pipeline. Developers receive direct GitHub code permalinks and suggested code fixes directly on their Kanban cards.
-                        </p>
-                    </div>
-                </div>
+                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
+                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
+                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
+                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
+                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
+                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
+                    </select>
+                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
+                </form>
             </section>
 
             <!-- 4-Step Quick Workflow Guide for Team & Managers -->
@@ -195,7 +122,7 @@
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <div class="flex items-center gap-2">
                         <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
-                        <span>Smart Bug Tracker · দ্রুত কাজের ৪টি ধাপ (Quick Workflow)</span>
+                        <span>Smart Bug Tracker · 4-step quick workflow</span>
                     </div>
                     <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
                 </summary>
@@ -203,33 +130,33 @@
                     <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
-                            <span>প্রজেক্ট ও কোডবেস সেটআপ</span>
+                            <span>Set up the project and codebase</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">GitHub লিঙ্ক দিয়ে প্রজেক্ট তৈরি করুন। এজেন্ট স্বয়ংক্রিয়ভাবে কোডবেসের ফাইল স্ট্রাকচার ইনডেক্স করবে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Create a project with a GitHub link. The agent will index the codebase file structure.</p>
                     </a>
 
                     <a href="/add-developers" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-purple-300 hover:bg-purple-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-purple-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
-                            <span>টিম ও স্কিল ম্যাট্রিক্স</span>
+                            <span>Team and skills</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">ডেভেলপারদের স্কিল ট্যাগ (Kotlin, PHP, Python, UI) দিন যাতে AI বাগ অনুযায়ী সেরা ব্যক্তিকে অ্যাসাইন করে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Add developer skills such as Kotlin, PHP, Python, or UI so AI can recommend a suitable assignee.</p>
                     </a>
 
                     <a href="/ai-agent" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-sky-300 hover:bg-sky-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-sky-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-mono text-[11px] font-bold">3</span>
-                            <span>AI ট্রায়াজ ও বাগ ফাইল</span>
+                            <span>AI triage and bug files</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">টেস্টার স্ক্রিনশট বা এরর বিবরণ দিলে AI এজেন্ট সিনট্যাক্স অ্যানালাইসিস করে গিটহাব ফাইল লিংক বের করবে।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">When testers attach a screenshot or describe an error, AI checks the syntax and finds relevant GitHub file links.</p>
                     </a>
 
                     <a href="/workspace" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600">
                             <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">4</span>
-                            <span>কানবান ড্র্যাগ & ড্রপ ট্র্যাকিং</span>
+                            <span>Track work on the Kanban board</span>
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">কানবান বোর্ডে কার্ড ড্র্যাগ করে স্ট্যাটাস চেঞ্জ করুন, ফিক্স প্রিভিউ দেখুন এবং টিম আলোচনা চালান।</p>
+                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag cards to update status, review fix guidance, and discuss issues with your team.</p>
                     </a>
                 </div>
             </details>
@@ -313,79 +240,6 @@
                     <p class="mt-1 text-[11px] text-rose-800 font-semibold group-hover:underline">Filter critical issues →</p>
                 </a>
             </div>
-
-            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
-                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
-                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
-                    @endif
-                </div>
-                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
-                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
-                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
-                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
-                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
-                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
-                </form>
-            </section>
-
-            <!-- 4-Step Quick Workflow Guide for Team & Managers -->
-            <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
-                        <span>Smart Bug Tracker · 4-step quick workflow</span>
-                    </div>
-                    <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
-                </summary>
-                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
-                            <span>Set up the project and codebase</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Create a project with a GitHub link. The agent will index the codebase file structure.</p>
-                    </a>
-
-                    <a href="/add-developers" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-purple-300 hover:bg-purple-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-purple-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
-                            <span>Team and skills</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Add developer skills such as Kotlin, PHP, Python, or UI so AI can recommend a suitable assignee.</p>
-                    </a>
-
-                    <a href="/ai-agent" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-sky-300 hover:bg-sky-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-sky-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-mono text-[11px] font-bold">3</span>
-                            <span>AI triage and bug files</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">When testers attach a screenshot or describe an error, AI checks the syntax and finds relevant GitHub file links.</p>
-                    </a>
-
-                    <a href="/workspace" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">4</span>
-                            <span>Track work on the Kanban board</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag cards to update status, review fix guidance, and discuss issues with your team.</p>
-                    </a>
-                </div>
-            </details>
 
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs xl:col-span-5" aria-labelledby="bug-trend-title">

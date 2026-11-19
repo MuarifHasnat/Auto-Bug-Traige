@@ -19,12 +19,13 @@
                     ← Dashboard
                 </a>
                 <div class="flex items-center gap-2">
-                    <span class="rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-bold text-indigo-700">
-                        📁 Project: {{ session('project_name', 'Software Project') }}
+                    <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
+                        Project: {{ session('project_name', 'Software Project') }}
                     </span>
-                    <span class="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-mono-code font-bold text-slate-600">
+                    <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-mono-code font-semibold text-indigo-700">
                         Step 2 / 3: Skill Matrix
                     </span>
+                    <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Projects {{ $projects->count() }} · {{ session('project_name', 'Software Project') }}</span>
                     @include('components.project-switcher', ['variant' => 'light'])
                 </div>
             </div>
@@ -36,7 +37,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                     </svg>
                 </a>
-                @include('components.profile-header')
+                <form action="/logout" method="POST" class="m-0">
+                    @csrf
+                    <button type="submit" class="rounded-xl border border-rose-200 px-3.5 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Log out</button>
+                </form>
             </div>
         </div>
 

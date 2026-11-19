@@ -61,7 +61,8 @@
                 $studioFixes = $studioCodeHelp['fix_suggestions'] ?? $studioCodeHelp['suggestions'] ?? [];
             @endphp
 
-            <!-- AI Triage Studio overview, styled after the supplied reference -->
+            @if(auth()->user()->role !== 'tester')
+            <!-- Project overview for managers and developers -->
             <section class="space-y-5" aria-labelledby="studio-title">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -143,13 +144,20 @@
                     </section>
                 </div>
             </section>
+            @endif
 
-            <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" @if(session('ai_result') || (isset($errors) && $errors->any())) open @endif>
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-1 text-sm font-bold text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
+            <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm {{ auth()->user()->role === 'tester' ? 'border-0 bg-transparent p-0 shadow-none' : '' }}" @if(auth()->user()->role === 'tester' || session('ai_result') || (isset($errors) && $errors->any())) open @endif>
+                <summary class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'flex' }} cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-1 text-sm font-bold text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
                     <span>Report and full AI analysis</span><span class="text-xs font-semibold text-indigo-600 group-open:hidden">Open workspace ↓</span><span class="hidden text-xs font-semibold text-indigo-600 group-open:inline">Close workspace ↑</span>
                 </summary>
                 <div class="mt-5 space-y-6">
             <!-- Header Title -->
+            @if(auth()->user()->role === 'tester')
+            <div class="mb-5">
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">AI Triage Studio</h1>
+                <p class="mt-1 text-sm text-slate-600">Describe the bug. The AI categorizes it, finds the file and assigns a developer.</p>
+            </div>
+            @else
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <div class="flex items-center gap-2">
@@ -164,6 +172,7 @@
                     Mode: {{ ucfirst(auth()->user()->role) }} Console
                 </span>
             </div>
+            @endif
 
             @if(session('success'))
                 <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800 flex items-center gap-2.5 shadow-xs">
@@ -244,7 +253,8 @@
                     </div>
                 </div>
             @else
-                <!-- Friendly 3-Step Process Stepper for Users & Testers -->
+                @if(auth()->user()->role !== 'tester')
+                <!-- Friendly 3-Step Process Stepper -->
                 <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-sky-50/70 p-4 shadow-xs">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
@@ -277,22 +287,23 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 <!-- Split-Screen IDE Workbench: 45% Left / 55% Right -->
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                 
                 <!-- Left Panel (45% / col-span-5): Tester Bug Input Console with 1-Click Templates & Paste Support -->
-                <section class="lg:col-span-5 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+                <section class="{{ auth()->user()->role === 'tester' ? 'lg:col-span-8 rounded-2xl' : 'lg:col-span-5 rounded-3xl' }} border border-[#E2E8F0] bg-white p-5 shadow-sm">
                     <div class="border-b border-[#E2E8F0] pb-4 mb-4">
-                        <h2 class="text-base font-bold text-[#0F172A]">Submit New Bug for AI Triage</h2>
-                        <p class="text-xs text-[#64748B] mt-0.5">Fill out report details or attach crash snippets for AST diagnosis.</p>
+                        <h2 class="text-base font-bold text-[#0F172A]">{{ auth()->user()->role === 'tester' ? 'Report a bug' : 'Submit New Bug for AI Triage' }}</h2>
+                        <p class="text-xs text-[#64748B] mt-0.5">{{ auth()->user()->role === 'tester' ? 'Add what you observed and include a screenshot if it helps.' : 'Fill out report details or attach crash snippets for AST diagnosis.' }}</p>
                     </div>
 
                     <form id="triageForm" action="/api/bugs/store" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="handleTriageSubmit(event)">
                         @csrf
                         <div>
-                            <label class="block text-xs font-bold text-[#0F172A] mb-1">Issue Summary / Title</label>
-                            <input id="bugTitle" name="title" required maxlength="200" placeholder="e.g. ZeroDivisionError in invoice calculation logic" 
+                            <label class="block text-xs font-bold text-[#0F172A] mb-1">{{ auth()->user()->role === 'tester' ? 'Bug title' : 'Issue Summary / Title' }}</label>
+                            <input id="bugTitle" name="title" required maxlength="200" placeholder="{{ auth()->user()->role === 'tester' ? 'e.g. App crashes when I log in' : 'e.g. ZeroDivisionError in invoice calculation logic' }}"
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"
                                    oninput="checkDuplicateTitle(this.value)">
                             <div id="duplicateWarning" class="hidden mt-2 rounded-xl border border-amber-300 bg-amber-50/95 p-2.5 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
@@ -305,18 +316,18 @@
                         </div>
 
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <label class="block text-xs font-bold text-[#0F172A]">Issue Type
+                            <label class="block text-xs font-bold text-[#0F172A] sm:col-span-2">Issue Type
                                 <select name="issue_type" required class="mt-1.5 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-medium">
                                     <option value="Bug">Bug</option><option value="Task">Task</option><option value="Story">Story</option><option value="Improvement">Improvement</option>
                                 </select>
                             </label>
-                            <label class="block text-xs font-bold text-[#0F172A]">Labels <span class="font-normal text-slate-400">(comma-separated)</span>
+                            <label class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'block' }} text-xs font-bold text-[#0F172A]">Labels <span class="font-normal text-slate-400">(comma-separated)</span>
                                 <input name="labels" maxlength="500" placeholder="backend, checkout, urgent" class="mt-1.5 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs font-medium">
                             </label>
                         </div>
 
                         <!-- GitHub Repository Target (Auto-filled from project, editable by user) -->
-                        <div>
+                        <div class="{{ auth()->user()->role === 'tester' ? 'hidden' : '' }}">
                             <div class="flex items-center justify-between mb-1">
                                 <label class="block text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
                                     <span>🐙</span>
@@ -356,9 +367,18 @@
                                     <li class="flex items-center gap-2"><span class="step-number flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">1</span><input id="reproductionStep1" name="reproduction_steps[]" required maxlength="500" placeholder="e.g. Open the cart and select Checkout" class="reproduction-step min-w-0 flex-1 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs focus:border-indigo-600 focus:bg-white focus:outline-none"><button type="button" onclick="removeReproductionStep(this)" aria-label="Remove step 1" class="rounded-lg px-2 py-1 text-xs font-bold text-slate-400 hover:bg-rose-50 hover:text-rose-600">×</button></li>
                                 </ol>
                             </div>
-                            <label for="expectedResult" class="block text-xs font-bold text-[#0F172A]">What did you expect?</label>
-                            <textarea id="expectedResult" name="expected_result" required rows="2" maxlength="2000" placeholder="Describe what should have happened." class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"></textarea>
+                            <div class="{{ auth()->user()->role === 'tester' ? 'hidden' : '' }}">
+                                <label for="expectedResult" class="block text-xs font-bold text-[#0F172A]">What did you expect?</label>
+                                <textarea id="expectedResult" name="expected_result" rows="2" maxlength="2000" placeholder="Describe what should have happened." class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"></textarea>
+                            </div>
                         </div>
+
+                        @if(auth()->user()->role === 'tester')
+                            <div>
+                                <label for="testerStackTrace" class="mb-1 block text-xs font-bold text-[#0F172A]">Stack trace (optional)</label>
+                                <textarea id="testerStackTrace" name="code_snippet" rows="3" placeholder="Paste the error message or stack trace here" class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 font-mono text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"></textarea>
+                            </div>
+                        @endif
 
                         <!-- Full-Width Screenshot Dropzone with Live Preview (Paste & Upload) -->
                         <div>
@@ -387,7 +407,7 @@
                         </div>
 
                         <!-- Real-World Black-Box QA Notice -->
-                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 text-[11px] text-indigo-950 flex items-start gap-2.5">
+                        <div class="{{ auth()->user()->role === 'tester' ? 'hidden' : '' }} rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 text-[11px] text-indigo-950 flex items-start gap-2.5">
                             <span class="text-base shrink-0">💡</span>
                             <span class="leading-relaxed">
                                 <b>Black-Box QA Mode:</b> Testers do not need code access. Submit natural language symptoms and screenshots—the AI Agent's NLP engine will determine the module, severity, duplicate status, and assign the best engineer.
@@ -395,7 +415,7 @@
                         </div>
 
                         <!-- Optional Source Code or File Upload (.kt, .py, .java, etc.) -->
-                        <details class="group rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 transition">
+                        <details class="{{ auth()->user()->role === 'tester' ? 'hidden' : '' }} group rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 transition">
                             <summary class="flex cursor-pointer items-center justify-between text-xs font-bold text-slate-700 hover:text-indigo-600 select-none">
                                 <span class="flex items-center gap-2">
                                     <span class="text-sm">💻</span>
@@ -423,10 +443,12 @@
                                                class="mt-1 block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                                     </label>
                                 </div>
+                                @if(auth()->user()->role !== 'tester')
                                 <div>
                                     <label class="block text-[11px] font-bold text-[#0F172A] mb-1">Paste Code Snippet or Stack Trace</label>
                                     <textarea name="code_snippet" rows="3" placeholder="fun processPayment(order: Order) { ... }" class="w-full rounded-xl border border-slate-300 bg-white p-2 text-xs font-mono-code text-slate-800 outline-none focus:border-indigo-600"></textarea>
                                 </div>
+                                @endif
                             </div>
                         </details>
 
@@ -442,7 +464,34 @@
                 </section>
 
                 @if(auth()->user()->role === 'tester')
-                    <section id="myReportsSection" class="lg:col-span-5 rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm" aria-labelledby="my-reports-title">
+                    @php
+                        $previewData = is_array($triageResult ?? null) ? $triageResult : [];
+                        $previewFiles = $previewData['code_help']['suspected_files'] ?? $previewData['suspected_files'] ?? $studioFiles ?? [];
+                        $previewFile = collect($previewFiles)->first();
+                        $previewFilePath = is_array($previewFile) ? ($previewFile['path'] ?? null) : $previewFile;
+                        $previewFeature = $previewData['detected_feature'] ?? $previewData['feature'] ?? ($studioSelected->detected_feature ?? null);
+                        $previewAssignee = $previewData['assigned_to'] ?? ($studioSelected->assigned_to ?? null);
+                        $previewDuplicate = $previewData['duplicate'] ?? $previewData['is_duplicate'] ?? null;
+                        $previewPriority = $previewData['priority'] ?? ($studioSelected->priority ?? null);
+                    @endphp
+                    <aside class="lg:col-span-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5" aria-labelledby="ai-preview-title">
+                        <h2 id="ai-preview-title" class="text-base font-bold text-slate-900">AI analysis preview</h2>
+                        <span class="mt-2 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Python Triage Agent: Ready</span>
+                        <dl class="mt-4 space-y-3 text-sm">
+                            <div><dt class="font-bold text-slate-900">Category</dt><dd class="mt-1 text-slate-600">{{ $previewFeature ?: 'Detected after you submit' }}</dd></div>
+                            <div><dt class="font-bold text-slate-900">Severity</dt><dd class="mt-1 text-slate-600">{{ $previewPriority ?: 'Classified by the AI after submission' }}</dd></div>
+                            <div><dt class="font-bold text-slate-900">Culprit file</dt><dd class="mt-1 break-all text-slate-600">{{ $previewFilePath ?: (!empty($projectGithubRepo) ? 'Will be located from the GitHub index' : 'Add a repository link to locate code') }}</dd></div>
+                            <div><dt class="font-bold text-slate-900">Assigned developer</dt><dd class="mt-1 text-slate-600">{{ $previewAssignee ?: 'Chosen by skill and workload' }}</dd></div>
+                            <div><dt class="font-bold text-slate-900">Duplicate check</dt><dd class="mt-1 text-slate-600">{{ is_bool($previewDuplicate) ? ($previewDuplicate ? 'A similar issue was found' : 'No matching open bug found') : 'Compared with open bugs after submission' }}</dd></div>
+                        </dl>
+                        @if($studioSelected && !empty($studioSelected->id))
+                            <a href="{{ route('bugs.show', $studioSelected->id) }}" class="mt-5 inline-flex text-sm font-semibold text-indigo-700 hover:underline">View latest triage result →</a>
+                        @endif
+                    </aside>
+                @endif
+
+                @if(auth()->user()->role === 'tester')
+                    <section id="myReportsSection" class="hidden lg:col-span-5 rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm" aria-labelledby="my-reports-title">
                         <div class="mb-3 flex items-center justify-between gap-2 border-b border-slate-200 pb-3"><div><h2 id="my-reports-title" class="text-sm font-bold text-slate-900">My reports</h2><p class="mt-1 text-[11px] text-slate-500">Status, assigned developer and latest update.</p></div><span id="myReportsCount" class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{{ $myReports->count() }}</span></div>
                         <div id="myReportsList" class="space-y-2">
                             @forelse($myReports as $report)
@@ -458,7 +507,7 @@
                 @endif
 
                 <!-- Right Panel (55% / col-span-7): Diagnostics and review-only fix suggestions -->
-                <section class="lg:col-span-7 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm flex flex-col min-h-[580px]">
+                <section class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'lg:col-span-7' }} rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm flex flex-col min-h-[580px]">
                     <div class="border-b border-[#E2E8F0] pb-4 mb-4 flex items-center justify-between">
                         <div>
                             <h2 class="text-base font-bold text-[#0F172A]">Code Diagnostics & Fix Suggestions</h2>
