@@ -319,6 +319,8 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
     # 1. If user explicitly selected a language other than auto, honor it directly
     if selected_language and selected_language.lower() != "auto":
         sel = selected_language.lower()
+        if sel in ["css", "scss", "sass", "less"]:
+            return "css"
         if "kotlin" in sel:
             return "kotlin"
         if "python" in sel:
@@ -355,6 +357,8 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
             return 'java'
         if sfn.endswith(('.php', '.blade.php')):
             return 'php'
+        if sfn.endswith(('.css', '.scss', '.sass', '.less')):
+            return 'css'
         if sfn.endswith('.go'):
             return 'go'
         if sfn.endswith('.rs'):
@@ -376,10 +380,13 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
     has_php = bool(re.search(r'\b(php|laravel|blade|artisan)\b', probe) or re.search(r'\.(php|blade\.php)\b', probe))
     has_js = bool(re.search(r'\b(typescript|javascript|react|nextjs|vue|node|express)\b', probe) or re.search(r'\.(ts|tsx|js|jsx)\b', probe))
     has_py = bool(re.search(r'\b(python|django|flask|fastapi|pytest|celery)\b', probe) or re.search(r'\.py\b', probe))
+    has_css = bool(re.search(r'\b(css|scss|sass|less|tailwindcss|stylesheet)\b', probe) or re.search(r'\.(css|scss|sass|less)\b', probe))
 
     # In multi-stack projects (e.g. Laravel + React + Python script), do not force single Python stack
-    if (has_php and has_js) or (has_php and has_py) or (has_js and has_py):
+    if sum([has_php, has_js, has_py, has_css]) > 1:
         return 'auto'
+    if has_css:
+        return 'css'
     if has_php:
         return 'php'
     if has_py:
@@ -729,6 +736,8 @@ def index_repository_structure(github_repo, branch=None, force=False):
             lang_counter['C#'] = lang_counter.get('C#', 0) + 1
         elif ext in ['.php']:
             lang_counter['PHP'] = lang_counter.get('PHP', 0) + 1
+        elif ext in ['.css']:
+            lang_counter['CSS'] = lang_counter.get('CSS', 0) + 1
         elif ext in ['.cpp', '.c', '.hpp', '.h']:
             lang_counter['C/C++'] = lang_counter.get('C/C++', 0) + 1
         elif ext in ['.xml', '.json', '.yaml', '.yml']:
@@ -1358,6 +1367,9 @@ def locate_suspected_files(
         elif target_tech == 'cpp':
             if fpath_lower.endswith(('.cpp', '.hpp', '.c', '.h', '.cc')):
                 score += 25
+        elif target_tech == 'css':
+            if fpath_lower.endswith(('.css', '.scss', '.sass', '.less')):
+                score += 25
         elif target_tech == 'php':
             if score > 0:
                 if 'controller' in fpath_lower and any(w in query_keywords for w in ['route', 'request', 'controller', 'api', 'action']):
@@ -1424,9 +1436,12 @@ def locate_suspected_files(
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--index":
+    if len(sys.argv) > 1 and sys.argv[1] in ("--index", "--preview"):
+        preview_only = sys.argv[1] == "--preview"
         target_repo = sys.argv[2] if len(sys.argv) > 2 else ""
-        res = index_repository_structure(target_repo, force=True)
+        res = index_repository_structure(target_repo, force=not preview_only)
+        if preview_only and isinstance(res, dict):
+            res.pop("files", None)
         print(json.dumps(res))
     elif len(sys.argv) > 1 and sys.argv[1] == "--locate":
         payload_arg = sys.argv[2] if len(sys.argv) > 2 else "{}"

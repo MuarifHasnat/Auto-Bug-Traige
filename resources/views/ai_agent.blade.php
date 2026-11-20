@@ -146,6 +146,7 @@
             </section>
             @endif
 
+            @if(auth()->user()->role !== 'manager')
             <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-sm {{ auth()->user()->role === 'tester' ? 'border-0 bg-transparent p-0 shadow-none' : '' }}" @if(auth()->user()->role === 'tester' || session('ai_result') || (isset($errors) && $errors->any())) open @endif>
                 <summary class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'flex' }} cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-1 text-sm font-bold text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
                     <span>Report and full AI analysis</span><span class="text-xs font-semibold text-indigo-600 group-open:hidden">Open workspace ↓</span><span class="hidden text-xs font-semibold text-indigo-600 group-open:inline">Close workspace ↑</span>
@@ -1145,6 +1146,7 @@
             @endif
                 </div>
             </details>
+            @endif
         </div>
     </main>
 </div>

@@ -17,9 +17,9 @@
         @php($recentProjectIds = collect(session('recent_project_ids', [$lastOpenedProjectId]))->map(fn ($id) => (int) $id))
         @php($orderedProjects = $projects->sortBy(fn ($project) => ($position = $recentProjectIds->search((int) $project->id)) === false ? PHP_INT_MAX : $position)->values())
         <details class="group mt-3" aria-label="Projects">
-            <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-1.5 text-[10px] font-bold uppercase tracking-wider {{ $darkSwitcher ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700' }} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
-                <span>Projects</span>
-                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] leading-none text-slate-600">{{ $projects->count() }}</span>
+            <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-1.5 {{ ($variant ?? '') === 'sidebar' ? 'text-xs font-bold normal-case tracking-normal' : 'text-[10px] font-bold uppercase tracking-wider' }} {{ $darkSwitcher ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-800' }} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                <span>{{ ($variant ?? '') === 'sidebar' ? 'Switch project' : 'Projects' }}</span>
+                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold leading-none text-slate-700">{{ $projects->count() }}</span>
                 @if($activeProject)
                     <span class="min-w-0 flex-1 truncate text-right normal-case tracking-normal {{ $darkSwitcher ? 'text-slate-300' : 'text-slate-700' }}">{{ $activeProject->name }}</span>
                 @endif

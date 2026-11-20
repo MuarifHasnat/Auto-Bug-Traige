@@ -15,9 +15,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/create-project', [BugController::class, 'createProjectPage']);
     Route::post('/create-project', [BugController::class, 'handleCreateProject']);
     Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');
+    Route::post('/api/project/github-preview', [BugController::class, 'previewGitHubRepo'])->middleware('throttle:5,1')->name('projects.preview-github');
     Route::put('/profile', [BugController::class, 'updateProfile'])->name('profile.update');
     Route::get('/profile', [BugController::class, 'profilePage'])->name('profile.show');
     Route::get('/profile/photo', [BugController::class, 'profilePhoto'])->name('profile.photo');
+    Route::get('/team-members/{id}/photo', [BugController::class, 'teamMemberPhoto'])->whereNumber('id')->name('team-members.photo');
     Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->middleware('throttle:10,1')->name('projects.sync-github');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);
@@ -25,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/add-developers', [BugController::class, 'storeDeveloper']);
     Route::put('/developers/{id}', [BugController::class, 'updateDeveloper'])->whereNumber('id');
     Route::delete('/developers/{id}', [BugController::class, 'deleteDeveloper'])->whereNumber('id');
+    Route::delete('/team-members/{id}', [BugController::class, 'removeTeamMember'])->whereNumber('id')->name('team-members.remove');
 
     Route::get('/dashboard', [BugController::class, 'dashboardPage']);
     Route::get('/workspace', [BugController::class, 'workspacePage']);
@@ -41,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/read-all', [BugController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
     Route::post('/api/bugs/store', [BugController::class, 'store'])->middleware('throttle:10,1');
     Route::post('/api/bugs/override', [BugController::class, 'override']);
+    Route::post('/api/bugs/kanban-move', [BugController::class, 'kanbanMove'])->name('bugs.kanban-move');
     Route::post('/api/bugs/reassign', [BugController::class, 'reassign'])->name('bugs.reassign');
     Route::post('/api/bugs/recommendation/accept', [BugController::class, 'acceptRecommendation'])->name('bugs.recommendation.accept');
     Route::post('/api/bugs/duplicate-review', [BugController::class, 'reviewDuplicatePrediction'])->name('bugs.duplicate-review');

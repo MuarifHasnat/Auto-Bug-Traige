@@ -7,11 +7,17 @@
     <meta name="description" content="Turn bug reports into reviewable next steps. See reproduction details, syntax-check clues, and likely repository files in one place.">
     <script src="/js/tailwind.js"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth; }
+        body, body.font-sans { font-family: Arial, Helvetica, sans-serif !important; }
+        .font-mono-code { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: normal; }
+        [class~="text-xs"] { font-size: 0.9rem !important; line-height: 1.4rem !important; }
+        [class~="text-sm"] { font-size: 1.05rem !important; line-height: 1.6rem !important; }
+        [class~="text-base"] { font-size: 1.15rem !important; line-height: 1.8rem !important; }
+        [class~="text-lg"] { font-size: 1.3rem !important; line-height: 1.9rem !important; }
+        [class~="text-xl"] { font-size: 1.5rem !important; line-height: 2rem !important; }
+        [class*="text-[10px]"] { font-size: 0.8rem !important; line-height: 1.2rem !important; }
+        [class*="text-[11px]"] { font-size: 0.9rem !important; line-height: 1.4rem !important; }
         :focus-visible { outline: 3px solid #4f46e5; outline-offset: 3px; }
         .glow-effect {
             box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.25);
@@ -340,7 +346,7 @@
         <!-- Deep-Dive Features Grid -->
         <section id="features" class="py-20 bg-[#F8FAFC]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center max-w-3xl mx-auto">
+                <div class="max-w-3xl">
                     <span class="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-700 font-mono-code">
                         CORE INNOVATIONS
                     </span>
@@ -474,7 +480,7 @@
         <!-- Role-Based Workflows -->
         <section id="roles" class="py-20 bg-white border-y border-[#E2E8F0]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center max-w-3xl mx-auto">
+                <div class="max-w-3xl">
                     <span class="rounded-full bg-purple-50 border border-purple-200 px-3 py-1 text-xs font-bold text-purple-700 font-mono-code">
                         TAILORED EXPERIENCES
                     </span>

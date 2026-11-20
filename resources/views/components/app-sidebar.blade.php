@@ -1,20 +1,20 @@
 @php
     $currentRole = auth()->user()->role;
     $isTesterWorkspace = $currentRole === 'tester';
-    $sidebarWidth = $isTesterWorkspace ? 'w-[240px]' : 'w-[194px]';
-    $activeClass = 'relative flex items-center gap-3 rounded-lg bg-indigo-50 px-3 py-2.5 text-[13px] font-semibold text-indigo-700';
-    $linkClass = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] text-slate-600 transition hover:bg-slate-100 hover:text-slate-950';
+    $sidebarWidth = 'w-[240px]';
+    $activeWorkspaceProject = isset($projects) ? $projects->firstWhere('id', $currentProjectId ?? null) : null;
+    $activeClass = 'relative flex items-center gap-3 rounded-lg bg-indigo-50 px-3 py-2.5 text-[13px] font-bold text-indigo-700';
+    $linkClass = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950';
 @endphp
-<aside class="{{ $sidebarWidth }} hidden shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+<aside class="{{ $sidebarWidth }} sticky top-0 hidden h-screen max-h-screen shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white lg:flex">
     <a href="/" class="flex min-h-[58px] items-center border-b border-slate-200 px-5 text-base font-extrabold tracking-tight text-slate-950">AutoBug<span class="text-indigo-600">Triage</span>@if($isTesterWorkspace)<span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-mono text-indigo-700">AI v1.0</span>@endif</a>
-    @if($isTesterWorkspace)
-        @php($activeTesterProject = $projects->firstWhere('id', $currentProjectId))
-        <div class="mx-3 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p class="text-[10px] font-semibold text-slate-500">Current workspace</p>
-            <p class="mt-0.5 truncate text-sm font-bold text-slate-900">{{ $activeTesterProject?->name ?? 'Workspace' }}</p>
-            <p class="mt-0.5 line-clamp-2 text-[11px] leading-4 text-slate-600">{{ $activeTesterProject?->stack ?: 'Project issue tracking and QA' }}</p>
-        </div>
-        <div class="px-3">@include('components.project-switcher', ['variant' => 'light'])</div>
+    <div class="mx-3 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <p class="text-[10px] font-bold text-slate-600">Current project</p>
+        <p class="mt-0.5 truncate text-sm font-bold text-slate-900" title="{{ $activeWorkspaceProject?->name ?? session('project_name', 'Workspace') }}">{{ $activeWorkspaceProject?->name ?? session('project_name', 'Workspace') }}</p>
+        <p class="mt-0.5 line-clamp-2 text-[11px] font-medium leading-4 text-slate-700">{{ $activeWorkspaceProject?->stack ?: session('project_stack', $isTesterWorkspace ? 'Project issue tracking and QA' : 'Team issue tracking') }}</p>
+    </div>
+    @if(isset($projects) && isset($currentProjectId))
+        <div class="px-3">@include('components.project-switcher', ['variant' => 'sidebar'])</div>
     @endif
     <nav class="flex-1 space-y-1 px-3 py-4" aria-label="Main navigation">
         @if(in_array($currentRole, ['manager', 'tester'], true))

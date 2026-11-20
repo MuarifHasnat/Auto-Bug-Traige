@@ -15,9 +15,6 @@
         <!-- Top Navigation Bar -->
         <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs">
             <div class="flex items-center gap-3">
-                <a href="/dashboard" class="rounded-xl border border-[#E2E8F0] px-3.5 py-1.5 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F9] transition">
-                    ← Dashboard
-                </a>
                 <div class="flex items-center gap-2">
                     <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
                         Project: {{ session('project_name', 'Software Project') }}
@@ -25,18 +22,10 @@
                     <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-mono-code font-semibold text-indigo-700">
                         Step 2 / 3: Skill Matrix
                     </span>
-                    <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Projects {{ $projects->count() }} · {{ session('project_name', 'Software Project') }}</span>
-                    @include('components.project-switcher', ['variant' => 'light'])
                 </div>
             </div>
 
             <div class="flex items-center gap-2.5">
-                <a href="/workspace" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 hover:from-indigo-500 hover:to-blue-500 transition">
-                    <span>Launch Kanban Workspace</span>
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                    </svg>
-                </a>
                 <form action="/logout" method="POST" class="m-0">
                     @csrf
                     <button type="submit" class="rounded-xl border border-rose-200 px-3.5 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Log out</button>
@@ -77,7 +66,7 @@
                         <div class="relative">
                             <label class="sr-only" for="teamAccountSearch">Search by profile ID, name, or Gmail</label>
                             <input id="teamAccountSearch" type="search" autocomplete="off" placeholder="Search by profile ID, name, or Gmail…" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
-                            <input id="selectedTeamEmail" type="hidden" name="email" required>
+                            <input id="selectedTeamAccountId" type="hidden" name="user_id">
                             <div id="teamAccountResults" class="absolute z-20 mt-1 hidden max-h-64 w-full overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-xl" role="listbox" aria-label="Registered team accounts">
                             @foreach($registeredAccounts as $account)
                                 <button type="button" role="option" data-name="{{ strtolower($account->name) }}" data-email="{{ strtolower($account->email) }}" data-id="{{ $account->id }}" data-profile-id="{{ strtolower('abt-'.str_pad((string) $account->id, 6, '0', STR_PAD_LEFT)) }}" data-account-email="{{ $account->email }}" data-assigned="{{ in_array($account->id, $assignedAccountIds, true) ? 'true' : 'false' }}" class="team-account-option flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50" @disabled(in_array($account->id, $assignedAccountIds, true))>
@@ -234,14 +223,23 @@
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         @foreach($teamMembers as $member)
-                            <div class="rounded-xl border border-[#E2E8F0] p-3 bg-[#F8FAFC] flex items-center justify-between">
+                            <div class="rounded-xl border border-[#E2E8F0] p-3 bg-[#F8FAFC] flex items-center justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="font-bold text-xs text-[#0F172A] truncate">{{ $member->name }}</p>
                                     <p class="text-[11px] text-[#64748B] truncate">{{ $member->email }}</p>
                                 </div>
-                                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $member->role === 'developer' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200' }}">
-                                    {{ ucfirst($member->role) }}
-                                </span>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $member->role === 'developer' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200' }}">
+                                        {{ ucfirst($member->role) }}
+                                    </span>
+                                    @if($member->role === 'tester' && auth()->user()?->role === 'manager')
+                                        <form action="{{ route('team-members.remove', $member->id) }}" method="POST" onsubmit="return confirm('Remove this tester from the current project?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-semibold text-rose-700 transition hover:bg-rose-50" aria-label="Remove {{ $member->name }} from project">Remove</button>
+                                        </form>
+                                    @endif
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -255,7 +253,7 @@
     <script>
         const teamAccountSearch = document.getElementById('teamAccountSearch');
         const teamAccountResults = document.getElementById('teamAccountResults');
-        const selectedTeamEmail = document.getElementById('selectedTeamEmail');
+        const selectedTeamAccountId = document.getElementById('selectedTeamAccountId');
         const selectedTeamLabel = document.getElementById('selectedTeamLabel');
         const existingAccountForm = document.getElementById('existingAccountForm');
         const addExistingAccountButton = document.getElementById('addExistingAccountButton');
@@ -264,7 +262,7 @@
             teamAccountSearch.addEventListener('input', () => {
                 const query = teamAccountSearch.value.trim().toLowerCase();
                 let visibleCount = 0;
-                selectedTeamEmail.value = '';
+                selectedTeamAccountId.value = '';
                 selectedTeamLabel.value = '';
                 addExistingAccountButton.disabled = true;
                 teamAccountResults.querySelectorAll('.team-account-option').forEach((option) => {
@@ -282,7 +280,7 @@
 
             teamAccountResults.querySelectorAll('.team-account-option:not(:disabled)').forEach((option) => {
                 option.addEventListener('click', () => {
-                    selectedTeamEmail.value = option.dataset.accountEmail;
+                    selectedTeamAccountId.value = option.dataset.id;
                     selectedTeamLabel.value = option.querySelector('span span').textContent + ' · ' + option.querySelector('span span + span').textContent;
                     teamAccountSearch.value = option.querySelector('span span').textContent;
                     teamAccountResults.classList.add('hidden');
@@ -295,7 +293,7 @@
             });
 
             existingAccountForm.addEventListener('submit', (event) => {
-                if (!selectedTeamEmail.value) {
+                if (!selectedTeamAccountId.value) {
                     event.preventDefault();
                     teamAccountSearch.focus();
                     teamAccountResults.classList.remove('hidden');

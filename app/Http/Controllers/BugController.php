@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,18 @@ class BugController extends Controller
     public function profilePhoto(): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $path = Auth::user()->profile_photo_path;
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    public function teamMemberPhoto(int $id): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $projectId = $this->currentProjectId();
+        abort_unless(in_array($id, $this->projectParticipantIds($projectId), true), 404);
+        $path = \App\Models\User::query()->whereKey($id)->value('profile_photo_path');
         abort_unless($path && Storage::disk('public')->exists($path), 404);
 
         return response()->file(Storage::disk('public')->path($path), [
@@ -158,8 +171,33 @@ class BugController extends Controller
         $data = $request->validate([
             'project_name' => ['required', 'string', 'max:150'],
             'project_stack' => ['required', 'string', 'max:255'],
-            'github_repo' => ['nullable', 'string', 'max:255'],
+            'github_repo' => ['nullable', 'string', 'max:255', function ($attribute, $value, $fail) {
+                if (filled($value) && !$this->isValidGitHubRepositoryUrl(trim($value))) {
+                    $fail('Enter a valid GitHub repository link, such as https://github.com/owner/repository.');
+                }
+            }],
         ]);
+
+        $data['github_repo'] = filled($data['github_repo'] ?? null) ? trim($data['github_repo']) : null;
+
+        $githubRepo = $data['github_repo'];
+        $repoMetadata = null;
+        if ($githubRepo) {
+            try {
+                $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+                $process = Process::timeout(25)->run([$python, base_path('agent/file_locator.py'), '--preview', $githubRepo]);
+                $repoMetadata = json_decode($process->output(), true);
+                if (!$process->successful() || !is_array($repoMetadata) || !($repoMetadata['success'] ?? false)) {
+                    return back()->withInput()->withErrors([
+                        'github_repo' => is_array($repoMetadata) ? ($repoMetadata['error'] ?? 'Could not read this GitHub repository. Check its access and try again.') : 'Could not complete the GitHub repository scan. Try again.',
+                    ]);
+                }
+            } catch (\Throwable) {
+                return back()->withInput()->withErrors([
+                    'github_repo' => 'The repository scan took too long or GitHub could not be reached. Please try again.',
+                ]);
+            }
+        }
 
         $project = DB::table('projects')->insertGetId([
             'manager_id' => Auth::id(),
@@ -177,22 +215,68 @@ class BugController extends Controller
         ]);
         $this->ensureProjectWorkflow((int) $project);
 
-        $githubRepo = !empty($data['github_repo']) ? trim($data['github_repo']) : null;
-        $syncNotice = '';
-        if ($githubRepo) {
-            try {
-                $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-                $proc = Process::timeout(10)->run([$python, base_path('agent/file_locator.py'), '--index', $githubRepo]);
-                if ($proc->successful()) {
-                    $meta = json_decode($proc->output(), true);
-                    if ($meta && ($meta['success'] ?? false)) {
-                        $syncNotice = " • Indexed {$meta['total_files']} files ({$meta['primary_language']}) from branch '{$meta['branch']}'";
-                    }
-                }
-            } catch (\Throwable) {}
-        }
+        $syncNotice = $repoMetadata
+            ? " • Scanned {$repoMetadata['total_files']} files ({$repoMetadata['primary_language']}) from branch '{$repoMetadata['branch']}'"
+            : '';
 
         return redirect('/add-developers')->with('success', "Project created successfully!{$syncNotice}");
+    }
+
+    public function previewGitHubRepo(Request $request): JsonResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+
+        $repoUrl = trim((string) $request->input('github_repo', ''));
+        if (!$this->isValidGitHubRepositoryUrl($repoUrl)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Enter a valid repository link, such as https://github.com/owner/repository.',
+            ], 422);
+        }
+
+        try {
+            $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            $process = Process::timeout(25)->run([$python, base_path('agent/file_locator.py'), '--preview', $repoUrl]);
+            $metadata = json_decode($process->output(), true);
+
+            if (!$process->successful() || !is_array($metadata) || !($metadata['success'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => is_array($metadata) ? ($metadata['error'] ?? 'Could not read this repository. Check its access and try again.') : 'Could not complete the repository scan. Try again.',
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'repo' => $metadata['repo'] ?? '',
+                'branch' => $metadata['branch'] ?? 'default branch',
+                'total_files' => (int) ($metadata['total_files'] ?? 0),
+                'primary_language' => $metadata['primary_language'] ?? null,
+                'cached' => (bool) ($metadata['cached'] ?? false),
+            ]);
+        } catch (\Throwable) {
+            return response()->json([
+                'success' => false,
+                'error' => 'The repository scan took too long or GitHub could not be reached. Please try again.',
+            ], 503);
+        }
+    }
+
+    private function isValidGitHubRepositoryUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+        if (!is_array($parts)
+            || strtolower($parts['scheme'] ?? '') !== 'https'
+            || strtolower($parts['host'] ?? '') !== 'github.com'
+            || isset($parts['user'])
+            || isset($parts['pass'])
+            || isset($parts['port'])
+            || isset($parts['query'])
+            || isset($parts['fragment'])) {
+            return false;
+        }
+
+        return (bool) preg_match('~^/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})/[A-Za-z0-9_.-]{1,100}(?:\.git)?/?$~', $parts['path'] ?? '');
     }
 
     public function syncGitHubRepo(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
@@ -320,7 +404,20 @@ class BugController extends Controller
         abort_unless(Auth::user()?->role === 'manager', 403);
         $projectId = $this->currentProjectId();
 
-        $existingUser = \App\Models\User::where('email', $request->input('email'))->first();
+        $existingUser = null;
+        if ($request->filled('user_id')) {
+            $selection = $request->validate([
+                'user_id' => ['required', 'integer', 'exists:users,id'],
+                'skills' => ['nullable', 'string', 'max:255'],
+                'capacity' => ['nullable', 'integer', 'min:1', 'max:100'],
+            ]);
+            $existingUser = \App\Models\User::findOrFail($selection['user_id']);
+            if (!in_array($existingUser->role, ['tester', 'developer'], true)) {
+                return back()->withErrors(['user_id' => 'Only tester and developer accounts can be added to a project.']);
+            }
+        } else {
+            $existingUser = \App\Models\User::where('email', $request->input('email'))->first();
+        }
         if ($existingUser) {
             $isAlreadyMember = DB::table('project_members')
                 ->where('project_id', $projectId)
@@ -441,6 +538,38 @@ class BugController extends Controller
         });
 
         return back()->with('success', 'Developer removed successfully.');
+    }
+
+    public function removeTeamMember(int $id): RedirectResponse
+    {
+        abort_unless(Auth::user()?->role === 'manager', 403);
+        $projectId = $this->currentProjectId();
+        $member = DB::table('project_members')
+            ->join('users', 'users.id', '=', 'project_members.user_id')
+            ->where('project_members.project_id', $projectId)
+            ->where('users.id', $id)
+            ->whereIn('users.role', ['developer', 'tester'])
+            ->first(['users.id', 'users.name', 'users.role']);
+
+        if (!$member) {
+            return back()->withErrors(['team_member' => 'Developer or tester was not found in this project.']);
+        }
+
+        $activeStatuses = $this->ensureProjectWorkflow($projectId)
+            ->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
+        if ($member->role === 'developer' && DB::table('bugs')->where('project_id', $projectId)
+            ->where('assigned_to', $member->name)->whereIn('status', $activeStatuses)->whereRaw('is_duplicate = false')->exists()) {
+            return back()->withErrors(['team_member' => 'Move this developer’s active bugs to someone else before removing them.']);
+        }
+
+        DB::transaction(function () use ($projectId, $id, $member) {
+            DB::table('project_members')->where('project_id', $projectId)->where('user_id', $id)->delete();
+            if ($member->role === 'developer') {
+                DB::table('developers')->where('project_id', $projectId)->where('name', $member->name)->delete();
+            }
+        });
+
+        return back()->with('success', ucfirst($member->role).' removed from this project.');
     }
 
     public function workspacePage(Request $request): View
@@ -856,7 +985,7 @@ class BugController extends Controller
         $participantIds = $this->projectParticipantIds($projectId);
         $accountsQuery = DB::table('users')
             ->whereIn('id', $participantIds)
-            ->select('id', 'name', 'email', 'role')
+            ->select('id', 'name', 'email', 'role', 'profile_photo_path')
             ->orderBy('name');
 
         if ($accountSearch !== '') {
@@ -931,7 +1060,7 @@ class BugController extends Controller
 
     public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        abort_unless(in_array(Auth::user()?->role, ['manager', 'tester'], true), 403);
+        abort_unless(Auth::user()?->role === 'tester', 403);
 
         // Screenshot OCR, repository lookup and LLM analysis can exceed PHP's
         // default 30-second request limit. Keep the request alive for the
@@ -1236,6 +1365,14 @@ class BugController extends Controller
         }
 
         return back()->with('success', 'Bug status updated.');
+    }
+
+    public function kanbanMove(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless(Auth::user()?->role === 'developer', 403, 'Managers can view the Kanban board but cannot move issues.');
+        $response = $this->override($request);
+        abort_unless($response instanceof \Illuminate\Http\JsonResponse, 500);
+        return $response;
     }
 
     public function reassign(Request $request): RedirectResponse

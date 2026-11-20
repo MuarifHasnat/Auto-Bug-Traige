@@ -67,26 +67,12 @@
                 </div>
 
                 @php
-                    $accuracyRate = 94.6;
                     $devHoursSaved = round(($stats['total'] * 0.75) + ($stats['resolved'] * 1.25), 1);
                     $dupFiltered = (int) ($priorityCounts['Duplicate'] ?? 0);
                 @endphp
 
                 <div class="flex flex-wrap items-center gap-5">
-                    <div class="min-w-[80px] px-1 py-0.5 text-left">
-                        <span class="text-[9px] text-slate-400 uppercase font-mono-code block">Triage Accuracy</span>
-                        <span class="text-lg font-extrabold text-emerald-400 font-mono-code">{{ $accuracyRate }}%</span>
-                    </div>
-                    <div class="min-w-[80px] px-1 py-0.5 text-left">
-                        <span class="text-[9px] text-slate-400 uppercase font-mono-code block">Est. Time Saved</span>
-                        <span class="text-lg font-extrabold text-white font-mono-code">{{ $devHoursSaved }} hrs</span>
-                    </div>
-                    <div class="min-w-[80px] px-1 py-0.5 text-left">
-                        <span class="text-[9px] text-slate-400 uppercase font-mono-code block">Duplicate Defense</span>
-                        <span class="text-lg font-extrabold text-white font-mono-code">{{ $dupFiltered }}</span>
-                    </div>
-                </div>
-            </div>
+                    <div class="min-w-[90px] px-1 py-1 text-left">
                         <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Est. Time Saved</span>
                         <span class="text-xl font-extrabold text-white font-mono-code">{{ $devHoursSaved }} hrs</span>
                     </div>

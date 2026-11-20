@@ -45,10 +45,8 @@
                     <div class="flex flex-wrap items-center gap-2">
                         @if(auth()->user()->role === 'tester')
                             <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
-                        @else
-                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Assigned to Me ({{ $assignedToMeCount }})</span></button>
                         @endif
-                        <a href="/ai-agent" class="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-indigo-700 px-4 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-indigo-600">＋ Report Bug</a>
+                        @if(auth()->user()->role !== 'manager')<a href="/ai-agent" class="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-indigo-700 px-4 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-indigo-600">＋ Report Bug</a>@endif
                     </div>
                 </section>
 
