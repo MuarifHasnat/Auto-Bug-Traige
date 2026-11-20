@@ -34,27 +34,27 @@
             </header>
 
             <!-- Board Body Container -->
-            <div class="flex-1 mx-auto w-full max-w-[1700px] px-5 py-6 lg:px-8 space-y-5">
+            <div class="flex-1 mx-auto w-full max-w-[1700px] px-4 sm:px-6 lg:px-8 py-3.5 space-y-3.5">
                 
                 @php
                     $activeWorkflowStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
-                <section class="flex flex-wrap items-end justify-between gap-4" aria-labelledby="kanban-title">
-                    <div><h1 id="kanban-title" class="text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1></div>
-                    <div class="flex flex-wrap items-center gap-2.5">
+                <section class="flex flex-wrap items-center justify-between gap-3" aria-labelledby="kanban-title">
+                    <div><h1 id="kanban-title" class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1></div>
+                    <div class="flex flex-wrap items-center gap-2">
                         @if(auth()->user()->role === 'tester')
-                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
+                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
                         @else
-                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50"><span>Show Only Assigned to Me ({{ $assignedToMeCount }})</span></button>
+                            <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Assigned to Me ({{ $assignedToMeCount }})</span></button>
                         @endif
-                        <a href="/ai-agent" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">＋ Report Bug</a>
+                        <a href="/ai-agent" class="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-indigo-700 px-4 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-indigo-600">＋ Report Bug</a>
                     </div>
                 </section>
 
                 <!-- Compact Board Filters -->
-                <section class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs" aria-label="Board filters">
-                    <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2.5">
+                <section class="rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs" aria-label="Board filters">
+                    <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2">
                         <label class="sr-only" for="issue-search">Search issues and stack traces</label>
                         <div class="relative min-w-[220px] flex-1 sm:max-w-sm">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>

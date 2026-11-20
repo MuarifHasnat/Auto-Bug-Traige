@@ -915,7 +915,14 @@ class BugController extends Controller
         $currentProject = DB::table('projects')->where('id', $projectId)->first();
         $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
 
-        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects', 'projectBugCount') + [
+        $pastBugs = DB::table('bugs')
+            ->where('project_id', $projectId)
+            ->whereRaw('is_duplicate = false')
+            ->select('id', 'title', 'description')
+            ->limit(100)
+            ->get();
+
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects', 'projectBugCount', 'pastBugs') + [
             'currentProjectId' => $projectId,
             'currentProject' => $currentProject,
             'projectGithubRepo' => $projectGithubRepo,
@@ -942,9 +949,22 @@ class BugController extends Controller
             'labels' => ['nullable', 'string', 'max:500'],
             'language' => ['nullable', 'string', 'in:auto,PHP,C++,C,Python,JavaScript,TypeScript,Java,Kotlin,SQL'],
             'code_snippet' => ['nullable', 'string', 'max:20000'],
-            'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,jfif', 'max:10240'],
             'source_file' => ['nullable', 'file', 'mimes:txt,php,blade.php,cpp,c,h,hpp,py,js,ts,java,kt,kts,sql,json,xml,css,html', 'max:5120'],
         ]);
+
+        $cleanTitle = trim($data['title']);
+        $rawDesc = trim($data['description']);
+        $hasAttachment = $request->hasFile('screenshot') || $request->hasFile('source_file') || !empty($data['code_snippet']);
+        if ($this->isGibberishOrInvalidReport($cleanTitle, $rawDesc, $hasAttachment)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please provide a clear and meaningful bug description. Random or invalid text (e.g. "' . e($cleanTitle) . '") cannot be triaged.',
+                ], 422);
+            }
+            return back()->withInput()->withErrors(['title' => 'Please provide a clear and meaningful bug description. Random or invalid text cannot be triaged.']);
+        }
 
         $reportSections = [];
         $reproductionSteps = array_values(array_filter(array_map('trim', $data['reproduction_steps'] ?? [])));
@@ -1157,6 +1177,9 @@ class BugController extends Controller
                 'status' => $status,
                 'triage_state' => 'complete',
                 'ai_result' => $aiResult,
+                'has_screenshot' => !empty($screenshotPath),
+                'screenshot_url' => $screenshotPath ? "/bugs/{$bugId}/screenshot" : null,
+                'screenshot_name' => $request->file('screenshot')?->getClientOriginalName(),
                 'redirect_url' => '/bugs/' . $bugId,
                 'message' => 'Bug analyzed and added to the workspace.',
             ]);
@@ -1727,6 +1750,56 @@ class BugController extends Controller
             ->where('project_members.user_id', Auth::id())
             ->orderBy('projects.name')
             ->get();
+    }
+
+    private function isGibberishOrInvalidReport(string $title, string $desc, bool $hasAttachment): bool
+    {
+        $cleanTitle = strtolower(trim($title));
+        $cleanDesc = strtolower(trim($desc));
+
+        if ($hasAttachment && strlen($cleanTitle) >= 4 && preg_match('/[aeiouy]/i', $cleanTitle)) {
+            return false;
+        }
+
+        if (strlen($cleanTitle) < 5) {
+            return true;
+        }
+
+        // Repeated characters e.g. aaaa, zzzz
+        if (preg_match('/(.)\1{3,}/', $cleanTitle)) {
+            return true;
+        }
+
+        // Repeating 2-3 char patterns e.g. mbmbm, asdasd, qweqwe
+        if (preg_match('/^(.{2,3})\1+.*$/', $cleanTitle) && !str_contains($cleanTitle, ' ')) {
+            return true;
+        }
+
+        $knownAbbrs = ['sql', 'php', 'css', 'html', 'jwt', 'api', 'cli', 'sdk', 'sso', 'ssl', 'ssh', 'dns', 'url', 'xml', 'csv', 'svg', 'npm', 'jvm', 'grpc', 'http', 'https'];
+        $words = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $cleanTitle))));
+
+        if (count($words) <= 1) {
+            $single = $words[0] ?? $cleanTitle;
+            if (in_array($single, $knownAbbrs, true)) {
+                return strlen($cleanDesc) < 10;
+            }
+            // No vowels in a single word of 4+ characters
+            if (!preg_match('/[aeiouy]/i', $single)) {
+                return true;
+            }
+            if (strlen($single) < 5 && !preg_match('/^\d{3}$/', $single)) {
+                return true;
+            }
+        }
+
+        $combined = $cleanTitle . ' ' . $cleanDesc;
+        preg_match_all('/[aeiouy]/i', $combined, $vowels);
+        preg_match_all('/[a-z]/i', $combined, $letters);
+        if (count($letters[0] ?? []) >= 5 && count($vowels[0] ?? []) === 0) {
+            return true;
+        }
+
+        return false;
     }
 
     private function setCurrentProject(Request $request, object $project): void

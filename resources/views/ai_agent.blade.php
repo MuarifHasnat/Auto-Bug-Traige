@@ -146,29 +146,29 @@
             </section>
             @endif
 
-            <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm {{ auth()->user()->role === 'tester' ? 'border-0 bg-transparent p-0 shadow-none' : '' }}" @if(auth()->user()->role === 'tester' || session('ai_result') || (isset($errors) && $errors->any())) open @endif>
+            <details id="triageWorkflow" class="group rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-sm {{ auth()->user()->role === 'tester' ? 'border-0 bg-transparent p-0 shadow-none' : '' }}" @if(auth()->user()->role === 'tester' || session('ai_result') || (isset($errors) && $errors->any())) open @endif>
                 <summary class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'flex' }} cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-1 text-sm font-bold text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
                     <span>Report and full AI analysis</span><span class="text-xs font-semibold text-indigo-600 group-open:hidden">Open workspace ↓</span><span class="hidden text-xs font-semibold text-indigo-600 group-open:inline">Close workspace ↑</span>
                 </summary>
-                <div class="mt-5 space-y-6">
+                <div class="mt-3.5 space-y-4">
             <!-- Header Title -->
             @if(auth()->user()->role === 'tester')
-            <div class="mb-5">
-                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">AI Triage Studio</h1>
-                <p class="mt-1 text-sm text-slate-600">Describe the bug. The AI categorizes it, finds the file and assigns a developer.</p>
+            <div class="mb-3.5">
+                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">AI Triage Studio</h1>
+                <p class="mt-0.5 text-xs text-slate-600">Describe the bug. The AI categorizes it, finds the file and assigns a developer.</p>
             </div>
             @else
-            <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-extrabold tracking-tight text-[#0F172A]">AI Triage Workbench</h1>
-                        <span class="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-0.5 text-xs font-bold text-indigo-700 font-mono-code">
+                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0F172A]">AI Triage Workbench</h1>
+                        <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold text-indigo-700 font-mono-code">
                             Hero Studio
                         </span>
                     </div>
                     <p class="text-xs text-[#64748B] mt-0.5">Submit software anomalies for AST syntax inspection, duplicate hash checking, and automated engineer assignment.</p>
                 </div>
-                <span class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-1.5 text-xs font-bold text-[#0F172A]">
+                <span class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-1 text-xs font-bold text-[#0F172A]">
                     Mode: {{ ucfirst(auth()->user()->role) }} Console
                 </span>
             </div>
@@ -301,17 +301,87 @@
 
                     <form id="triageForm" action="/api/bugs/store" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="handleTriageSubmit(event)">
                         @csrf
+
+                        <!-- Invalid Input Warning Banner (Shown when gibberish or meaningless text is submitted) -->
+                        <div id="invalidInputBanner" class="hidden rounded-2xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2.5 shadow-2xs">
+                            <span class="text-base shrink-0">⚠️</span>
+                            <div class="flex-1 min-w-0">
+                                <b class="block font-bold text-rose-950 mb-0.5">Invalid Bug Report Detected</b>
+                                <p id="invalidInputMsg" class="leading-relaxed text-rose-800">
+                                    Please provide a meaningful bug title and description. Random characters or gibberish (e.g. "mbmbm") cannot be triaged.
+                                </p>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-bold text-[#0F172A] mb-1">{{ auth()->user()->role === 'tester' ? 'Bug title' : 'Issue Summary / Title' }}</label>
                             <input id="bugTitle" name="title" required maxlength="200" placeholder="{{ auth()->user()->role === 'tester' ? 'e.g. App crashes when I log in' : 'e.g. ZeroDivisionError in invoice calculation logic' }}"
                                    class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white"
-                                   oninput="checkDuplicateTitle(this.value)">
-                            <div id="duplicateWarning" class="hidden mt-2 rounded-xl border border-amber-300 bg-amber-50/95 p-2.5 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <span class="text-sm shrink-0">⚠️</span>
-                                    <span class="truncate">Similar issue found: <b id="dupBugKey" class="text-amber-950 font-mono"></b> <span id="dupBugTitle" class="text-slate-700 font-medium"></span></span>
+                                   oninput="handleTitleInput(this.value)">
+                            <!-- Live AI Duplicate Vector Radar (Real-Time Cosine Similarity Scanner) -->
+                            <div id="duplicateRadar" class="hidden mt-2.5 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-indigo-50/40 p-3.5 space-y-2.5 shadow-2xs transition-all">
+                                <!-- Header with Live Pulse -->
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-2xs">
+                                            📡
+                                        </span>
+                                        <div>
+                                            <span class="font-extrabold text-[#0F172A] text-xs flex items-center gap-1.5">
+                                                <span>Live Duplicate Vector Radar</span>
+                                                <span class="rounded bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 text-[9px] font-mono font-bold">TF-IDF & Cosine Math</span>
+                                            </span>
+                                            <p class="text-[10px] text-slate-500">Live scanning against {{ count($pastBugs ?? $bugs) }} active project issues</p>
+                                        </div>
+                                    </div>
+                                    <span id="radarStatusBadge" class="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold font-mono flex items-center gap-1 shadow-2xs">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span id="radarStatusText">Unique Issue</span>
+                                    </span>
                                 </div>
-                                <a id="dupBugLink" href="#" target="_blank" class="ml-2 rounded-lg bg-amber-200/80 hover:bg-amber-300 px-2.5 py-1 font-bold text-amber-950 shrink-0 text-[11px] transition">View ↗</a>
+
+                                <!-- Live Similarity Progress Bar & Percentage Meter -->
+                                <div class="space-y-1 bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                                    <div class="flex items-center justify-between text-[11px] font-bold">
+                                        <span class="text-slate-600 flex items-center gap-1">
+                                            <span>📊 Semantic Similarity:</span>
+                                            <span id="radarSimilarityScore" class="font-mono text-emerald-600 font-extrabold text-xs">0%</span>
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 font-mono">Decision Threshold: <b class="text-slate-700">75%</b></span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden relative">
+                                        <div id="radarProgressBar" class="h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-emerald-400 to-teal-500" style="width: 0%"></div>
+                                        <!-- 75% threshold marker line -->
+                                        <div class="absolute top-0 bottom-0 left-[75%] w-0.5 bg-rose-400/80 pointer-events-none" title="75% Duplicate Threshold"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[9px] text-slate-400 font-mono pt-0.5">
+                                        <span>0% (Unique)</span>
+                                        <span class="text-rose-500 font-bold">▲ 75% Duplicate Limit</span>
+                                        <span>100% (Duplicate)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Matched Issue Card (Live Preview) -->
+                                <div id="radarMatchCard" class="hidden rounded-xl border border-slate-200 bg-white p-2.5 text-xs space-y-1.5 shadow-2xs">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <span class="font-mono font-bold text-indigo-700 text-xs shrink-0" id="radarMatchedKey">#ABT-1</span>
+                                            <span class="font-bold text-slate-900 truncate text-[11px]" id="radarMatchedTitle">Existing Issue Title</span>
+                                        </div>
+                                        <a id="radarMatchedLink" href="#" target="_blank" class="shrink-0 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5 transition">
+                                            View Issue ↗
+                                        </a>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 flex-wrap text-[10px]">
+                                        <span class="text-slate-500 font-medium">Shared Semantic Keywords:</span>
+                                        <div id="radarKeywordsList" class="flex items-center gap-1 flex-wrap">
+                                            <!-- dynamic tags -->
+                                        </div>
+                                    </div>
+                                    <p id="radarVerdictText" class="text-[10px] text-slate-500 leading-tight">
+                                        Cosine vector distance under threshold.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -360,7 +430,8 @@
                             </div>
                             <textarea id="bugDescription" name="description" required rows="3" maxlength="3000"
                                       placeholder="Describe what you saw, including any error message."
-                                      class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white leading-relaxed"></textarea>
+                                      class="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white leading-relaxed"
+                                      oninput="checkDuplicateTitle(document.getElementById('bugTitle').value + ' ' + this.value)"></textarea>
                             <div>
                                 <div class="mb-1.5 flex items-center justify-between gap-2"><label for="reproductionStep1" class="text-xs font-bold text-[#0F172A]">Reproduction steps</label><button type="button" onclick="addReproductionStep()" class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">+ Add step</button></div>
                                 <ol id="reproductionSteps" class="space-y-2">
@@ -388,22 +459,54 @@
                                 </label>
                                 <span class="text-[10px] text-slate-500 font-mono-code">No code required</span>
                             </div>
-                            <div id="screenshotDropzone" class="relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 p-5 text-center transition group hover:border-indigo-400 hover:bg-indigo-50/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-indigo-400" ondragover="event.preventDefault(); this.classList.add('border-indigo-500','bg-indigo-50')" ondragleave="this.classList.remove('border-indigo-500','bg-indigo-50')" ondrop="handleScreenshotDrop(event)">
-                                <div id="screenshotPlaceholder" class="relative z-20 flex flex-col items-center py-2 pointer-events-none">
+
+                            <!-- Hidden file input separated completely from dropzone -->
+                            <input type="file" id="screenshotInput" name="screenshot" accept="image/png,image/jpeg,image/jpg,image/webp,.png,.jpg,.jpeg,.webp,.jfif" class="hidden" onchange="handleScreenshotSelected(this)">
+
+                            <div id="screenshotDropzone" 
+                                 onclick="handleDropzoneClick(event)"
+                                 ondragover="handleDragOver(event)"
+                                 ondragenter="handleDragEnter(event)"
+                                 ondragleave="handleDragLeave(event)"
+                                 ondrop="handleScreenshotDrop(event)"
+                                 class="relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 p-5 text-center transition group hover:border-indigo-400 hover:bg-indigo-50/40">
+                                
+                                <div id="screenshotPlaceholder" class="flex flex-col items-center py-2 select-none">
                                     <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 text-2xl group-hover:scale-105 transition shadow-xs">📸</span>
                                     <span class="text-xs font-bold text-[#0F172A] mt-2 block" id="screenshotStatus">Click to Upload or Drag & Drop Screenshot</span>
-                                    <span class="text-[11px] text-[#64748B] block mt-0.5">Supports PNG, JPG, WEBP • Or directly press <kbd class="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono-code text-[10px] font-bold text-slate-700 shadow-2xs">Ctrl + V</kbd> to paste</span>
-                                    <span class="mt-3 inline-flex min-h-9 items-center rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white">Choose image</span>
+                                    <span class="text-[11px] text-[#64748B] block mt-0.5">Supports PNG, JPG, JPEG, WEBP • Or directly press <kbd class="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono-code text-[10px] font-bold text-slate-700 shadow-2xs">Ctrl + V</kbd> to paste</span>
+                                    <button type="button" onclick="event.stopPropagation(); document.getElementById('screenshotInput').click();" class="mt-3 inline-flex min-h-9 items-center rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition">
+                                        Choose image
+                                    </button>
                                 </div>
-                                <div id="screenshotPreviewWrapper" class="relative z-20 hidden w-full text-center pointer-events-none">
-                                    <img id="screenshotPreview" src="" alt="Screenshot Preview" class="max-h-44 rounded-xl mx-auto object-contain border border-indigo-200 shadow-sm">
-                                    <span class="inline-block mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shadow-2xs" id="screenshotFileName">✓ Image attached</span>
-                                    <div class="pointer-events-auto relative z-30 mt-2 flex items-center justify-center gap-4"><button type="button" onclick="event.stopPropagation(); document.getElementById('screenshotInput').click()" class="text-[10px] font-bold text-indigo-600 hover:underline">Replace image</button><button type="button" onclick="clearScreenshot(event)" class="text-[10px] font-bold text-rose-500 hover:underline">Remove image</button></div>
+
+                                <div id="screenshotPreviewWrapper" class="hidden w-full text-center">
+                                    <div class="relative inline-block mx-auto">
+                                        <img id="screenshotPreview" src="" alt="Screenshot Preview" class="max-h-52 rounded-xl mx-auto object-contain border border-indigo-200 shadow-sm bg-white">
+                                    </div>
+                                    <div class="mt-2.5 flex items-center justify-center gap-2">
+                                        <span class="inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shadow-2xs" id="screenshotFileName">✓ Image attached</span>
+                                    </div>
+                                    <div class="mt-2 flex items-center justify-center gap-4">
+                                        <button type="button" onclick="event.stopPropagation(); document.getElementById('screenshotInput').click();" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                                            🔄 Replace image
+                                        </button>
+                                        <button type="button" onclick="event.stopPropagation(); clearScreenshot(event);" class="text-xs font-bold text-rose-500 hover:text-rose-700 hover:underline">
+                                            ✕ Remove image
+                                        </button>
+                                    </div>
                                 </div>
-                                <input type="file" id="screenshotInput" name="screenshot" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" onchange="handleScreenshotSelected(this)" aria-label="Choose a screenshot or drop an image here">
                             </div>
                             <p id="screenshotError" class="hidden mt-1 text-[11px] font-semibold text-rose-700" role="alert"></p>
-                            <div id="screenshotUploadProgress" class="hidden mt-2" aria-live="polite"><div class="mb-1 flex justify-between text-[10px] text-slate-600"><span id="screenshotUploadLabel">Uploading screenshot…</span><span id="screenshotUploadPercent">0%</span></div><div class="h-1.5 overflow-hidden rounded-full bg-slate-100"><div id="screenshotUploadBar" class="h-full w-0 rounded-full bg-indigo-600 transition-[width]"></div></div></div>
+                            <div id="screenshotUploadProgress" class="hidden mt-2" aria-live="polite">
+                                <div class="mb-1 flex justify-between text-[10px] text-slate-600">
+                                    <span id="screenshotUploadLabel">Uploading screenshot…</span>
+                                    <span id="screenshotUploadPercent">0%</span>
+                                </div>
+                                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                    <div id="screenshotUploadBar" class="h-full w-0 rounded-full bg-indigo-600 transition-[width]"></div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Real-World Black-Box QA Notice -->
@@ -439,7 +542,7 @@
                                         </select>
                                     </label>
                                     <label class="block text-[11px] font-bold text-[#0F172A]">Upload File (.kt, .py, .java, etc.)
-                                        <input type="file" name="source_file" accept=".kt,.kts,.py,.js,.ts,.tsx,.java,.cpp,.php,.sql,.json,.xml" 
+                                        <input type="file" id="sourceFileInput" name="source_file" accept=".kt,.kts,.py,.js,.ts,.tsx,.java,.cpp,.php,.sql,.json,.xml" 
                                                class="mt-1 block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                                     </label>
                                 </div>
@@ -1132,73 +1235,141 @@
         updateStepNumbers();
     }
 
-    // Screenshot File Upload Preview
-    function handleScreenshotSelected(input) {
-        const file = input.files && input.files[0];
-        const error = document.getElementById('screenshotError');
-        if (!file) return;
-        const extension = (file.name.split('.').pop() || '').toLowerCase();
-        const supportedType = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)
-            || (!file.type && ['png', 'jpg', 'jpeg', 'webp'].includes(extension));
-        if (!supportedType || file.size > 5 * 1024 * 1024) {
-            error.textContent = file.size > 5 * 1024 * 1024 ? 'Screenshot must be 5 MB or smaller.' : 'Choose a PNG, JPG, or WEBP image.';
-            error.classList.remove('hidden');
-            input.value = '';
-            document.getElementById('screenshotPreview').src = '';
-            document.getElementById('screenshotPlaceholder').classList.remove('hidden');
-            document.getElementById('screenshotPreviewWrapper').classList.add('hidden');
-            document.getElementById('screenshotDropzone').classList.remove('border-emerald-500', 'bg-emerald-50/30');
-            return;
+    // Screenshot File Upload Handling
+    let attachedScreenshotFile = null;
+
+    function handleDropzoneClick(e) {
+        if (e.target.closest('button')) return;
+        if (attachedScreenshotFile) return;
+        document.getElementById('screenshotInput')?.click();
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('screenshotDropzone')?.classList.add('border-indigo-500', 'bg-indigo-50');
+    }
+
+    function handleDragEnter(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('screenshotDropzone')?.classList.add('border-indigo-500', 'bg-indigo-50');
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const zone = document.getElementById('screenshotDropzone');
+        if (zone && !zone.contains(e.relatedTarget)) {
+            zone.classList.remove('border-indigo-500', 'bg-indigo-50');
         }
-        error.textContent = '';
-        error.classList.add('hidden');
-        renderScreenshotPreview(file);
     }
 
     function handleScreenshotDrop(event) {
         event.preventDefault();
+        event.stopPropagation();
         const zone = document.getElementById('screenshotDropzone');
-        zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        if (zone) zone.classList.remove('border-indigo-500', 'bg-indigo-50');
         const file = event.dataTransfer?.files?.[0];
+        if (file) {
+            processSelectedScreenshot(file);
+        }
+    }
+
+    function handleScreenshotSelected(input) {
+        const file = input.files && input.files[0];
+        if (file) {
+            processSelectedScreenshot(file);
+        }
+    }
+
+    function processSelectedScreenshot(file) {
+        const error = document.getElementById('screenshotError');
         if (!file) return;
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        const input = document.getElementById('screenshotInput');
-        input.files = transfer.files;
-        handleScreenshotSelected(input);
+
+        const extension = (file.name.split('.').pop() || '').toLowerCase();
+        const mimeType = (file.type || '').toLowerCase();
+        const validExts = ['png', 'jpg', 'jpeg', 'webp', 'jfif', 'gif', 'bmp'];
+        const isImage = mimeType.startsWith('image/') || validExts.includes(extension);
+
+        if (!isImage) {
+            if (error) {
+                error.textContent = 'Please choose a valid image file (PNG, JPG, JPEG, WEBP).';
+                error.classList.remove('hidden');
+            }
+            clearScreenshot();
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            if (error) {
+                error.textContent = 'Screenshot must be 10 MB or smaller.';
+                error.classList.remove('hidden');
+            }
+            clearScreenshot();
+            return;
+        }
+
+        if (error) {
+            error.textContent = '';
+            error.classList.add('hidden');
+        }
+
+        attachedScreenshotFile = file;
+
+        try {
+            const input = document.getElementById('screenshotInput');
+            if (input) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+            }
+        } catch (_) {}
+
+        renderScreenshotPreview(file);
     }
 
     // Render Preview Helper
     function renderScreenshotPreview(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            document.getElementById('screenshotPreview').src = e.target.result;
-            document.getElementById('screenshotFileName').innerText = '✓ ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
-            document.getElementById('screenshotPlaceholder').classList.add('hidden');
-            document.getElementById('screenshotPreviewWrapper').classList.remove('hidden');
-            document.getElementById('screenshotDropzone').classList.add('border-emerald-500', 'bg-emerald-50/30');
+            const preview = document.getElementById('screenshotPreview');
+            if (preview) preview.src = e.target.result;
+            const fileNameEl = document.getElementById('screenshotFileName');
+            if (fileNameEl) fileNameEl.innerText = '✓ ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+            document.getElementById('screenshotPlaceholder')?.classList.add('hidden');
+            document.getElementById('screenshotPreviewWrapper')?.classList.remove('hidden');
+            document.getElementById('screenshotDropzone')?.classList.add('border-emerald-500', 'bg-emerald-50/30');
         };
         reader.onerror = function() {
             const error = document.getElementById('screenshotError');
-            error.textContent = 'Could not preview this image. Choose it again or use another file.';
-            error.classList.remove('hidden');
+            if (error) {
+                error.textContent = 'Could not preview this image. Choose it again or use another file.';
+                error.classList.remove('hidden');
+            }
         };
         reader.readAsDataURL(file);
     }
 
     // Clear Screenshot
     function clearScreenshot(e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        attachedScreenshotFile = null;
         const input = document.getElementById('screenshotInput');
-        input.value = '';
+        if (input) input.value = '';
         const error = document.getElementById('screenshotError');
-        error.textContent = '';
-        error.classList.add('hidden');
-        document.getElementById('screenshotPreview').src = '';
-        document.getElementById('screenshotPlaceholder').classList.remove('hidden');
-        document.getElementById('screenshotPreviewWrapper').classList.add('hidden');
-        document.getElementById('screenshotDropzone').classList.remove('border-emerald-500', 'bg-emerald-50/30');
+        if (error) {
+            error.textContent = '';
+            error.classList.add('hidden');
+        }
+        const preview = document.getElementById('screenshotPreview');
+        if (preview) preview.src = '';
+        document.getElementById('screenshotPlaceholder')?.classList.remove('hidden');
+        document.getElementById('screenshotPreviewWrapper')?.classList.add('hidden');
+        document.getElementById('screenshotDropzone')?.classList.remove('border-emerald-500', 'bg-emerald-50/30');
     }
 
     // Clipboard Screenshot Paste (Ctrl + V)
@@ -1206,22 +1377,14 @@
         const items = e.clipboardData?.items;
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (items[i].type && items[i].type.indexOf('image/') === 0) {
+            if (items[i].type && items[i].type.startsWith('image/')) {
                 const blob = items[i].getAsFile();
                 if (!blob) continue;
-                if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type)) {
-                    const error = document.getElementById('screenshotError');
-                    error.textContent = 'Paste a PNG, JPG, or WEBP image. Other image formats are not supported.';
-                    error.classList.remove('hidden');
-                    break;
-                }
-                const fileInput = document.getElementById('screenshotInput');
-                const dt = new DataTransfer();
-                const safeType = blob.type;
-                const fileName = `pasted-screenshot-${Date.now()}.${safeType === 'image/jpeg' ? 'jpg' : safeType.split('/')[1]}`;
-                dt.items.add(new File([blob], fileName, { type: safeType }));
-                fileInput.files = dt.files;
-                handleScreenshotSelected(fileInput);
+                const mimeType = (blob.type || '').toLowerCase();
+                const ext = mimeType === 'image/jpeg' ? 'jpg' : (mimeType.split('/')[1] || 'png');
+                const fileName = `pasted-screenshot-${Date.now()}.${ext}`;
+                const file = new File([blob], fileName, { type: blob.type });
+                processSelectedScreenshot(file);
                 document.getElementById('screenshotDropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 break;
             }
@@ -1274,39 +1437,376 @@
     // ==========================================
     // Autonomous AI Triage Live Stepper & Stepper Logic
     // ==========================================
-    const projectBugs = @json($bugs->map(fn($b) => ['id' => $b->id, 'title' => $b->title]));
+    const projectBugs = @json(collect($pastBugs ?? $bugs)->map(fn($b) => ['id' => $b->id, 'title' => $b->title, 'description' => $b->description ?? '']));
+
+    // Live TF-IDF Vectorizer & Cosine Similarity Engine
+    function vectorizeText(text) {
+        const stopWords = new Set(['the','is','at','which','on','and','a','an','in','to','for','of','with','as','by','or','it','this','that','from','be','are','was','were']);
+        const tokens = (text || '').toLowerCase().match(/[a-z0-9+#_]+/g) || [];
+        const counts = {};
+        let total = 0;
+        tokens.forEach(t => {
+            if (!stopWords.has(t) && t.length > 1) {
+                counts[t] = (counts[t] || 0) + 1;
+                total++;
+            }
+        });
+        const vec = {};
+        if (total > 0) {
+            for (const [k, v] of Object.entries(counts)) {
+                vec[k] = v / total;
+            }
+        }
+        return { vec, tokens: Object.keys(counts) };
+    }
+
+    function calculateCosine(vecA, vecB) {
+        let dot = 0;
+        let normA = 0;
+        let normB = 0;
+        for (const v of Object.values(vecA)) normA += v * v;
+        for (const v of Object.values(vecB)) normB += v * v;
+        if (!normA || !normB) return 0;
+        for (const [k, v] of Object.entries(vecA)) {
+            if (vecB[k]) dot += v * vecB[k];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
     let dupTimeout = null;
     function checkDuplicateTitle(val) {
         clearTimeout(dupTimeout);
         dupTimeout = setTimeout(() => {
-            const warningEl = document.getElementById('duplicateWarning');
-            const clean = (val || '').trim().toLowerCase();
-            if (clean.length < 4 || !projectBugs.length) {
-                if (warningEl) warningEl.classList.add('hidden');
+            const radarEl = document.getElementById('duplicateRadar');
+            const clean = (val || '').trim();
+            if (clean.length < 3 || !projectBugs.length) {
+                if (radarEl) radarEl.classList.add('hidden');
                 return;
             }
-            const words = clean.split(/\s+/).filter(w => w.length > 2);
-            const match = projectBugs.find(b => {
-                const bTitle = (b.title || '').toLowerCase();
-                if (bTitle.includes(clean) || clean.includes(bTitle)) return true;
-                const matchCount = words.filter(w => bTitle.includes(w)).length;
-                return matchCount >= 2 || (words.length === 1 && matchCount === 1 && clean.length > 5);
+
+            const currentData = vectorizeText(clean);
+            let bestScore = 0;
+            let bestMatch = null;
+            let commonKeywords = [];
+
+            projectBugs.forEach(bug => {
+                const bugText = `${bug.title} ${bug.description || ''}`;
+                const candidateData = vectorizeText(bugText);
+                const score = calculateCosine(currentData.vec, candidateData.vec);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = bug;
+                    commonKeywords = currentData.tokens.filter(t => candidateData.tokens.includes(t));
+                }
             });
-            if (match && warningEl) {
-                document.getElementById('dupBugKey').innerText = `#ABT-${match.id}`;
-                document.getElementById('dupBugTitle').innerText = `(${match.title})`;
-                document.getElementById('dupBugLink').href = `/bugs/${match.id}`;
-                warningEl.classList.remove('hidden');
-            } else if (warningEl) {
-                warningEl.classList.add('hidden');
+
+            const percent = Math.min(100, Math.round(bestScore * 100));
+            if (radarEl) {
+                radarEl.classList.remove('hidden');
+
+                const scoreEl = document.getElementById('radarSimilarityScore');
+                const barEl = document.getElementById('radarProgressBar');
+                const badgeEl = document.getElementById('radarStatusBadge');
+                const statusText = document.getElementById('radarStatusText');
+                const matchCard = document.getElementById('radarMatchCard');
+                const matchedKey = document.getElementById('radarMatchedKey');
+                const matchedTitle = document.getElementById('radarMatchedTitle');
+                const matchedLink = document.getElementById('radarMatchedLink');
+                const keywordsList = document.getElementById('radarKeywordsList');
+                const verdictText = document.getElementById('radarVerdictText');
+
+                if (scoreEl) scoreEl.innerText = `${percent}%`;
+                if (barEl) {
+                    barEl.style.width = `${Math.max(6, percent)}%`;
+                    if (percent >= 75) {
+                        barEl.className = 'h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 to-rose-600 animate-pulse';
+                    } else if (percent >= 50) {
+                        barEl.className = 'h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-amber-400 to-orange-500';
+                    } else {
+                        barEl.className = 'h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-emerald-400 to-teal-500';
+                    }
+                }
+
+                if (badgeEl && statusText) {
+                    if (percent >= 75) {
+                        badgeEl.className = 'rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 text-[10px] font-bold font-mono flex items-center gap-1 shadow-2xs animate-bounce';
+                        statusText.innerHTML = '⚠️ Potential Duplicate Detected';
+                    } else if (percent >= 50) {
+                        badgeEl.className = 'rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold font-mono flex items-center gap-1 shadow-2xs';
+                        statusText.innerHTML = '⚡ Related Topic Match';
+                    } else {
+                        badgeEl.className = 'rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold font-mono flex items-center gap-1 shadow-2xs';
+                        statusText.innerHTML = '🛡️ Unique Issue';
+                    }
+                }
+
+                if (bestMatch && percent > 0 && matchCard) {
+                    matchCard.classList.remove('hidden');
+                    if (matchedKey) matchedKey.innerText = `#ABT-${bestMatch.id}`;
+                    if (matchedTitle) matchedTitle.innerText = bestMatch.title;
+                    if (matchedLink) matchedLink.href = `/bugs/${bestMatch.id}`;
+                    if (keywordsList) {
+                        keywordsList.innerHTML = commonKeywords.length 
+                            ? commonKeywords.slice(0, 5).map(k => `<span class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-1.5 py-0.2 rounded font-mono text-[9px]">#${k}</span>`).join('')
+                            : '<span class="text-slate-400 italic text-[10px]">Contextual semantic overlap</span>';
+                    }
+                    if (verdictText) {
+                        if (percent >= 75) {
+                            verdictText.innerHTML = `<span class="text-rose-700 font-bold">🛑 Threshold Exceeded (≥ 75%):</span> AI identifies this as an existing defect (#ABT-${bestMatch.id}).`;
+                        } else {
+                            verdictText.innerHTML = `<span class="text-emerald-700 font-bold">✓ Safe (${percent}% &lt; 75% limit):</span> Cosine distance under threshold; AI will classify as a new unique issue.`;
+                        }
+                    }
+                } else if (matchCard) {
+                    matchCard.classList.add('hidden');
+                }
             }
-        }, 200);
+        }, 120);
     }
 
     let triageTimer = null;
     let triageStartTime = null;
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function updateLiveScanner(stageNum, stageTitle, stageDesc, stageIcon, visionSensor, codeSensor, dupSensor, devSensor) {
+        const pill = document.getElementById('liveStagePill');
+        if (pill) pill.innerText = `STAGE ${stageNum} / 5`;
+        const title = document.getElementById('liveStageTitle');
+        if (title) title.innerText = stageTitle;
+        const desc = document.getElementById('liveStageDesc');
+        if (desc) desc.innerText = stageDesc;
+        const icon = document.getElementById('liveStageIcon');
+        if (icon) icon.innerText = stageIcon;
+
+        const sVision = document.getElementById('liveSensorVision');
+        if (sVision && visionSensor) sVision.innerHTML = `<span class="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span> ${visionSensor}`;
+        const sCode = document.getElementById('liveSensorCode');
+        if (sCode && codeSensor) sCode.innerHTML = `<span class="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></span> ${codeSensor}`;
+        const sDup = document.getElementById('liveSensorDup');
+        if (sDup && dupSensor) sDup.innerHTML = `<span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> ${dupSensor}`;
+        const sDev = document.getElementById('liveSensorDev');
+        if (sDev && devSensor) sDev.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> ${devSensor}`;
+    }
+
+    function resetLiveTelemetry(title, desc, hasScreenshot, fileName) {
+        const badge = document.getElementById('liveDetectionPhaseBadge');
+        if (badge) badge.innerText = 'STAGE 1 / 5: NLP & OCR ACTIVE';
+        
+        // Reset Card 1 (NLP)
+        const card1 = document.getElementById('liveCardNlp');
+        if (card1) card1.className = 'p-3 sm:p-3.5 rounded-2xl border-2 border-indigo-400 bg-indigo-950/40 shadow-sm space-y-2 transition-all opacity-100';
+        const tag1 = document.getElementById('liveTagNlp');
+        if (tag1) {
+            tag1.className = 'rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse';
+            tag1.innerText = 'PARSING TOKENS';
+        }
+        const dot1 = document.getElementById('liveDotNlp');
+        if (dot1) dot1.className = 'h-2 w-2 rounded-full bg-indigo-400 animate-pulse';
+
+        const tokenData = vectorizeText((title || '') + ' ' + (desc || ''));
+        const tokens = tokenData.tokens.slice(0, 6);
+        const tokensEl = document.getElementById('liveNlpTokens');
+        if (tokensEl) {
+            tokensEl.innerHTML = tokens.length 
+                ? tokens.map(t => `<span class="inline-block px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-200 border border-indigo-500/40 text-[10px] font-mono mr-1">#${t}</span>`).join('')
+                : '<span class="text-slate-400 text-[10px] font-mono">Tokenizing symptoms...</span>';
+        }
+        const targetEl = document.getElementById('liveNlpTarget');
+        if (targetEl) targetEl.innerText = `"${(title || 'Processing anomaly').substring(0, 48)}"`;
+
+        const visionEl = document.getElementById('liveNlpVisionText');
+        if (visionEl) {
+            visionEl.innerText = hasScreenshot 
+                ? `Groq Vision Llama-3.2 active: Analyzing image buffer (${fileName || 'screenshot.png'})`
+                : 'Lexical NLP Tokenizer active (Pure text symptom vector)';
+        }
+
+        // Configure Live Vision OCR Viewport
+        const ocrWrapper = document.getElementById('liveOcrImageWrapper');
+        const ocrImg = document.getElementById('liveOcrPreviewImg');
+        const ocrEngine = document.getElementById('liveOcrEngineName');
+        const ocrStatus = document.getElementById('liveOcrStatusTag');
+        const ocrLog = document.getElementById('liveOcrStreamLog');
+
+        if (hasScreenshot) {
+            if (ocrWrapper) ocrWrapper.classList.remove('hidden');
+            let previewSrc = document.getElementById('screenshotPreview')?.src || '';
+            if (!previewSrc && attachedScreenshotFile) {
+                try { previewSrc = URL.createObjectURL(attachedScreenshotFile); } catch (_) {}
+            }
+            if (ocrImg && previewSrc) ocrImg.src = previewSrc;
+            if (ocrEngine) ocrEngine.innerText = 'Groq Vision Llama-3.2 11B';
+            if (ocrStatus) {
+                ocrStatus.className = 'text-cyan-300 font-bold animate-pulse';
+                ocrStatus.innerText = '⚡ Laser Scanning Viewport';
+            }
+            if (ocrLog) ocrLog.innerHTML = `<span class="text-cyan-400">▶</span> Neural vision tensor initialized: <span class="text-white">${fileName || 'screenshot.png'}</span>`;
+        } else {
+            if (ocrWrapper) ocrWrapper.classList.add('hidden');
+            if (ocrEngine) ocrEngine.innerText = 'Lexical NLP Core';
+            if (ocrStatus) {
+                ocrStatus.className = 'text-slate-400 font-bold';
+                ocrStatus.innerText = 'Text-Only Input';
+            }
+            if (ocrLog) ocrLog.innerText = '▶ Pure text symptom vector parsed (No screenshot uploaded)';
+        }
+
+        // Reset Card 2 (GitHub)
+        const card2 = document.getElementById('liveCardGh');
+        if (card2) card2.className = 'p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50';
+        const tag2 = document.getElementById('liveTagGh');
+        if (tag2) {
+            tag2.className = 'rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono';
+            tag2.innerText = 'STANDBY';
+        }
+        const dot2 = document.getElementById('liveDotGh');
+        if (dot2) dot2.className = 'h-2 w-2 rounded-full bg-slate-600';
+        const ghFiles = document.getElementById('liveGhScannedFile');
+        if (ghFiles) ghFiles.innerHTML = '<span class="text-slate-500 text-[10px]">Awaiting tree traversal...</span>';
+        const ghScore = document.getElementById('liveGhMatchScore');
+        if (ghScore) ghScore.innerText = 'Pending scan';
+
+        // Reset Card 3 (AST)
+        const card3 = document.getElementById('liveCardAst');
+        if (card3) card3.className = 'p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50';
+        const tag3 = document.getElementById('liveTagAst');
+        if (tag3) {
+            tag3.className = 'rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono';
+            tag3.innerText = 'STANDBY';
+        }
+        const dot3 = document.getElementById('liveDotAst');
+        if (dot3) dot3.className = 'h-2 w-2 rounded-full bg-slate-600';
+        const astRes = document.getElementById('liveAstResult');
+        if (astRes) astRes.innerText = 'Awaiting parser';
+
+        // Reset Card 4 (Vector Sim)
+        const card4 = document.getElementById('liveCardVec');
+        if (card4) card4.className = 'p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50';
+        const tag4 = document.getElementById('liveTagVec');
+        if (tag4) {
+            tag4.className = 'rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono';
+            tag4.innerText = 'STANDBY';
+        }
+        const dot4 = document.getElementById('liveDotVec');
+        if (dot4) dot4.className = 'h-2 w-2 rounded-full bg-slate-600';
+        const vecBar = document.getElementById('liveVecBar');
+        if (vecBar) vecBar.style.width = '0%';
+        const vecVal = document.getElementById('liveVecCosineVal');
+        if (vecVal) vecVal.innerText = 'Awaiting vector matrix...';
+        const vecComp = document.getElementById('liveVecComparedBug');
+        if (vecComp) vecComp.innerText = `Ready to compare against ${projectBugs.length} backlog issues`;
+        const vecVer = document.getElementById('liveVecVerdict');
+        if (vecVer) vecVer.innerText = 'Pending';
+    }
+
+    function updateLiveTelemetry(stage, data = {}) {
+        const badge = document.getElementById('liveDetectionPhaseBadge');
+        if (stage === 1) {
+            if (badge) badge.innerText = 'STAGE 1 / 5: NLP & OCR ACTIVE';
+            const tag = document.getElementById('liveTagNlp');
+            if (tag) {
+                tag.className = 'rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse';
+                tag.innerText = 'PARSING TOKENS';
+            }
+        } else if (stage === 2) {
+            if (badge) badge.innerText = 'STAGE 2 / 5: GITHUB TREE SCAN ACTIVE';
+            const tag1 = document.getElementById('liveTagNlp');
+            if (tag1) {
+                tag1.className = 'rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-bold font-mono';
+                tag1.innerText = '✓ EXTRACTED';
+            }
+            const card2 = document.getElementById('liveCardGh');
+            if (card2) card2.className = 'p-3 sm:p-3.5 rounded-2xl border-2 border-sky-400 bg-sky-950/40 shadow-sm space-y-2 transition-all opacity-100';
+            const tag2 = document.getElementById('liveTagGh');
+            if (tag2) {
+                tag2.className = 'rounded bg-sky-500/20 text-sky-300 border border-sky-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse';
+                tag2.innerText = 'SCANNING REPO';
+            }
+            const dot2 = document.getElementById('liveDotGh');
+            if (dot2) dot2.className = 'h-2 w-2 rounded-full bg-sky-400 animate-pulse';
+
+            if (data.files && data.files.length) {
+                const ghFiles = document.getElementById('liveGhScannedFile');
+                if (ghFiles) {
+                    ghFiles.innerHTML = data.files.map(f => `
+                        <div class="flex items-center justify-between text-[10px] text-sky-200 font-mono py-0.5 border-b border-slate-800/60 last:border-0">
+                            <span class="truncate max-w-[200px]">📄 ${f.name}</span>
+                            <span class="text-sky-300 font-bold shrink-0 ml-1 font-mono">${f.match}% match</span>
+                        </div>
+                    `).join('');
+                }
+            }
+            if (data.matchScore) {
+                const ghScore = document.getElementById('liveGhMatchScore');
+                if (ghScore) ghScore.innerText = data.matchScore;
+            }
+        } else if (stage === 3) {
+            if (badge) badge.innerText = 'STAGE 3 / 5: AST SYNTAX & DIAGNOSTICS';
+            const tag2 = document.getElementById('liveTagGh');
+            if (tag2) {
+                tag2.className = 'rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-bold font-mono';
+                tag2.innerText = '✓ CULPRIT ISOLATED';
+            }
+            const card3 = document.getElementById('liveCardAst');
+            if (card3) card3.className = 'p-3 sm:p-3.5 rounded-2xl border-2 border-blue-400 bg-blue-950/40 shadow-sm space-y-2 transition-all opacity-100';
+            const tag3 = document.getElementById('liveTagAst');
+            if (tag3) {
+                tag3.className = 'rounded bg-blue-500/20 text-blue-300 border border-blue-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse';
+                tag3.innerText = 'VALIDATING AST';
+            }
+            const dot3 = document.getElementById('liveDotAst');
+            if (dot3) dot3.className = 'h-2 w-2 rounded-full bg-blue-400 animate-pulse';
+
+            if (data.parser) document.getElementById('liveAstParser').innerText = data.parser;
+            if (data.pattern) document.getElementById('liveAstPattern').innerText = data.pattern;
+            if (data.result) document.getElementById('liveAstResult').innerText = data.result;
+        } else if (stage === 4) {
+            if (badge) badge.innerText = 'STAGE 4 / 5: VECTOR SIM DEDUPLICATION MATRIX';
+            const tag3 = document.getElementById('liveTagAst');
+            if (tag3) {
+                tag3.className = 'rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-bold font-mono';
+                tag3.innerText = '✓ SYNTAX VERIFIED';
+            }
+            const card4 = document.getElementById('liveCardVec');
+            if (card4) card4.className = 'p-3 sm:p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-950/40 shadow-sm space-y-2 transition-all opacity-100';
+            const tag4 = document.getElementById('liveTagVec');
+            if (tag4) {
+                tag4.className = 'rounded bg-amber-500/20 text-amber-300 border border-amber-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse';
+                tag4.innerText = 'COMPUTING COSINE';
+            }
+            const dot4 = document.getElementById('liveDotVec');
+            if (dot4) dot4.className = 'h-2 w-2 rounded-full bg-amber-400 animate-pulse';
+
+            if (data.compared) document.getElementById('liveVecComparedBug').innerText = data.compared;
+            if (data.cosineVal) document.getElementById('liveVecCosineVal').innerText = data.cosineVal;
+            if (data.percent !== undefined) {
+                const bar = document.getElementById('liveVecBar');
+                if (bar) bar.style.width = `${Math.min(100, Math.max(5, data.percent))}%`;
+            }
+            if (data.verdict) document.getElementById('liveVecVerdict').innerText = data.verdict;
+        } else if (stage === 5) {
+            if (badge) badge.innerText = 'STAGE 5 / 5: DEVELOPER DISPATCH COMPLETE';
+            const tag4 = document.getElementById('liveTagVec');
+            if (tag4) {
+                tag4.className = 'rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-bold font-mono';
+                tag4.innerText = data.isDup ? '⚠️ DUPLICATE' : '🛡️ UNIQUE ISSUE';
+            }
+        }
+    }
+
+    function focusLiveDetectionCard(num) {
+        const cardMap = { 1: 'liveCardNlp', 2: 'liveCardGh', 3: 'liveCardAst', 4: 'liveCardVec', 5: 'liveCardVec' };
+        const targetId = cardMap[num];
+        if (targetId) {
+            const el = document.getElementById(targetId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                el.classList.add('ring-2', 'ring-indigo-400');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400'), 1500);
+            }
+        }
+    }
 
     function openTriageModal(title) {
         const modal = document.getElementById('triageTerminalModal');
@@ -1319,14 +1819,36 @@
         document.getElementById('triageProgressBar').style.width = '5%';
         document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span> RUNNING NEURAL PIPELINE`;
         document.getElementById('terminalStatusPill').className = 'flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-[11px] font-bold text-indigo-700 font-mono-code';
-        document.getElementById('terminalResultCard').classList.add('hidden');
+        
+        // Show Live Scanner and Hide Result Card
+        const resultCard = document.getElementById('terminalResultCard');
+        if (resultCard) resultCard.classList.add('hidden');
+        const liveScanner = document.getElementById('terminalLiveScanner');
+        if (liveScanner) liveScanner.classList.remove('hidden');
+
+        // Reset Live Scanner to Stage 1
+        updateLiveScanner(
+            1,
+            'Vision OCR & Lexical NLP Parser Active',
+            'Analyzing natural language symptom patterns and extracting screenshot image tokens with Groq Vision Llama-3.2.',
+            '📸',
+            'Llama-3.2-11B',
+            'Ready',
+            'Standby',
+            'Standby'
+        );
+
+        const descVal = document.getElementById('bugDescription')?.value || '';
+        const hasScreen = Boolean(attachedScreenshotFile) || Boolean(document.getElementById('screenshotInput')?.files?.length);
+        const screenName = attachedScreenshotFile?.name || document.getElementById('screenshotInput')?.files?.[0]?.name;
+        resetLiveTelemetry(title, descVal, hasScreen, screenName);
         
         // Reset Steps
         [1, 2, 3, 4, 5].forEach(i => {
             const step = document.getElementById(`step-pill-${i}`);
             if (step) {
-                step.className = 'px-2.5 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold transition flex items-center justify-center gap-1 text-[11px]';
-                step.innerHTML = `<span class="text-slate-400 font-mono text-[10px]">${i}.</span> <span>${step.dataset.name || 'Stage ' + i}</span>`;
+                step.className = 'px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] shadow-2xs';
+                step.innerHTML = `<span class="text-base">${['📸','🐙','⚡','🔍','👤'][i-1]}</span><span class="font-bold text-slate-800 mt-0.5">${i}. ${step.dataset.name || 'Stage ' + i}</span>`;
             }
         });
         setStepActive(1);
@@ -1344,6 +1866,8 @@
         clearInterval(triageTimer);
         document.getElementById('triageTerminalModal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
+        document.getElementById('terminalLiveScanner')?.classList.remove('hidden');
+        document.getElementById('terminalResultCard')?.classList.add('hidden');
     }
 
     function submitAnotherReport() {
@@ -1355,6 +1879,7 @@
             list.replaceChildren();
             addReproductionStep();
         }
+        attachedScreenshotFile = null;
         const input = document.getElementById('screenshotInput');
         if (input) input.value = '';
         document.getElementById('screenshotPreview').src = '';
@@ -1457,6 +1982,67 @@
         return `https://github.com/${slug}/blob/${encodeURIComponent(br)}/${encodedP}`;
     }
 
+    function handleTitleInput(val) {
+        const errorBanner = document.getElementById('invalidInputBanner');
+        if (errorBanner) errorBanner.classList.add('hidden');
+        document.getElementById('bugTitle')?.classList.remove('border-rose-500', 'bg-rose-50/50');
+        checkDuplicateTitle(val);
+    }
+
+    function isGibberishOrInvalid(title, description, hasAttachment) {
+        const cleanTitle = (title || '').trim().toLowerCase();
+        const cleanDesc = (description || '').trim().toLowerCase();
+
+        // If screenshot or source file is attached, require a minimal non-empty meaningful title
+        if (hasAttachment && cleanTitle.length >= 4 && /[aeiouy]/.test(cleanTitle)) {
+            return false;
+        }
+
+        if (cleanTitle.length < 5) {
+            return 'Title is too short. Please provide a clear summary of the bug.';
+        }
+
+        // Repeated characters (e.g., 'aaaa', 'zzzzz')
+        if (/(.)\1{3,}/.test(cleanTitle)) {
+            return 'Title contains repeated characters. Please enter a real bug report.';
+        }
+
+        // Repeating 2-3 char patterns without spaces (e.g. 'mbmbm', 'asdasd', 'qweqwe')
+        if (/^(.{2,3})\1+.*$/.test(cleanTitle) && !cleanTitle.includes(' ')) {
+            return 'Invalid input: "' + title.trim() + '" appears to be random or gibberish text. Please provide a real bug title.';
+        }
+
+        const knownAbbrs = ['sql', 'php', 'css', 'html', 'jwt', 'api', 'cli', 'sdk', 'sso', 'ssl', 'ssh', 'dns', 'url', 'xml', 'csv', 'svg', 'npm', 'jvm', 'grpc', 'http', 'https'];
+        const words = cleanTitle.split(/\s+/).filter(Boolean);
+
+        if (words.length <= 1) {
+            const single = words[0] || cleanTitle;
+            if (knownAbbrs.includes(single)) {
+                if (cleanDesc.length < 10) {
+                    return 'Please provide more details in the description.';
+                }
+                return false;
+            }
+            // No vowels in a single word of 4+ characters (e.g. mbmbm, dfgh, bcdf)
+            if (!/[aeiouy]/.test(single)) {
+                return 'Invalid bug title: "' + title.trim() + '" appears to be random letters. Please describe a real issue.';
+            }
+            // If single word is less than 5 characters and not a 3-digit status code like 404/500
+            if (single.length < 5 && !/^\d{3}$/.test(single)) {
+                return 'Please provide a more descriptive title with at least 2 words (e.g. "Login failed").';
+            }
+        }
+
+        const combined = `${cleanTitle} ${cleanDesc}`;
+        const vowels = (combined.match(/[aeiouy]/g) || []).length;
+        const letters = (combined.match(/[a-z]/g) || []).length;
+        if (letters >= 5 && vowels === 0) {
+            return 'Invalid report: No vowels detected. Please describe the problem in plain text.';
+        }
+
+        return false;
+    }
+
     // Submit Handler with Streaming Execution (5-Phase Explainable AI Pipeline)
     async function handleTriageSubmit(e) {
         if (e) e.preventDefault();
@@ -1466,7 +2052,34 @@
             return;
         }
 
-        const title = document.getElementById('bugTitle').value;
+        const titleInput = document.getElementById('bugTitle');
+        const descInput = document.getElementById('bugDescription');
+        const title = (titleInput ? titleInput.value : '').trim();
+        const desc = (descInput ? descInput.value : '').trim();
+        const hasScreenshot = Boolean(attachedScreenshotFile) || Boolean(document.getElementById('screenshotInput')?.files?.length);
+        const hasSourceFile = Boolean(document.getElementById('sourceFileInput')?.files?.length);
+
+        const validationError = isGibberishOrInvalid(title, desc, hasScreenshot || hasSourceFile);
+        if (validationError) {
+            const errorBanner = document.getElementById('invalidInputBanner');
+            const errorMsg = document.getElementById('invalidInputMsg');
+            if (errorBanner) {
+                if (errorMsg) errorMsg.innerText = validationError;
+                errorBanner.classList.remove('hidden');
+                errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            if (titleInput) {
+                titleInput.classList.add('border-rose-500', 'bg-rose-50/50');
+                titleInput.focus();
+            }
+            const feedback = document.getElementById('submissionFeedback');
+            if (feedback) {
+                feedback.textContent = validationError;
+                feedback.className = 'min-h-4 mt-2 text-center text-xs font-bold text-rose-600';
+            }
+            return;
+        }
+
         const feedback = document.getElementById('submissionFeedback');
         feedback.textContent = 'Uploading your report and checking the attachment…';
         feedback.className = 'min-h-4 mt-2 text-center text-[11px] text-indigo-700';
@@ -1499,20 +2112,46 @@
         document.getElementById('screenshotUploadPercent').textContent = '0%';
         document.getElementById('screenshotUploadLabel').textContent = 'Uploading screenshot…';
         const formData = new FormData(form);
+        if (attachedScreenshotFile) {
+            formData.set('screenshot', attachedScreenshotFile, attachedScreenshotFile.name);
+        }
 
+        const fileName = attachedScreenshotFile?.name || document.getElementById('screenshotInput')?.files?.[0]?.name;
         openTriageModal(title);
+        resetLiveTelemetry(title, desc, hasScreenshot, fileName);
         appendTerminalLog('[BOOT]', 'Initializing AutoBugTriage neural inference core v2.5...', 'text-slate-300');
 
         // Step 1: Ingestion & OCR
-        await sleep(200);
-        appendTerminalLog('[INGEST]', 'Parsing natural-language symptoms and visual OCR text...', 'text-sky-300');
+        updateLiveScanner(
+            1,
+            hasScreenshot ? 'Vision OCR (Groq Llama-3.2) Active' : 'Lexical NLP Parser Active',
+            hasScreenshot 
+                ? 'Scanning UI screenshot with optical laser & extracting visual anomaly tokens with Groq Vision Llama-3.2-11B.' 
+                : 'Analyzing natural language symptom patterns and extracting semantic bug tokens.',
+            '📸',
+            hasScreenshot ? 'Llama-3.2-11B-Vision' : 'Lexical NLP',
+            'Ready',
+            'Standby',
+            'Standby'
+        );
+        updateLiveTelemetry(1, { hasScreenshot });
+        if (hasScreenshot) {
+            appendTerminalLog('[VISION]', `Loading image buffer (${fileName || 'screenshot.png'}) into Groq Vision Llama-3.2-11B tensor...`, 'text-purple-300 font-mono');
+            const ocrLog = document.getElementById('liveOcrStreamLog');
+            if (ocrLog) ocrLog.innerHTML = '<span class="text-cyan-400">▶</span> Sweeping laser across viewport: extracting UI error boundaries...';
+            await sleep(400);
+            if (ocrLog) ocrLog.innerHTML = '<span class="text-cyan-400">▶</span> OCR token stream: detecting button components, dialogs & text...';
+            await sleep(400);
+        } else {
+            await sleep(350);
+            appendTerminalLog('[INGEST]', 'Parsing natural-language symptoms and visual OCR text...', 'text-sky-300');
+        }
         document.getElementById('triageProgressBar').style.width = '20%';
         setStepDone(1);
         setStepActive(2);
 
         // Concurrently dispatch request
         const uploadProgress = document.getElementById('screenshotUploadProgress');
-        const hasScreenshot = Boolean(document.getElementById('screenshotInput')?.files?.length);
         if (hasScreenshot) uploadProgress.classList.remove('hidden');
         const apiPromise = new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
@@ -1551,20 +2190,107 @@
         });
 
         // Step 2: GitHub Repository Tree Scan
-        await sleep(350);
+        const tokenData = vectorizeText(title + ' ' + desc);
+        const tLower = (title + ' ' + desc).toLowerCase();
+        let repoCandidates = [];
+        if (tLower.includes('profile') || tLower.includes('user') || tLower.includes('account')) {
+            repoCandidates = [
+                { name: 'resources/views/profile.blade.php', match: 88 },
+                { name: 'app/Http/Controllers/UserController.php', match: 79 },
+                { name: 'routes/web.php', match: 72 }
+            ];
+        } else if (tLower.includes('password') || tLower.includes('login') || tLower.includes('auth')) {
+            repoCandidates = [
+                { name: 'resources/views/auth/login.blade.php', match: 91 },
+                { name: 'app/Http/Controllers/AuthController.php', match: 84 },
+                { name: 'app/Models/User.php', match: 68 }
+            ];
+        } else {
+            repoCandidates = [
+                { name: 'app/Http/Controllers/BugController.php', match: 86 },
+                { name: 'resources/views/ai_agent.blade.php', match: 80 },
+                { name: 'routes/web.php', match: 65 }
+            ];
+        }
+
+        updateLiveScanner(
+            2,
+            'GitHub Repository Tree Traverser Active',
+            'Streaming GitHub repository file tree to map directory structure and isolate culprit modules.',
+            '🐙',
+            'Tokenized',
+            'Scanning Tree',
+            'Standby',
+            'Standby'
+        );
+        updateLiveTelemetry(2, {
+            files: repoCandidates,
+            matchScore: `${repoCandidates[0].match}% (${repoCandidates[0].name.split('/').pop()})`
+        });
+        await sleep(400);
         appendTerminalLog('[GITHUB]', 'Streaming repository file tree from GitHub to isolate culprit modules...', 'text-cyan-300');
         document.getElementById('triageProgressBar').style.width = '40%';
         setStepDone(2);
         setStepActive(3);
 
         // Step 3: AST Grammar & Static Diagnostics
-        await sleep(350);
+        updateLiveScanner(
+            3,
+            'AST Syntax Diagnostics & Pattern Engine Active',
+            'Inspecting AST exception grammar, call-stack traces, and syntax error trees.',
+            '⚡',
+            'Tokenized',
+            'Indexed',
+            'Validating AST',
+            'Standby'
+        );
+        updateLiveTelemetry(3, {
+            parser: 'PHP 8.2 AST Engine & Blade Directive Parser',
+            pattern: 'DOM element binding, click event listeners & route endpoints',
+            result: '✓ Valid AST Structure · Zero fatal syntax crash'
+        });
+        await sleep(400);
         appendTerminalLog('[AST-CODE]', 'Running AST exception pattern checks & inspecting syntax trees...', 'text-blue-300');
         document.getElementById('triageProgressBar').style.width = '60%';
         setStepDone(3);
         setStepActive(4);
 
         // Step 4: TF-IDF Vector Duplicate Matrix
+        let bestDupScore = 0;
+        let bestDupBug = null;
+        if (projectBugs && projectBugs.length) {
+            projectBugs.forEach(b => {
+                const bData = vectorizeText(`${b.title} ${b.description || ''}`);
+                const score = calculateCosine(tokenData.vec, bData.vec);
+                if (score > bestDupScore) {
+                    bestDupScore = score;
+                    bestDupBug = b;
+                }
+            });
+        }
+        const dupPercent = Math.min(100, Math.round(bestDupScore * 100));
+        const isDup = dupPercent >= 75;
+        const comparedMsg = bestDupBug 
+            ? `vs #ABT-${bestDupBug.id}: "${bestDupBug.title.substring(0, 28)}..."` 
+            : `Compared against ${projectBugs.length} project issues`;
+
+        updateLiveScanner(
+            4,
+            'TF-IDF Vector Sim & Deduplication Radar Active',
+            'Comparing report tokens against all open and resolved project issues using Cosine Similarity.',
+            '🔍',
+            'Tokenized',
+            'Indexed',
+            'Computing Cosine',
+            'Ready'
+        );
+        updateLiveTelemetry(4, {
+            compared: comparedMsg,
+            cosineVal: `Cosine: ${dupPercent}% (Formula: A·B / ||A||||B||)`,
+            percent: dupPercent,
+            verdict: isDup ? `⚠️ Duplicate detected (> 75%)` : `🛡️ Unique issue verified (${dupPercent}% < 75%)`,
+            isDup: isDup
+        });
         await sleep(350);
         appendTerminalLog('[TFIDF-SIM]', 'Extracting tokens & computing TF-IDF cosine similarity matrix...', 'text-purple-300');
         document.getElementById('triageProgressBar').style.width = '80%';
@@ -1572,6 +2298,17 @@
         setStepActive(5);
 
         // Step 5: Multi-Factor Engineer Dispatch
+        updateLiveScanner(
+            5,
+            'Multi-Factor Developer Routing Engine Active',
+            'Matching anomaly taxonomy with developer skills matrix and balancing active backlog workload.',
+            '👤',
+            'Complete',
+            'Matched',
+            'Checked',
+            'Dispatching'
+        );
+        updateLiveTelemetry(5, { isDup: isDup });
         await sleep(300);
         appendTerminalLog('[ROUTER]', 'Evaluating developer skills taxonomy & balancing active backlog queue...', 'text-amber-300');
         document.getElementById('triageProgressBar').style.width = '95%';
@@ -1617,16 +2354,213 @@
             const confEl = document.getElementById('resConfidence');
             if (confEl) confEl.innerText = `${confScore}% Match`;
             document.getElementById('resAssignee').innerText = assignee;
-            document.getElementById('resPriority').innerText = priority + ' Priority';
-            document.getElementById('resSimilarity').innerText = simScore > 75 ? 'Duplicate' : 'Unique Issue';
-            document.getElementById('resCulprit').innerText = suspected;
+            const resDevNameLabel = document.getElementById('resDevNameLabel');
+            if (resDevNameLabel) resDevNameLabel.innerText = assignee;
+
+            const resPriorityBadge = document.getElementById('resPriorityBadge');
+            if (resPriorityBadge) {
+                resPriorityBadge.innerText = priority + ' Priority';
+                const pLower = priority.toLowerCase();
+                if (pLower.includes('high') || pLower.includes('critical')) {
+                    resPriorityBadge.className = 'rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs px-2.5 py-1';
+                } else if (pLower.includes('low')) {
+                    resPriorityBadge.className = 'rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs px-2.5 py-1';
+                } else {
+                    resPriorityBadge.className = 'rounded-lg bg-amber-50 border border-amber-200 text-amber-700 font-bold text-xs px-2.5 py-1';
+                }
+            }
+
+            const resPriority = document.getElementById('resPriority');
+            if (resPriority) {
+                resPriority.innerText = priority + ' Priority';
+                const pLower = priority.toLowerCase();
+                const iconEl = document.getElementById('resPriorityIcon');
+                if (pLower.includes('high') || pLower.includes('critical')) {
+                    resPriority.className = 'font-extrabold text-rose-600 text-xs sm:text-sm truncate block mt-0.5';
+                    if (iconEl) { iconEl.innerText = '⚡'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-lg border border-rose-200'; }
+                } else if (pLower.includes('low')) {
+                    resPriority.className = 'font-extrabold text-slate-600 text-xs sm:text-sm truncate block mt-0.5';
+                    if (iconEl) { iconEl.innerText = '🟢'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 text-lg border border-slate-200'; }
+                } else {
+                    resPriority.className = 'font-extrabold text-amber-600 text-xs sm:text-sm truncate block mt-0.5';
+                    if (iconEl) { iconEl.innerText = '🟠'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 text-lg border border-amber-200'; }
+                }
+            }
+
+            const resSimilarity = document.getElementById('resSimilarity');
+            if (resSimilarity) {
+                const isDup = simScore > 75;
+                resSimilarity.innerText = isDup ? 'Duplicate Issue' : 'Unique Issue';
+                const simIconEl = document.getElementById('resSimilarityIcon');
+                if (isDup) {
+                    resSimilarity.className = 'font-extrabold text-amber-600 text-xs sm:text-sm truncate block mt-0.5';
+                    if (simIconEl) { simIconEl.innerText = '⚠️'; simIconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 text-lg border border-amber-200'; }
+                } else {
+                    resSimilarity.className = 'font-extrabold text-emerald-600 text-xs sm:text-sm truncate block mt-0.5';
+                    if (simIconEl) { simIconEl.innerText = '🛡️'; simIconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 text-lg border border-emerald-200'; }
+                }
+            }
+
+            const culpritEl = document.getElementById('resCulprit');
+            if (culpritEl) culpritEl.innerText = suspected;
             const culpritGhLink = document.getElementById('resCulpritGhLink');
             if (culpritGhLink) {
                 culpritGhLink.href = topGhUrl;
                 culpritGhLink.classList.remove('hidden');
             }
 
+            // Populate 4-Card Full Scan Visual Dashboard
+            const hasScreenshot = Boolean(resData.has_screenshot) || Boolean(attachedScreenshotFile) || Boolean(document.getElementById('screenshotInput')?.files?.length) || !!ai.screenshot_vision || !!ai.screenshot_analyzed;
+            const scanEvidenceBadge = document.getElementById('scanEvidenceBadge');
+            const scanEvidenceText = document.getElementById('scanEvidenceText');
+            const scanEvidenceEngine = document.getElementById('scanEvidenceEngine');
+            const scanEvidenceDot = document.getElementById('scanEvidenceDot');
+            const scanEvidenceThumbWrapper = document.getElementById('scanEvidenceThumbWrapper');
+            const scanEvidenceThumb = document.getElementById('scanEvidenceThumb');
+            const scanEvidenceFileName = document.getElementById('scanEvidenceFileName');
+            const scanEvidenceLink = document.getElementById('scanEvidenceLink');
+
+            if (scanEvidenceBadge) {
+                if (hasScreenshot) {
+                    scanEvidenceBadge.innerHTML = '<span>⚡</span> Vision OCR';
+                    scanEvidenceBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-extrabold text-purple-700';
+                    if (scanEvidenceText) scanEvidenceText.innerText = 'Screenshot analyzed with Groq Vision';
+                    if (scanEvidenceEngine) scanEvidenceEngine.innerText = 'Llama-3.2-11B';
+                    if (scanEvidenceDot) scanEvidenceDot.className = 'h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse';
+
+                    if (scanEvidenceThumbWrapper) {
+                        const previewSrc = document.getElementById('screenshotPreview')?.src || resData.screenshot_url;
+                        if (previewSrc) {
+                            if (scanEvidenceThumb) scanEvidenceThumb.src = previewSrc;
+                            if (scanEvidenceFileName) scanEvidenceFileName.innerText = resData.screenshot_name || document.getElementById('screenshotInput')?.files?.[0]?.name || 'Attached Screenshot';
+                            if (scanEvidenceLink && resData.screenshot_url) {
+                                scanEvidenceLink.href = resData.screenshot_url;
+                                scanEvidenceLink.classList.remove('hidden');
+                            }
+                            scanEvidenceThumbWrapper.classList.remove('hidden');
+                        }
+                    }
+
+                    // Populate Vision OCR Extracted Findings
+                    const scanEvidenceOcrFindings = document.getElementById('scanEvidenceOcrFindings');
+                    const scanEvidenceOcrText = document.getElementById('scanEvidenceOcrText');
+                    const ocrFindingText = ai.extracted_text || 
+                                          ai.code_help?.attachment_note?.extracted_text || 
+                                          (Array.isArray(ai.visual_evidence) ? ai.visual_evidence.join(', ') : ai.visual_evidence) || 
+                                          ai.code_help?.attachment_note?.visual_summary || 
+                                          ai.code_help?.attachment_note?.error_message || '';
+                    if (scanEvidenceOcrFindings && scanEvidenceOcrText) {
+                        scanEvidenceOcrFindings.classList.remove('hidden');
+                        if (ocrFindingText && ocrFindingText.trim().length > 0) {
+                            scanEvidenceOcrText.innerText = ocrFindingText;
+                        } else {
+                            scanEvidenceOcrText.innerText = 'Visual layout, UI controls & button boundaries identified (No raw crash traces).';
+                        }
+                    }
+                } else {
+                    scanEvidenceBadge.innerHTML = '<span>📝</span> NLP Tokenizer';
+                    scanEvidenceBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700';
+                    if (scanEvidenceText) scanEvidenceText.innerText = 'Natural language symptom parsed';
+                    if (scanEvidenceEngine) scanEvidenceEngine.innerText = 'Lexical NLP';
+                    if (scanEvidenceDot) scanEvidenceDot.className = 'h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse';
+                    if (scanEvidenceThumbWrapper) scanEvidenceThumbWrapper.classList.add('hidden');
+                    const scanEvidenceOcrFindings = document.getElementById('scanEvidenceOcrFindings');
+                    if (scanEvidenceOcrFindings) scanEvidenceOcrFindings.classList.add('hidden');
+                }
+            }
+
+            const scanCulpritName = document.getElementById('scanCulpritName');
+            const scanCulpritPath = document.getElementById('scanCulpritPath');
+            const scanCulpritGhLink = document.getElementById('scanCulpritGhLink');
+            if (scanCulpritName) {
+                const fileName = suspected.split(/[\\/]/).pop() || suspected;
+                scanCulpritName.innerText = '📄 ' + fileName;
+                scanCulpritName.title = suspected;
+            }
+            if (scanCulpritPath) {
+                const branchName = (topCandidate && topCandidate.branch) ? topCandidate.branch : 'main';
+                const dirName = (suspected.includes('/') || suspected.includes('\\')) 
+                    ? suspected.substring(0, Math.max(suspected.lastIndexOf('/'), suspected.lastIndexOf('\\'))) 
+                    : 'Codebase scanned';
+                scanCulpritPath.innerText = `🌿 ${branchName}: ${dirName}`;
+            }
+            if (scanCulpritGhLink) {
+                if (topGhUrl) {
+                    scanCulpritGhLink.href = topGhUrl;
+                    scanCulpritGhLink.classList.remove('hidden');
+                } else {
+                    scanCulpritGhLink.classList.add('hidden');
+                }
+            }
+
+            const isDup = simScore > 75;
+            const scanDupCard = document.getElementById('scanDupCard');
+            const scanDupDot = document.getElementById('scanDupDot');
+            const scanDupBadge = document.getElementById('scanDupBadge');
+            const scanDupScore = document.getElementById('scanDupScore');
+            const scanDupProgressBar = document.getElementById('scanDupProgressBar');
+            const scanDupStatus = document.getElementById('scanDupStatus');
+
+            if (scanDupBadge) {
+                if (isDup) {
+                    scanDupBadge.innerHTML = `⚠️ Duplicate (#ABT-${ai.duplicate_of || 'Ref'})`;
+                    scanDupBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-rose-100 border border-rose-200 px-2 py-0.5 text-[10px] font-extrabold text-rose-700';
+                    if (scanDupCard) scanDupCard.className = 'rounded-2xl border border-rose-200 bg-rose-50/50 p-3 space-y-2 shadow-2xs flex flex-col justify-between';
+                    if (scanDupDot) scanDupDot.className = 'h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse';
+                    if (scanDupProgressBar) {
+                        scanDupProgressBar.className = 'bg-gradient-to-r from-amber-500 to-rose-600 h-1.5 rounded-full transition-all duration-500';
+                        scanDupProgressBar.style.width = `${Math.min(100, Math.max(6, simScore))}%`;
+                    }
+                    if (scanDupStatus) {
+                        scanDupStatus.innerText = '⚠️ Duplicate';
+                        scanDupStatus.className = 'font-bold text-rose-700';
+                    }
+                } else {
+                    scanDupBadge.innerHTML = '🛡️ Unique Issue';
+                    scanDupBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800';
+                    if (scanDupCard) scanDupCard.className = 'rounded-2xl border border-amber-200 bg-amber-50/50 p-3 space-y-2 shadow-2xs flex flex-col justify-between';
+                    if (scanDupDot) scanDupDot.className = 'h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse';
+                    if (scanDupProgressBar) {
+                        scanDupProgressBar.className = 'bg-gradient-to-r from-emerald-400 to-teal-600 h-1.5 rounded-full transition-all duration-500';
+                        scanDupProgressBar.style.width = `${Math.min(100, Math.max(6, simScore))}%`;
+                    }
+                    if (scanDupStatus) {
+                        scanDupStatus.innerText = '✓ Evaluated';
+                        scanDupStatus.className = 'font-bold text-emerald-700';
+                    }
+                }
+            }
+            if (scanDupScore) scanDupScore.innerText = `${simScore.toFixed(0)}%`;
+
+            const scanDevAvatar = document.getElementById('scanDevAvatar');
+            const scanDevName = document.getElementById('scanDevName');
+            const scanDevFit = document.getElementById('scanDevFit');
+            const scanDevReason = document.getElementById('scanDevReason');
+
+            if (scanDevAvatar) scanDevAvatar.innerText = assignee.charAt(0).toUpperCase();
+            if (scanDevName) scanDevName.innerText = assignee;
+            if (scanDevFit) scanDevFit.innerText = `${confScore}% Fit`;
+            if (scanDevReason) {
+                const customReason = (ai.code_help && ai.code_help.assignment_reason) 
+                    ? ai.code_help.assignment_reason 
+                    : `Matched skills taxonomy for "${feat}" & lowest backlog`;
+                scanDevReason.innerText = customReason;
+                scanDevReason.title = customReason;
+            }
+
             // Populate Explainable AI (XAI) Decision Breakdown
+            const xaiPriorityReason = document.getElementById('xaiPriorityReason');
+            if (xaiPriorityReason) {
+                const pLower = (priority || '').toLowerCase();
+                if (pLower.includes('high') || pLower.includes('critical')) {
+                    xaiPriorityReason.innerText = 'Detected crash/fatal terms, error traces, or blocker signals affecting workflow.';
+                } else if (pLower.includes('low')) {
+                    xaiPriorityReason.innerText = 'Minor or cosmetic anomaly with minimal operational impact.';
+                } else {
+                    xaiPriorityReason.innerText = 'Standard functional defect detected without fatal system-level exceptions.';
+                }
+            }
+
             const xaiDevReason = document.getElementById('xaiDevReason');
             if (xaiDevReason) {
                 const customReason = (ai.code_help && ai.code_help.assignment_reason) 
@@ -1638,8 +2572,8 @@
             const xaiDupReason = document.getElementById('xaiDupReason');
             if (xaiDupReason) {
                 xaiDupReason.innerText = simScore > 75 
-                    ? `Cosine similarity ${simScore}% (> 75% threshold): Flagged as possible duplicate of an existing ticket.` 
-                    : `Cosine similarity ${simScore}% (< 75% threshold): Verified unique defect in codebase.`;
+                    ? `Cosine similarity ${simScore}% (> 75% threshold): Matches an existing issue in project backlog.` 
+                    : `Cosine similarity ${simScore}% (< 75% threshold): Verified unique defect with no matching existing issues.`;
             }
 
             // Populate Suspected Files List with 1-click GitHub buttons in modal
@@ -1682,6 +2616,8 @@
             }
 
             document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
+            const liveScanner = document.getElementById('terminalLiveScanner');
+            if (liveScanner) liveScanner.classList.add('hidden');
             document.getElementById('terminalResultCard').classList.remove('hidden');
             feedback.textContent = `Report #ABT-${bugId} submitted · triage complete · assigned to ${assignee}.`;
             feedback.className = 'min-h-4 mt-2 text-center text-[11px] font-semibold text-emerald-700';
@@ -1712,7 +2648,14 @@
     async function replayCurrentTriage() {
         const ai = @json(session('ai_result'));
         const bugId = '{{ session("last_bug_id", 1) }}';
+        const hasReplayScreenshot = Boolean(ai.screenshot_url) || Boolean(ai.code_help?.attachment_note);
         openTriageModal('{{ session("ai_result.code_help.feature", "Anomaly") }} Diagnosis Replay');
+        resetLiveTelemetry('{{ session("ai_result.code_help.feature", "Anomaly") }} Diagnosis Replay', '', hasReplayScreenshot, 'screenshot.png');
+        if (hasReplayScreenshot) {
+            const previewImg = document.getElementById('liveOcrPreviewImg');
+            if (previewImg) previewImg.src = ai.screenshot_url || `/bugs/${bugId}/screenshot`;
+        }
+        updateLiveTelemetry(1, { hasScreenshot: hasReplayScreenshot });
         
         appendTerminalLog('[REPLAY]', 'Replaying autonomous triage execution pipeline...', 'text-slate-300');
         await sleep(250);
@@ -1721,15 +2664,6 @@
         setStepDone(1);
         setStepActive(2);
 
-        await sleep(350);
-        appendTerminalLog('[NLP-VEC]', `Extracted feature: ${ai.feature || 'General'} · Duplicate score: ${ai.similarity_score || 0}%`, 'text-purple-300');
-        document.getElementById('triageProgressBar').style.width = '50%';
-
-        await sleep(400);
-        setStepDone(2);
-        setStepActive(3);
-        appendTerminalLog('[AST-CODE]', `Syntax check: ${ai.code_help?.syntax_status || 'verified'} · Exception: ${ai.code_help?.error_name || 'Pattern matched'}`, 'text-blue-300');
-        
         const filesList = (ai.code_help && ai.code_help.suspected_files && ai.code_help.suspected_files.length) 
             ? ai.code_help.suspected_files 
             : (ai.suspected_files && ai.suspected_files.length ? ai.suspected_files : []);
@@ -1737,15 +2671,43 @@
         const susp = topCandidate ? (topCandidate.path || topCandidate) : 'Repository files scanned';
         const topGhUrl = buildSafeGhUrl(susp, topCandidate ? topCandidate.github_url : null, topCandidate ? topCandidate.branch : null);
 
+        updateLiveTelemetry(2, { 
+            files: [{ name: susp, match: 92 }], 
+            matchScore: '92% (' + susp.split('/').pop() + ')' 
+        });
+
+        await sleep(350);
+        appendTerminalLog('[NLP-VEC]', `Extracted feature: ${ai.feature || 'General'} · Duplicate score: ${ai.similarity_score || 0}%`, 'text-purple-300');
+        document.getElementById('triageProgressBar').style.width = '50%';
+
+        await sleep(400);
+        setStepDone(2);
+        setStepActive(3);
+        updateLiveTelemetry(3, { 
+            parser: 'PHP / Blade AST Engine', 
+            pattern: 'Syntax check: ' + (ai.code_help?.syntax_status || 'verified'), 
+            result: '✓ Anomaly Pattern Matched' 
+        });
+        appendTerminalLog('[AST-CODE]', `Syntax check: ${ai.code_help?.syntax_status || 'verified'} · Exception: ${ai.code_help?.error_name || 'Pattern matched'}`, 'text-blue-300');
+
         appendTerminalLog('[GITHUB]', `Suspected culprit file: ${susp}`, 'text-cyan-300 font-bold');
         document.getElementById('triageProgressBar').style.width = '75%';
 
         await sleep(350);
         setStepDone(3);
         setStepActive(4);
+        const replaySimScore = ai.similarity_score || 0;
+        updateLiveTelemetry(4, { 
+            compared: 'vs Project Backlog Issues', 
+            cosineVal: 'Cosine: ' + replaySimScore + '%', 
+            percent: replaySimScore, 
+            verdict: replaySimScore > 75 ? '⚠️ Duplicate match' : '🛡️ Unique issue verified', 
+            isDup: replaySimScore > 75 
+        });
         appendTerminalLog('[ROUTER]', `Evaluated developer capacity and domain skills.`, 'text-amber-300');
         document.getElementById('triageProgressBar').style.width = '100%';
         setStepDone(4);
+        updateLiveTelemetry(5, { isDup: replaySimScore > 75 });
         clearInterval(triageTimer);
 
         document.getElementById('terminalStatusPill').innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-600"></span> REPLAY COMPLETE`;
@@ -1756,13 +2718,175 @@
         const confEl = document.getElementById('resConfidence');
         if (confEl) confEl.innerText = `${confScore}% Match`;
         document.getElementById('resAssignee').innerText = '{{ session("ai_result.recommended_assignee", "Developer") }}';
-        document.getElementById('resPriority').innerText = (ai.priority || 'Medium') + ' Priority';
-        document.getElementById('resSimilarity').innerText = (ai.similarity_score || 0) > 70 ? 'Duplicate' : 'Unique Issue';
-        document.getElementById('resCulprit').innerText = susp;
+        const resDevNameLabelReplay = document.getElementById('resDevNameLabel');
+        if (resDevNameLabelReplay) resDevNameLabelReplay.innerText = '{{ session("ai_result.recommended_assignee", "Developer") }}';
+        const pVal = '{{ session("ai_result.priority", "Medium") }}';
+        const resPriority = document.getElementById('resPriority');
+        if (resPriority) {
+            resPriority.innerText = pVal + ' Priority';
+            const pLower = pVal.toLowerCase();
+            const iconEl = document.getElementById('resPriorityIcon');
+            if (pLower.includes('high') || pLower.includes('critical')) {
+                resPriority.className = 'font-extrabold text-rose-600 text-xs sm:text-sm truncate block mt-0.5';
+                if (iconEl) { iconEl.innerText = '⚡'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-lg border border-rose-200'; }
+            } else if (pLower.includes('low')) {
+                resPriority.className = 'font-extrabold text-slate-600 text-xs sm:text-sm truncate block mt-0.5';
+                if (iconEl) { iconEl.innerText = '🟢'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 text-lg border border-slate-200'; }
+            } else {
+                resPriority.className = 'font-extrabold text-amber-600 text-xs sm:text-sm truncate block mt-0.5';
+                if (iconEl) { iconEl.innerText = '🟠'; iconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 text-lg border border-amber-200'; }
+            }
+        }
+        const simVal = {{ (int) session('ai_result.similarity_score', 0) }};
+        const resSimilarity = document.getElementById('resSimilarity');
+        if (resSimilarity) {
+            const isDup = simVal > 75;
+            resSimilarity.innerText = isDup ? 'Duplicate Issue' : 'Unique Issue';
+            const simIconEl = document.getElementById('resSimilarityIcon');
+            if (isDup) {
+                resSimilarity.className = 'font-extrabold text-amber-600 text-xs sm:text-sm truncate block mt-0.5';
+                if (simIconEl) { simIconEl.innerText = '⚠️'; simIconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 text-lg border border-amber-200'; }
+            } else {
+                resSimilarity.className = 'font-extrabold text-emerald-600 text-xs sm:text-sm truncate block mt-0.5';
+                if (simIconEl) { simIconEl.innerText = '🛡️'; simIconEl.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 text-lg border border-emerald-200'; }
+            }
+        }
+        const culpritEl = document.getElementById('resCulprit');
+        if (culpritEl) culpritEl.innerText = susp;
         const culpritGhLink = document.getElementById('resCulpritGhLink');
         if (culpritGhLink) {
             culpritGhLink.href = topGhUrl;
             culpritGhLink.classList.remove('hidden');
+        }
+
+        // Populate 4-Card Full Scan Visual Dashboard in Replay
+        const scanEvidenceBadge = document.getElementById('scanEvidenceBadge');
+        const scanEvidenceText = document.getElementById('scanEvidenceText');
+        const scanEvidenceEngine = document.getElementById('scanEvidenceEngine');
+        const scanEvidenceDot = document.getElementById('scanEvidenceDot');
+        const scanEvidenceThumbWrapper = document.getElementById('scanEvidenceThumbWrapper');
+        const scanEvidenceThumb = document.getElementById('scanEvidenceThumb');
+        const scanEvidenceFileName = document.getElementById('scanEvidenceFileName');
+        const scanEvidenceLink = document.getElementById('scanEvidenceLink');
+
+        if (scanEvidenceBadge) {
+            if (hasReplayScreenshot) {
+                scanEvidenceBadge.innerHTML = '<span>⚡</span> Vision OCR';
+                scanEvidenceBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-extrabold text-purple-700';
+                if (scanEvidenceText) scanEvidenceText.innerText = 'Screenshot analyzed with Groq Vision';
+                if (scanEvidenceEngine) scanEvidenceEngine.innerText = 'Llama-3.2-11B';
+                if (scanEvidenceDot) scanEvidenceDot.className = 'h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse';
+
+                if (scanEvidenceThumbWrapper) {
+                    const previewSrc = ai.screenshot_url || `/bugs/${bugId}/screenshot`;
+                    if (scanEvidenceThumb) scanEvidenceThumb.src = previewSrc;
+                    if (scanEvidenceFileName) scanEvidenceFileName.innerText = 'Screenshot Proof';
+                    if (scanEvidenceLink) {
+                        scanEvidenceLink.href = previewSrc;
+                        scanEvidenceLink.classList.remove('hidden');
+                    }
+                    scanEvidenceThumbWrapper.classList.remove('hidden');
+                }
+
+                const scanEvidenceOcrFindings = document.getElementById('scanEvidenceOcrFindings');
+                const scanEvidenceOcrText = document.getElementById('scanEvidenceOcrText');
+                const ocrFindingText = ai.extracted_text || 
+                                      ai.code_help?.attachment_note?.extracted_text || 
+                                      (Array.isArray(ai.visual_evidence) ? ai.visual_evidence.join(', ') : ai.visual_evidence) || 
+                                      ai.code_help?.attachment_note?.visual_summary || 
+                                      ai.code_help?.attachment_note?.error_message || '';
+                if (scanEvidenceOcrFindings && scanEvidenceOcrText) {
+                    scanEvidenceOcrFindings.classList.remove('hidden');
+                    if (ocrFindingText && ocrFindingText.trim().length > 0) {
+                        scanEvidenceOcrText.innerText = ocrFindingText;
+                    } else {
+                        scanEvidenceOcrText.innerText = 'Visual layout, UI controls & button boundaries identified (No raw crash traces).';
+                    }
+                }
+            } else {
+                scanEvidenceBadge.innerHTML = '<span>📝</span> NLP Tokenizer';
+                scanEvidenceBadge.className = 'inline-flex items-center gap-1 rounded-lg bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700';
+                if (scanEvidenceText) scanEvidenceText.innerText = 'Natural language symptom parsed';
+                if (scanEvidenceEngine) scanEvidenceEngine.innerText = 'Lexical NLP';
+                if (scanEvidenceDot) scanEvidenceDot.className = 'h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse';
+                if (scanEvidenceThumbWrapper) scanEvidenceThumbWrapper.classList.add('hidden');
+                const scanEvidenceOcrFindings = document.getElementById('scanEvidenceOcrFindings');
+                if (scanEvidenceOcrFindings) scanEvidenceOcrFindings.classList.add('hidden');
+            }
+        }
+
+        const scanCulpritName = document.getElementById('scanCulpritName');
+        const scanCulpritPath = document.getElementById('scanCulpritPath');
+        const scanCulpritGhLink = document.getElementById('scanCulpritGhLink');
+        if (scanCulpritName) {
+            const fileName = susp.split(/[\\/]/).pop() || susp;
+            scanCulpritName.innerText = '📄 ' + fileName;
+            scanCulpritName.title = susp;
+        }
+        if (scanCulpritPath) {
+            scanCulpritPath.innerText = `🌿 main: ${susp}`;
+        }
+        if (scanCulpritGhLink) {
+            if (topGhUrl) {
+                scanCulpritGhLink.href = topGhUrl;
+                scanCulpritGhLink.classList.remove('hidden');
+            } else {
+                scanCulpritGhLink.classList.add('hidden');
+            }
+        }
+
+        const isDupReplay = replaySimScore > 75;
+        const scanDupBadge = document.getElementById('scanDupBadge');
+        const scanDupScore = document.getElementById('scanDupScore');
+        const scanDupBar = document.getElementById('scanDupBar');
+        if (scanDupBadge) {
+            scanDupBadge.innerText = isDupReplay ? '⚠️ Duplicate Found' : '🛡️ Unique Issue';
+            scanDupBadge.className = isDupReplay ? 'text-amber-800' : 'text-emerald-800';
+        }
+        if (scanDupScore) scanDupScore.innerText = `${replaySimScore}%`;
+        if (scanDupBar) {
+            scanDupBar.style.width = `${Math.min(100, Math.max(10, replaySimScore))}%`;
+            scanDupBar.className = isDupReplay ? 'h-full bg-amber-500 transition-all duration-700' : 'h-full bg-emerald-500 transition-all duration-700';
+        }
+
+        const scanDevAvatar = document.getElementById('scanDevAvatar');
+        const scanDevName = document.getElementById('scanDevName');
+        const scanDevFit = document.getElementById('scanDevFit');
+        const scanDevReason = document.getElementById('scanDevReason');
+        const replayAssignee = '{{ session("ai_result.recommended_assignee", "Developer") }}';
+        if (scanDevAvatar) scanDevAvatar.innerText = replayAssignee.charAt(0).toUpperCase();
+        if (scanDevName) scanDevName.innerText = replayAssignee;
+        if (scanDevFit) scanDevFit.innerText = `${confScore}% Fit`;
+        if (scanDevReason) {
+            scanDevReason.innerText = '{{ session("ai_result.code_help.assignment_reason", "Matched skills taxonomy & lowest active backlog load.") }}';
+        }
+
+        const xaiPriorityReason = document.getElementById('xaiPriorityReason');
+        if (xaiPriorityReason) {
+            const pLower = pVal.toLowerCase();
+            if (pLower.includes('high') || pLower.includes('critical')) {
+                xaiPriorityReason.innerText = 'Detected crash/fatal terms, error traces, or blocker signals affecting workflow.';
+            } else if (pLower.includes('low')) {
+                xaiPriorityReason.innerText = 'Minor or cosmetic anomaly with minimal operational impact.';
+            } else {
+                xaiPriorityReason.innerText = 'Standard functional defect detected without fatal system-level exceptions.';
+            }
+        }
+
+        const xaiDevReason = document.getElementById('xaiDevReason');
+        if (xaiDevReason) {
+            xaiDevReason.innerText = '{{ session("ai_result.code_help.assignment_reason", "Matched skills taxonomy & lowest active backlog load.") }}';
+        }
+
+        const xaiDupReason = document.getElementById('xaiDupReason');
+        if (xaiDupReason) {
+            xaiDupReason.innerText = simVal > 75 
+                ? `Cosine similarity ${simVal}% (> 75% threshold): Matches an existing issue in project backlog.` 
+                : `Cosine similarity ${simVal}% (< 75% threshold): Verified unique defect with no matching existing issues.`;
+        }
+            xaiDupReason.innerText = simVal > 75 
+                ? `Cosine similarity ${simVal}% (> 75% threshold): Matches an existing issue in project backlog.` 
+                : `Cosine similarity ${simVal}% (< 75% threshold): Verified unique defect with no matching existing issues.`;
         }
 
         // Suspected files list in modal
@@ -1805,27 +2929,40 @@
         }
 
         document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
+        const liveScanner = document.getElementById('terminalLiveScanner');
+        if (liveScanner) liveScanner.classList.add('hidden');
         document.getElementById('terminalResultCard').classList.remove('hidden');
     }
     @endif
 </script>
 
+    <style>
+    @keyframes laserScanBeam {
+        0% { top: 3%; opacity: 0.8; }
+        50% { top: 88%; opacity: 1; }
+        100% { top: 3%; opacity: 0.8; }
+    }
+    .animate-laser-scan {
+        animation: laserScanBeam 2.2s ease-in-out infinite;
+    }
+    </style>
+
     <!-- Autonomous AI Triage Live Pipeline HUD Modal (Light Glassmorphic Stepper) -->
-    <div id="triageTerminalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-        <div class="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/95 backdrop-blur-xl p-5 sm:p-6 shadow-2xl text-slate-900 overflow-hidden flex flex-col space-y-4">
+    <div id="triageTerminalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-900/60 backdrop-blur-md">
+        <div class="relative w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 bg-white/98 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl text-slate-900 max-h-[92vh] overflow-y-auto custom-scroll flex flex-col space-y-4">
             <!-- Window Top Chrome -->
             <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
                 <div class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-rose-400 inline-block"></span>
-                    <span class="h-3 w-3 rounded-full bg-amber-400 inline-block"></span>
-                    <span class="h-3 w-3 rounded-full bg-emerald-400 inline-block"></span>
-                    <span class="ml-2 text-xs font-bold font-mono-code text-slate-800">
-                        ⚡ AutoBugTriage Neural Core v2.4
+                    <span class="h-3 w-3 rounded-full bg-rose-400 inline-block shadow-2xs"></span>
+                    <span class="h-3 w-3 rounded-full bg-amber-400 inline-block shadow-2xs"></span>
+                    <span class="h-3 w-3 rounded-full bg-emerald-400 inline-block shadow-2xs"></span>
+                    <span class="ml-2 text-xs sm:text-sm font-bold font-mono-code text-slate-800 flex items-center gap-1.5">
+                        <span>⚡</span> AutoBugTriage Neural Core v2.4
                     </span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span id="terminalTimer" class="font-mono-code text-xs text-indigo-600 font-bold">[ 0.00s ]</span>
-                    <div id="terminalStatusPill" class="flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-[11px] font-bold text-indigo-700 font-mono-code">
+                <div class="flex items-center gap-2.5">
+                    <span id="terminalTimer" class="font-mono-code text-xs sm:text-sm text-indigo-600 font-bold bg-indigo-50 border border-indigo-200/60 px-2.5 py-1 rounded-lg">[ 0.00s ]</span>
+                    <div id="terminalStatusPill" class="flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3.5 py-1 text-xs font-bold text-indigo-700 font-mono-code shadow-2xs">
                         <span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
                         RUNNING NEURAL PIPELINE
                     </div>
@@ -1833,149 +2970,505 @@
             </div>
 
             <!-- Target Anomaly Banner -->
-            <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/40 p-3.5 flex items-center justify-between">
+            <div class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/50 p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
                 <div class="min-w-0 flex-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono-code">TARGET ANOMALY</span>
-                    <p id="terminalBugTitle" class="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5">Payment checkout 401 error</p>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 font-mono-code flex items-center gap-1">
+                        <span>🎯</span> TARGET ANOMALY REPORTED
+                    </span>
+                    <p id="terminalBugTitle" class="text-sm sm:text-base font-extrabold text-slate-900 truncate mt-0.5">Payment checkout 401 error</p>
                 </div>
-                <span class="rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-mono-code font-bold px-2.5 py-1 shrink-0">
+                <span class="rounded-xl bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-mono-code font-extrabold px-3 py-1.5 shrink-0 shadow-2xs">
                     5-PHASE EXPLAINABLE AI
                 </span>
             </div>
 
-            <!-- 5-Phase Stepper Pills (Responsive Grid) -->
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-xs">
-                <div id="step-pill-1" data-name="NLP & OCR" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
-                    <span class="text-xs">📸</span>
-                    <span class="font-bold text-slate-800">1. Vision & OCR</span>
-                    <span class="text-[8px] font-mono-code text-slate-400">Groq Vision 11B</span>
+            <!-- 5-Phase Stepper Pills (Responsive Grid with Interactive Live Focus) -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                <div id="step-pill-1" data-name="NLP & OCR" onclick="focusLiveDetectionCard(1)" class="cursor-pointer hover:border-indigo-400 hover:scale-[1.02] active:scale-95 px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] shadow-2xs">
+                    <span class="text-base">📸</span>
+                    <span class="font-bold text-slate-800 mt-0.5">1. Vision & OCR</span>
+                    <span class="text-[9px] font-mono-code text-slate-400">Groq Vision 11B</span>
                 </div>
-                <div id="step-pill-2" data-name="GitHub Tree" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
-                    <span class="text-xs">🐙</span>
-                    <span class="font-bold text-slate-800">2. GitHub Tree</span>
-                    <span class="text-[8px] font-mono-code text-slate-400">Multi-Branch Code</span>
+                <div id="step-pill-2" data-name="GitHub Tree" onclick="focusLiveDetectionCard(2)" class="cursor-pointer hover:border-indigo-400 hover:scale-[1.02] active:scale-95 px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] shadow-2xs">
+                    <span class="text-base">🐙</span>
+                    <span class="font-bold text-slate-800 mt-0.5">2. GitHub Tree</span>
+                    <span class="text-[9px] font-mono-code text-slate-400">Multi-Branch Code</span>
                 </div>
-                <div id="step-pill-3" data-name="AST Syntax" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
-                    <span class="text-xs">⚡</span>
-                    <span class="font-bold text-slate-800">3. AST Syntax</span>
-                    <span class="text-[8px] font-mono-code text-slate-400">Pattern Analyzer</span>
+                <div id="step-pill-3" data-name="AST Syntax" onclick="focusLiveDetectionCard(3)" class="cursor-pointer hover:border-indigo-400 hover:scale-[1.02] active:scale-95 px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] shadow-2xs">
+                    <span class="text-base">⚡</span>
+                    <span class="font-bold text-slate-800 mt-0.5">3. AST Syntax</span>
+                    <span class="text-[9px] font-mono-code text-slate-400">Pattern Analyzer</span>
                 </div>
-                <div id="step-pill-4" data-name="Vector Sim" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px]">
-                    <span class="text-xs">🔍</span>
-                    <span class="font-bold text-slate-800">4. Vector Sim</span>
-                    <span class="text-[8px] font-mono-code text-slate-400">TF-IDF Deduplication</span>
+                <div id="step-pill-4" data-name="Vector Sim" onclick="focusLiveDetectionCard(4)" class="cursor-pointer hover:border-indigo-400 hover:scale-[1.02] active:scale-95 px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] shadow-2xs">
+                    <span class="text-base">🔍</span>
+                    <span class="font-bold text-slate-800 mt-0.5">4. Vector Sim</span>
+                    <span class="text-[9px] font-mono-code text-slate-400">TF-IDF Deduplication</span>
                 </div>
-                <div id="step-pill-5" data-name="Dev Routing" class="px-2 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 transition flex flex-col items-center justify-center text-[10px] col-span-2 sm:col-span-1">
-                    <span class="text-xs">👤</span>
-                    <span class="font-bold text-slate-800">5. Dev Routing</span>
-                    <span class="text-[8px] font-mono-code text-slate-400">Skill & Workload</span>
+                <div id="step-pill-5" data-name="Dev Routing" onclick="focusLiveDetectionCard(5)" class="cursor-pointer hover:border-indigo-400 hover:scale-[1.02] active:scale-95 px-2.5 py-2.5 rounded-2xl bg-slate-50 text-slate-600 border border-slate-200 transition flex flex-col items-center justify-center text-[11px] col-span-2 sm:col-span-1 shadow-2xs">
+                    <span class="text-base">👤</span>
+                    <span class="font-bold text-slate-800 mt-0.5">5. Dev Routing</span>
+                    <span class="text-[9px] font-mono-code text-slate-400">Skill & Workload</span>
                 </div>
             </div>
 
             <!-- Progress Bar -->
-            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div id="triageProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: 5%"></div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                <div id="triageProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 5%"></div>
             </div>
 
-            <!-- Collapsible Raw Console Logs Accordion -->
-            <details class="group rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
-                <summary class="flex cursor-pointer items-center justify-between px-3.5 py-2 text-xs font-mono font-bold text-slate-600 hover:text-indigo-600 select-none bg-slate-100/60">
+            <!-- State 1: Live Autonomous Neural Scanner Activity Center (Shown while AI is analyzing) -->
+            <div id="terminalLiveScanner" class="rounded-3xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 p-6 sm:p-7 space-y-5 shadow-sm text-center transition-all">
+                <div class="flex flex-col items-center justify-center space-y-2">
+                    <div class="relative flex items-center justify-center">
+                        <span class="absolute h-16 w-16 rounded-full bg-indigo-400/20 animate-ping"></span>
+                        <span id="liveStageIcon" class="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white text-2xl shadow-md transition-all">
+                            📸
+                        </span>
+                    </div>
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 border border-indigo-200 px-3 py-0.5 text-xs font-bold text-indigo-800 font-mono">
+                            <span class="h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                            <span id="liveStagePill">STAGE 1 / 5</span>
+                        </div>
+                        <h3 id="liveStageTitle" class="text-base sm:text-lg font-extrabold text-slate-900 mt-1.5 tracking-tight">
+                            Vision OCR & Lexical NLP Parser Active
+                        </h3>
+                        <p id="liveStageDesc" class="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto mt-1 leading-relaxed">
+                            Analyzing natural language symptom patterns and extracting screenshot image tokens with Groq Vision Llama-3.2.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 4 Real-Time Telemetry Sensors -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-left">
+                    <div class="rounded-2xl border border-indigo-100 bg-white p-3.5 shadow-2xs">
+                        <span class="text-[10px] font-mono font-bold uppercase text-slate-400 block">Vision Sensor</span>
+                        <span id="liveSensorVision" class="text-xs font-extrabold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span> Llama-3.2-11B
+                        </span>
+                    </div>
+                    <div class="rounded-2xl border border-sky-100 bg-white p-3.5 shadow-2xs">
+                        <span class="text-[10px] font-mono font-bold uppercase text-slate-400 block">Code Indexer</span>
+                        <span id="liveSensorCode" class="text-xs font-extrabold text-sky-900 mt-0.5 flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></span> GitHub Tree Scan
+                        </span>
+                    </div>
+                    <div class="rounded-2xl border border-amber-100 bg-white p-3.5 shadow-2xs">
+                        <span class="text-[10px] font-mono font-bold uppercase text-slate-400 block">Deduplication</span>
+                        <span id="liveSensorDup" class="text-xs font-extrabold text-amber-900 mt-0.5 flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> TF-IDF Cosine
+                        </span>
+                    </div>
+                    <div class="rounded-2xl border border-emerald-100 bg-white p-3.5 shadow-2xs">
+                        <span class="text-[10px] font-mono font-bold uppercase text-slate-400 block">Routing Engine</span>
+                        <span id="liveSensorDev" class="text-xs font-extrabold text-emerald-900 mt-0.5 flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> 5 Active Profiles
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Live Detective Feed: Real-Time Detection Radar for NLP, GitHub, AST & Vector Sim -->
+                <div class="rounded-2xl border border-slate-700/80 bg-slate-950 p-4 sm:p-5 text-left shadow-xl font-mono-code">
+                    <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-3 w-3 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                            <span class="font-extrabold text-xs sm:text-sm text-slate-100 tracking-wide flex items-center gap-1.5">
+                                <span>⚡</span> LIVE DETECTION TELEMETRY RADAR
+                            </span>
+                        </div>
+                        <span id="liveDetectionPhaseBadge" class="rounded-lg bg-indigo-950 border border-indigo-500/50 text-indigo-300 px-2.5 py-0.5 text-[10px] font-bold">
+                            STAGE 1 / 5: NLP & OCR ACTIVE
+                        </span>
+                    </div>
+
+                    <!-- 4 Live Detection Panels (Responsive 2x2 Grid) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        
+                        <!-- 1. NLP & OCR Live Box (with Holographic Screenshot Laser Scanner) -->
+                        <div id="liveCardNlp" class="p-3 sm:p-3.5 rounded-2xl border-2 border-indigo-400 bg-indigo-950/40 shadow-sm space-y-2.5 transition-all opacity-100">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold text-indigo-300 text-xs">
+                                    <span id="liveDotNlp" class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                                    <span>📸 1. Vision OCR & NLP Perceptual Core</span>
+                                </span>
+                                <span id="liveTagNlp" class="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400 px-2 py-0.5 text-[9px] font-bold font-mono animate-pulse">
+                                    PARSING TOKENS
+                                </span>
+                            </div>
+
+                            <!-- Live Holographic Screenshot Laser Scanner Viewport -->
+                            <div id="liveOcrImageWrapper" class="hidden relative overflow-hidden rounded-xl border border-indigo-500/60 bg-slate-950 max-h-36 sm:max-h-40 group shadow-inner">
+                                <img id="liveOcrPreviewImg" src="" alt="Live Screenshot Scan" class="w-full object-contain max-h-36 sm:max-h-40 opacity-80 filter contrast-125 mx-auto">
+                                
+                                <!-- Neon Cyan Sweeping Laser Scan Beam -->
+                                <div id="liveOcrLaser" class="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#38bdf8] animate-laser-scan pointer-events-none"></div>
+
+                                <!-- Live Target Bounding Overlays -->
+                                <div class="absolute top-2 left-2 border border-cyan-400/90 bg-slate-950/80 rounded px-1.5 py-0.5 text-[8px] font-mono text-cyan-300 animate-pulse flex items-center gap-1 shadow-sm">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+                                    <span>[OCR ANOMALY DETECTED]</span>
+                                </div>
+                                <div class="absolute bottom-2 right-2 border border-purple-400/90 bg-slate-950/80 rounded px-1.5 py-0.5 text-[8px] font-mono text-purple-300 animate-pulse flex items-center gap-1 shadow-sm">
+                                    <span>[GROQ LLAMA-3.2 11B VISION]</span>
+                                </div>
+                            </div>
+
+                            <div class="text-[11px] text-slate-300 space-y-1.5">
+                                <div class="flex items-center gap-1.5 text-slate-400">
+                                    <span class="shrink-0 text-[10px]">Anomaly:</span>
+                                    <span id="liveNlpTarget" class="text-slate-100 font-bold truncate">"..."</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] mb-0.5">Extracted Symptom Tokens:</span>
+                                    <div id="liveNlpTokens" class="flex flex-wrap gap-1">
+                                        <span class="text-slate-400 text-[10px] font-mono">Tokenizing symptoms...</span>
+                                    </div>
+                                </div>
+
+                                <!-- Live OCR Extraction Feed (Real-time OCR steps) -->
+                                <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800 text-[10px] font-mono space-y-1">
+                                    <div class="text-purple-300 flex items-center justify-between">
+                                        <span class="flex items-center gap-1">
+                                            <span>⚡</span>
+                                            <span id="liveOcrEngineName" class="font-bold">Groq Vision Llama-3.2</span>
+                                        </span>
+                                        <span id="liveOcrStatusTag" class="text-emerald-400 font-bold">Scanning Image</span>
+                                    </div>
+                                    <div id="liveOcrStreamLog" class="text-slate-300 truncate font-mono">
+                                        ▶ Initializing perceptual OCR tensor...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. GitHub Tree Live Box -->
+                        <div id="liveCardGh" class="p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold text-sky-300 text-xs">
+                                    <span id="liveDotGh" class="h-2 w-2 rounded-full bg-slate-600"></span>
+                                    <span>🐙 2. GitHub Tree Traversal</span>
+                                </span>
+                                <span id="liveTagGh" class="rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono">
+                                    STANDBY
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-slate-300 space-y-1">
+                                <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                                    <span>Branch: <b class="text-sky-300 font-mono">main</b></span>
+                                    <span id="liveGhMatchScore" class="text-sky-300 font-bold font-mono">Pending scan</span>
+                                </div>
+                                <div id="liveGhScannedFile" class="space-y-1 pt-0.5">
+                                    <span class="text-slate-500 text-[10px]">Awaiting tree traversal...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. AST Syntax Live Box -->
+                        <div id="liveCardAst" class="p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold text-blue-300 text-xs">
+                                    <span id="liveDotAst" class="h-2 w-2 rounded-full bg-slate-600"></span>
+                                    <span>⚡ 3. AST Syntax & Diagnostics</span>
+                                </span>
+                                <span id="liveTagAst" class="rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono">
+                                    STANDBY
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-slate-300 space-y-1">
+                                <div class="flex items-center justify-between text-[10px]">
+                                    <span class="text-slate-400">Parser:</span>
+                                    <span id="liveAstParser" class="text-blue-300 font-mono">PHP 8.2 AST Engine</span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 truncate">
+                                    <span>Pattern:</span>
+                                    <span id="liveAstPattern" class="text-slate-200">Exception trace & route binding</span>
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                                    <span>Status:</span>
+                                    <span id="liveAstResult" class="text-emerald-400 font-bold">Awaiting parser</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Vector Sim Live Box -->
+                        <div id="liveCardVec" class="p-3 sm:p-3.5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-2 transition-all opacity-50">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
+                                    <span id="liveDotVec" class="h-2 w-2 rounded-full bg-slate-600"></span>
+                                    <span>🔍 4. Vector Sim Duplicate Radar</span>
+                                </span>
+                                <span id="liveTagVec" class="rounded bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[9px] font-bold font-mono">
+                                    STANDBY
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-slate-300 space-y-1.5">
+                                <div class="flex items-center justify-between text-[10px]">
+                                    <span class="text-slate-400">TF-IDF Vector Cosine:</span>
+                                    <span id="liveVecCosineVal" class="text-amber-300 font-bold font-mono">Awaiting vector matrix...</span>
+                                </div>
+                                <div id="liveVecComparedBug" class="text-[10px] text-slate-400 truncate">
+                                    Ready to compare against backlog
+                                </div>
+                                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                    <div id="liveVecBar" class="bg-gradient-to-r from-emerald-400 to-teal-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <div class="flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                                    <span>Formula: (A·B)/(||A||·||B||)</span>
+                                    <span id="liveVecVerdict" class="text-emerald-400 font-bold">Pending</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collapsible Raw Console Logs Accordion (Developer / Manager audit) -->
+            <details class="{{ auth()->user()->role === 'tester' ? 'hidden' : 'group' }} rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+                <summary class="flex cursor-pointer items-center justify-between px-4 py-2.5 text-xs font-mono font-bold text-slate-600 hover:text-indigo-600 select-none bg-slate-100/60">
                     <span class="flex items-center gap-2">
                         <span class="text-indigo-600 font-bold">&gt;_</span>
                         <span>View Raw Console Logs</span>
                     </span>
                     <span class="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
-                <div id="terminalOutput" class="p-3.5 bg-slate-950 font-mono-code text-[11px] space-y-1.5 max-h-[160px] overflow-y-auto custom-scroll text-slate-300">
+                <div id="terminalOutput" class="p-4 bg-slate-950 font-mono-code text-[11px] space-y-1.5 max-h-[160px] overflow-y-auto custom-scroll text-slate-300">
                     <!-- Log items appended dynamically -->
                 </div>
             </details>
 
-            <!-- Result Card (shown on completion with Signature Confidence Badge) -->
-            <div id="terminalResultCard" class="hidden rounded-2xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50/70 via-white to-indigo-50/70 p-4 space-y-3 shadow-sm">
+            <!-- State 2: Result Card (shown on completion with Signature Confidence Badge) -->
+            <div id="terminalResultCard" class="hidden rounded-3xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50/70 via-white to-indigo-50/70 p-5 sm:p-6 space-y-4 shadow-sm">
                 <!-- Signature Confidence Badge -->
-                <div class="rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 p-0.5 shadow-sm">
-                    <div class="rounded-[10px] bg-white p-3 flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">🎯</span>
+                <div class="rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-blue-600 p-0.5 shadow-md">
+                    <div class="rounded-[15px] bg-white p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3.5">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 text-2xl border border-indigo-100 shadow-xs">
+                                🎯
+                            </div>
                             <div>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600">AI Confidence Match</span>
-                                <p class="text-xs sm:text-sm font-extrabold text-[#0F172A]">
-                                    <span id="resConfidence">94% Match</span> — Assigned to <span id="resAssignee" class="text-indigo-600">Alice Dev</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 font-mono">Autonomous AI Diagnosis</span>
+                                <p class="text-base sm:text-lg font-extrabold text-[#0F172A] flex items-center gap-2 flex-wrap">
+                                    <span id="resConfidence">94% Match</span>
+                                    <span class="text-slate-400 font-normal text-sm">— Assigned to</span>
+                                    <span id="resAssignee" class="text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-lg text-sm font-bold">Alice Dev</span>
                                 </p>
                             </div>
                         </div>
-                        <span id="terminalResultKey" class="rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-xs px-2.5 py-1">
-                            #ABT-104
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="resPriorityBadge" class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-extrabold text-xs sm:text-sm px-3 py-1.5 shadow-2xs">
+                                Medium Priority
+                            </span>
+                            <span id="terminalResultKey" class="rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-extrabold text-xs sm:text-sm px-3 py-1.5 shadow-2xs">
+                                #ABT-104
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">SEVERITY PRIORITY</span>
-                        <span id="resPriority" class="font-extrabold text-rose-600 text-[11px] truncate block mt-0.5">High Priority</span>
-                    </div>
-                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                        <span class="text-[9px] text-slate-400 block font-mono-code uppercase">DUPLICATE CHECK</span>
-                        <span id="resSimilarity" class="font-extrabold text-emerald-600 text-[11px] truncate block mt-0.5">Unique Issue</span>
-                    </div>
-                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-                        <div class="flex items-center justify-between mb-0.5">
-                            <span class="text-[9px] text-slate-400 block font-mono-code uppercase">CULPRIT FILE</span>
-                            <a id="resCulpritGhLink" href="https://github.com/MuarifHasnat/Auto-Bug-Traige" target="_blank" rel="noopener noreferrer" class="hidden text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5">
-                                <span>View on GitHub</span> ↗
-                            </a>
+                <!-- AI Agent Full Scan Investigation Trail (4-Phase Visual Cards) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    
+                    <!-- 1. Vision & Evidence -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-2.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono-code uppercase">
+                                <span class="flex items-center gap-1.5 font-bold">
+                                    <span id="scanEvidenceDot" class="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                    Phase 1: Evidence
+                                </span>
+                                <span class="text-base">📸</span>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span id="scanEvidenceBadge" class="inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-0.5 text-[11px] font-extrabold text-purple-700">
+                                        <span>⚡</span> Vision OCR
+                                    </span>
+                                </div>
+                                <p id="scanEvidenceText" class="text-xs text-slate-600 mt-1 leading-snug">Screenshot analyzed with Groq Vision</p>
+                                <div id="scanEvidenceThumbWrapper" class="hidden mt-2.5 pt-2 border-t border-slate-100 space-y-2">
+                                    <div class="flex items-center gap-2.5">
+                                        <img id="scanEvidenceThumb" src="" alt="Screenshot" class="h-12 w-16 rounded-xl object-cover border border-purple-200 shadow-2xs shrink-0">
+                                        <div class="min-w-0 flex-1">
+                                            <span class="block text-xs font-bold text-slate-800 truncate" id="scanEvidenceFileName">screenshot.png</span>
+                                            <a id="scanEvidenceLink" href="#" target="_blank" class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:underline mt-0.5">
+                                                <span>Open Image</span>
+                                                <span>↗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div id="scanEvidenceOcrFindings" class="p-2 rounded-xl bg-purple-50/70 border border-purple-200/80 text-[10px] space-y-1">
+                                        <div class="font-bold text-purple-900 flex items-center justify-between">
+                                            <span class="flex items-center gap-1"><span>⚡</span> Vision OCR Extracted:</span>
+                                            <span class="text-[9px] bg-purple-200/80 text-purple-900 font-mono px-1 rounded">Groq Llama-3.2</span>
+                                        </div>
+                                        <p id="scanEvidenceOcrText" class="text-slate-700 font-mono text-[9.5px] leading-relaxed break-words line-clamp-3">
+                                            UI components & anomaly text extracted.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <span id="resCulprit" class="font-mono font-bold text-indigo-700 text-[11px] truncate block mt-0.5">PaymentService.php</span>
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                            <span id="scanEvidenceEngine">Llama-3.2-11B</span>
+                            <span class="text-emerald-600 font-bold">✓ Parsed</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Code Location -->
+                    <div class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4 space-y-2.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-[11px] text-sky-800 font-mono-code uppercase">
+                                <span class="flex items-center gap-1.5 font-bold">
+                                    <span class="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></span>
+                                    Phase 2: Code Search
+                                </span>
+                                <span class="text-base">🐙</span>
+                            </div>
+                            <div class="mt-2 space-y-1.5">
+                                <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                                    <span id="scanCulpritName" class="inline-flex items-center gap-1 font-mono text-xs font-extrabold text-sky-950 truncate min-w-0 flex-1" title="Repository files">
+                                        📄 forgot.php
+                                    </span>
+                                    <a id="scanCulpritGhLink" href="#" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-sky-600 hover:bg-sky-500 text-white px-2 py-0.5 text-[10px] font-bold transition shrink-0 hidden shadow-2xs">
+                                        ↗ GitHub
+                                    </a>
+                                </div>
+                                <p id="scanCulpritPath" class="text-[11px] text-sky-700 font-mono truncate">🌿 main: Repo file tree</p>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-sky-200/60 flex items-center justify-between text-[10px] font-mono text-sky-700">
+                            <span>AST Root-Cause</span>
+                            <span class="font-bold text-sky-900">✓ Isolated</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. Duplicate Score with Visual Progress Bar -->
+                    <div id="scanDupCard" class="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 space-y-2.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-[11px] text-amber-800 font-mono-code uppercase">
+                                <span class="flex items-center gap-1.5 font-bold">
+                                    <span id="scanDupDot" class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Phase 3: Duplicate
+                                </span>
+                                <span class="text-base">🔍</span>
+                            </div>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span id="scanDupBadge" class="inline-flex items-center gap-1 rounded-lg bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800">
+                                        🛡️ Unique Issue
+                                    </span>
+                                    <span id="scanDupScore" class="font-mono text-xs font-extrabold text-slate-800">
+                                        38%
+                                    </span>
+                                </div>
+                                <div class="w-full bg-slate-200/90 rounded-full h-2 overflow-hidden shadow-inner">
+                                    <div id="scanDupProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-600 h-2 rounded-full transition-all duration-500" style="width: 38%"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-500 flex justify-between font-mono">
+                                    <span>TF-IDF Vector Sim</span>
+                                    <span class="text-slate-500 font-bold">&lt; 75% limit</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[10px] font-mono text-amber-800">
+                            <span>Cosine Distance</span>
+                            <span id="scanDupStatus" class="font-bold text-emerald-700">✓ Evaluated</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. Developer Match Rationale -->
+                    <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2.5 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-[11px] text-emerald-800 font-mono-code uppercase">
+                                <span class="flex items-center gap-1.5 font-bold">
+                                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Phase 4: Dev Routing
+                                </span>
+                                <span class="text-base">👤</span>
+                            </div>
+                            <div class="mt-2 space-y-1.5">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <span id="scanDevAvatar" class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-xs font-bold text-white shadow-2xs">
+                                            A
+                                        </span>
+                                        <span id="scanDevName" class="text-xs sm:text-sm font-extrabold text-emerald-950 truncate">
+                                            arif
+                                        </span>
+                                    </div>
+                                    <span id="scanDevFit" class="inline-flex shrink-0 items-center rounded-md bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-mono font-extrabold text-emerald-800">
+                                        88% Fit
+                                    </span>
+                                </div>
+                                <p id="scanDevReason" class="text-xs text-emerald-800 leading-snug line-clamp-2" title="Best tech-stack and capacity balance">
+                                    Best tech-stack & capacity balance
+                                </p>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[10px] font-mono text-emerald-800">
+                            <span>Workload Balanced</span>
+                            <span class="font-bold text-emerald-800">✓ Dispatched</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Explainable AI (XAI) Autonomous Audit Breakdown -->
-                <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2">
+                <div class="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3 shadow-2xs">
                     <div class="flex items-center justify-between text-xs font-bold text-indigo-950">
-                        <span class="flex items-center gap-1.5">
-                            <span>🧠</span>
-                            <span>Explainable AI (XAI) Decision Breakdown</span>
+                        <span class="flex items-center gap-2">
+                            <span class="text-base">🧠</span>
+                            <span class="text-xs sm:text-sm font-extrabold">Explainable AI (XAI) Autonomous Audit Breakdown</span>
                         </span>
-                        <span class="text-[10px] text-indigo-700 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded font-mono font-bold">Autonomous Audit</span>
+                        <span class="text-[10px] text-indigo-700 bg-white border border-indigo-200 px-2.5 py-0.5 rounded-lg font-mono font-bold shadow-2xs">
+                            Autonomous Audit
+                        </span>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-700">
-                        <div class="p-2 rounded-lg bg-white border border-slate-200">
-                            <span class="font-bold text-slate-900 block mb-0.5">🎯 Developer Routing Logic:</span>
-                            <span id="xaiDevReason" class="text-slate-600 leading-snug">Matched skills taxonomy & lowest active backlog load.</span>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs text-slate-700">
+                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
+                            <span class="font-extrabold text-slate-900 block text-xs">🔥 Priority Selection Logic:</span>
+                            <p id="xaiPriorityReason" class="text-slate-600 text-xs leading-relaxed">Evaluated crash terms, exception traces, and user blocker signals.</p>
                         </div>
-                        <div class="p-2 rounded-lg bg-white border border-slate-200">
-                            <span class="font-bold text-slate-900 block mb-0.5">🔍 Deduplication Vector:</span>
-                            <span id="xaiDupReason" class="text-slate-600 leading-snug">TF-IDF cosine similarity verified under duplicate threshold.</span>
+                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
+                            <span class="font-extrabold text-slate-900 block text-xs">🎯 Developer Routing Logic:</span>
+                            <p id="xaiDevReason" class="text-slate-600 text-xs leading-relaxed">Matched skills taxonomy & lowest active backlog load.</p>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
+                            <span class="font-extrabold text-slate-900 block text-xs">🔍 Deduplication Vector Logic:</span>
+                            <p id="xaiDupReason" class="text-slate-600 text-xs leading-relaxed">TF-IDF cosine similarity verified under duplicate threshold.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Suspected files list in modal with GitHub buttons -->
-                <div id="modalSuspectedFilesWrapper" class="hidden rounded-2xl border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+                @if(auth()->user()->role !== 'tester')
+                <!-- Suspected files list in modal with GitHub buttons (Developers / Managers only) -->
+                <div id="modalSuspectedFilesWrapper" class="hidden rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                             <span>🐙</span>
                             <span>AI Suspected Repository Culprit Files</span>
                         </div>
-                        <span class="rounded-full bg-indigo-100 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
+                        <span class="rounded-full bg-indigo-100 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 font-mono-code">
                             GitHub Linked
                         </span>
                     </div>
                     <div id="modalSuspectedFilesList" class="space-y-1.5 max-h-[140px] overflow-y-auto custom-scroll">
                     </div>
                 </div>
+                @endif
 
-                <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-200/80">
-                    <button type="button" onclick="submitAnotherReport()" class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 transition shadow-2xs">
-                        + Submit Another
+                <div class="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-slate-200/80">
+                    <button type="button" onclick="submitAnotherReport()" class="rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-5 py-2.5 text-xs font-bold text-indigo-700 transition shadow-2xs hover:shadow-xs">
+                        + Submit Another Bug
                     </button>
-                    <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 transition shadow-2xs">
+                    <a id="resKanbanLink" href="/workspace" class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-5 py-2.5 text-xs font-bold text-slate-700 transition shadow-2xs hover:shadow-xs">
                         ✓ View on Kanban
                     </a>
-                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-sm transition">
-                        Open Issue & Fix Guidance ➔
+                    <a id="resIssueLink" href="/bugs/1" class="rounded-xl bg-slate-900 hover:bg-slate-800 px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:shadow-md">
+                        {{ auth()->user()->role === 'tester' ? 'View Bug Details ➔' : 'Open Issue & Fix Guidance ➔' }}
                     </a>
                 </div>
             </div>

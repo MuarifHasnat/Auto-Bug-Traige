@@ -25,29 +25,29 @@
             </div>
         </header>
 
-        <div class="mx-auto max-w-5xl px-5 py-8 lg:px-8">
-            <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 class="text-2xl font-extrabold">Notifications</h1>
-                    <p class="mt-1 text-sm text-slate-500">Bug mentions, comments, assignments and status changes.</p>
+                    <h1 class="text-xl sm:text-2xl font-extrabold">Notifications</h1>
+                    <p class="mt-0.5 text-xs text-slate-500">Bug mentions, comments, assignments and status changes.</p>
                 </div>
                 @if(($unreadNotificationCount ?? 0) > 0)
-                    <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold transition hover:bg-slate-50">Mark all as read <span class="ml-1 text-slate-500">({{ $unreadNotificationCount }})</span></button></form>
+                    <form action="{{ route('notifications.read-all', [], false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold transition hover:bg-slate-50 shadow-2xs">Mark all as read <span class="ml-1 text-slate-500">({{ $unreadNotificationCount }})</span></button></form>
                 @endif
             </div>
 
-            <nav class="mb-4 flex flex-wrap gap-2" aria-label="Filter notifications">
+            <nav class="mb-3 flex flex-wrap gap-1.5" aria-label="Filter notifications">
                 @php
                     $notificationFilters = auth()->user()->role === 'tester'
                         ? ['all' => 'All', 'mention' => 'Mentions', 'comment' => 'Comments', 'status' => 'Status changes']
                         : ['all' => 'All', 'mention' => 'Mentions', 'assignment' => 'Assignments', 'status' => 'Status changes'];
                 @endphp
                 @foreach($notificationFilters as $type => $label)
-                    <a href="{{ route('notifications.index', $type === 'all' ? [] : ['type' => $type], false) }}" @if($notificationType === $type) aria-current="page" @endif class="rounded-xl border px-4 py-2 text-xs font-semibold transition {{ $notificationType === $type ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
+                    <a href="{{ route('notifications.index', $type === 'all' ? [] : ['type' => $type], false) }}" @if($notificationType === $type) aria-current="page" @endif class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition {{ $notificationType === $type ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
                 @endforeach
             </nav>
 
-            <div class="space-y-3">
+            <div class="space-y-2">
                 @if($notifications->isNotEmpty())
                 @foreach($notifications as $notification)
                     @php
@@ -63,27 +63,27 @@
                         };
                     @endphp
                     @if(auth()->user()->role === 'tester')
-                    <article class="rounded-2xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-white' }} p-4 shadow-sm">
-                        <a href="{{ route('notifications.open', $notification->id, false) }}" class="flex items-center gap-3 sm:gap-4">
-                            <span class="inline-flex w-24 shrink-0 justify-center rounded-full px-3 py-1 text-xs font-medium {{ $notificationLabel === 'Retest' ? 'bg-amber-100 text-amber-800' : ($notificationLabel === 'Assigned' ? 'bg-emerald-50 text-emerald-800' : 'bg-indigo-50 text-indigo-700') }}">{{ $notificationLabel }}</span>
+                    <article class="rounded-xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-white' }} p-3 sm:p-3.5 shadow-2xs">
+                        <a href="{{ route('notifications.open', $notification->id, false) }}" class="flex items-center gap-2.5 sm:gap-3">
+                            <span class="inline-flex w-20 shrink-0 justify-center rounded-full px-2.5 py-0.5 text-[11px] font-medium {{ $notificationLabel === 'Retest' ? 'bg-amber-100 text-amber-800' : ($notificationLabel === 'Assigned' ? 'bg-emerald-50 text-emerald-800' : 'bg-indigo-50 text-indigo-700') }}">{{ $notificationLabel }}</span>
                             <span class="min-w-0 flex-1">
-                                <span class="flex items-center gap-2"><span class="truncate text-sm font-bold text-slate-900">{{ $data['title'] ?? 'Bug update' }}</span>@unless($notification->read_at)<span class="h-2 w-2 shrink-0 rounded-full bg-indigo-600" aria-label="Unread"></span>@endunless</span>
-                                <span class="mt-0.5 block truncate text-sm text-slate-600">{{ $data['message'] ?? '' }}</span>
+                                <span class="flex items-center gap-1.5"><span class="truncate text-xs sm:text-sm font-bold text-slate-900">{{ $data['title'] ?? 'Bug update' }}</span>@unless($notification->read_at)<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" aria-label="Unread"></span>@endunless</span>
+                                <span class="mt-0.5 block truncate text-xs text-slate-600">{{ $data['message'] ?? '' }}</span>
                             </span>
-                            <time class="shrink-0 text-xs text-slate-500">{{ $notification->created_at->diffForHumans() }}</time>
+                            <time class="shrink-0 text-[10px] text-slate-500">{{ $notification->created_at->diffForHumans() }}</time>
                         </a>
                     </article>
                     @else
-                    <article class="rounded-2xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50/60' }} p-4 shadow-sm">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2"><h2 class="text-sm font-bold">{{ $data['title'] ?? 'Bug update' }}</h2>@unless($notification->read_at)<span class="h-2 w-2 rounded-full bg-indigo-600" aria-label="Unread"></span>@endunless</div>
-                                <p class="mt-1 text-sm text-slate-600">{{ $data['message'] ?? '' }}</p>
-                                <p class="mt-2 text-[11px] text-slate-400">{{ $data['actor_name'] ?? 'A teammate' }} · {{ $notification->created_at->diffForHumans() }} · #ABT-{{ $data['bug_id'] ?? '' }}</p>
+                    <article class="rounded-xl border {{ $notification->read_at ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50/60' }} p-3 sm:p-3.5 shadow-2xs">
+                        <div class="flex flex-wrap items-center justify-between gap-2.5">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5"><h2 class="text-xs sm:text-sm font-bold">{{ $data['title'] ?? 'Bug update' }}</h2>@unless($notification->read_at)<span class="h-1.5 w-1.5 rounded-full bg-indigo-600" aria-label="Unread"></span>@endunless</div>
+                                <p class="mt-0.5 text-xs text-slate-600">{{ $data['message'] ?? '' }}</p>
+                                <p class="mt-1 text-[10px] text-slate-400">{{ $data['actor_name'] ?? 'A teammate' }} · {{ $notification->created_at->diffForHumans() }} · #ABT-{{ $data['bug_id'] ?? '' }}</p>
                             </div>
-                            <div class="flex shrink-0 items-center gap-2">
-                                <a href="{{ route('notifications.open', $notification->id, false) }}" class="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500"><span>View Bug Details</span> ➔</a>
-                                @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id, false) }}" method="POST">@csrf<button class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold transition hover:bg-slate-50">Mark Read</button></form>@endunless
+                            <div class="flex shrink-0 items-center gap-1.5">
+                                <a href="{{ route('notifications.open', $notification->id, false) }}" class="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-indigo-500"><span>View</span> ➔</a>
+                                @unless($notification->read_at)<form action="{{ route('notifications.read', $notification->id, false) }}" method="POST">@csrf<button class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold transition hover:bg-slate-50">Mark Read</button></form>@endunless
                             </div>
                         </div>
                     </article>
