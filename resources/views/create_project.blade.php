@@ -6,11 +6,13 @@
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
 </head>
-<body class="min-h-screen bg-[#F5F6FA] text-[#111827] antialiased selection:bg-indigo-500 selection:text-white">
+<body class="wizard-font min-h-screen bg-[#F5F6FA] text-[#111827] antialiased selection:bg-indigo-500 selection:text-white">
+<style>
+    .wizard-font { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+</style>
 <main class="mx-auto w-full max-w-3xl px-4 py-7 sm:px-6 lg:py-9">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-3">
-            <a href="/dashboard" class="inline-flex items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><span aria-hidden="true">←</span> Back to dashboard</a>
             <a href="/" class="text-base font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span><span class="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-700">AI v1.0</span></a>
         </div>
         <form action="/logout" method="POST">@csrf<button type="submit" aria-label="Log out" title="Log out" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
@@ -28,7 +30,6 @@
         <header class="mb-5">
             <span class="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Manager: {{ auth()->user()->name }}</span>
             <h1 class="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">Configure Your Project Environment</h1>
-            <p class="mt-1.5 text-sm text-[#475569]">Define project identity and tech stack dependencies for precision AI triage matching.</p>
         </header>
 
         @if(isset($errors) && $errors->any())
@@ -43,7 +44,7 @@
             </div>
 
             <div>
-                <div class="mb-1.5 flex items-center justify-between gap-2"><label for="techStackInput" class="block text-sm font-bold">Technology Stack &amp; Frameworks</label><span class="text-right font-mono text-[10px] font-semibold text-indigo-600 sm:text-xs">Selected chips auto-fill below</span></div>
+                <div class="mb-1.5"><label for="techStackInput" class="block text-sm font-bold">Technology Stack &amp; Frameworks</label></div>
                 <input id="techStackInput" type="text" name="project_stack" required value="{{ old('project_stack') }}" placeholder="e.g. Laravel, React, PostgreSQL, Docker" class="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
                 <p class="mb-2 mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-500">Quick select stack chips:</p>
                 <div class="flex flex-wrap gap-2" id="chipContainer" aria-label="Quick select technology stack">
@@ -53,17 +54,12 @@
                 </div>
             </div>
 
-            <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs leading-5 text-amber-900">
-                <b>AI Agent Tip:</b> The agent uses your selected stack to identify likely bug languages and categories.
-            </div>
-
             <div>
-                <div class="mb-1.5 flex items-center justify-between gap-2"><label for="githubRepo" class="text-sm font-bold">🐙 GitHub Repository Link</label><span class="rounded-full bg-emerald-50 px-3 py-1 font-mono text-[10px] font-semibold text-emerald-700">Auto Pre-Indexer</span></div>
+                <div class="mb-1.5"><label for="githubRepo" class="text-sm font-bold">🐙 GitHub Repository Link</label></div>
                 <div class="flex flex-col gap-2 sm:flex-row">
-                    <input id="githubRepo" type="url" name="github_repo" value="{{ old('github_repo', '') }}" placeholder="https://github.com/your-username/your-repository" aria-describedby="githubRepoHelp githubScanStatus" class="min-w-0 flex-1 rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
+                    <input id="githubRepo" type="url" name="github_repo" value="{{ old('github_repo', '') }}" placeholder="https://github.com/your-username/your-repository" aria-describedby="githubScanStatus" class="min-w-0 flex-1 rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
                     <button id="scanGithubRepo" type="button" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60"><span aria-hidden="true">⌕</span> Validate &amp; scan</button>
                 </div>
-                <p id="githubRepoHelp" class="mt-2 text-xs leading-5 text-slate-600">Paste a GitHub repository URL. We’ll check that it opens and count its trackable files.</p>
                 <div id="githubScanStatus" class="mt-3 hidden rounded-xl border border-slate-200 bg-slate-50 p-4" role="status" aria-live="polite">
                     <div class="flex items-center justify-between gap-3"><p id="githubScanTitle" class="text-sm font-semibold text-slate-800">Ready to scan</p><p id="githubScanCount" class="hidden shrink-0 text-sm font-bold text-indigo-700"></p></div>
                     <div id="githubScanProgressTrack" class="mt-3 hidden h-2 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Repository scan progress" aria-valuemin="0" aria-valuemax="100"><div id="githubScanProgress" class="h-full w-0 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-[width] duration-700"></div></div>

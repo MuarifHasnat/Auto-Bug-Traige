@@ -53,58 +53,23 @@
             
             <!-- Right Column (65% / col-span-8): AI Assignment Training Matrix & Workload Cards -->
             <div class="lg:col-span-12 space-y-6">
-                <section class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h2 class="text-sm font-bold text-[#0F172A]">Add an existing Developer or Tester</h2>
-                            <p class="mt-1 text-xs text-[#64748B]">Choose a registered account to add it to {{ session('project_name', 'this project') }}.</p>
-                        </div>
-                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">{{ $registeredAccounts->count() }} registered accounts</span>
-                    </div>
-                    <form id="existingAccountForm" action="/team-members" method="POST" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                        @csrf
-                        <div class="relative">
-                            <label class="sr-only" for="teamAccountSearch">Search by profile ID, name, or Gmail</label>
-                            <input id="teamAccountSearch" type="search" autocomplete="off" placeholder="Search by profile ID, name, or Gmail…" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-xs text-[#0F172A] outline-none focus:border-indigo-600">
-                            <input id="selectedTeamAccountId" type="hidden" name="user_id">
-                            <div id="teamAccountResults" class="absolute z-20 mt-1 hidden max-h-64 w-full overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-xl" role="listbox" aria-label="Registered team accounts">
-                            @foreach($registeredAccounts as $account)
-                                <button type="button" role="option" data-name="{{ strtolower($account->name) }}" data-email="{{ strtolower($account->email) }}" data-id="{{ $account->id }}" data-profile-id="{{ strtolower('abt-'.str_pad((string) $account->id, 6, '0', STR_PAD_LEFT)) }}" data-account-email="{{ $account->email }}" data-assigned="{{ in_array($account->id, $assignedAccountIds, true) ? 'true' : 'false' }}" class="team-account-option flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50" @disabled(in_array($account->id, $assignedAccountIds, true))>
-                                    <span class="min-w-0"><span class="block truncate text-xs font-semibold text-[#0F172A]">{{ $account->name }}</span><span class="block truncate text-[11px] text-slate-500">{{ $account->email }} · ABT-{{ str_pad((string) $account->id, 6, '0', STR_PAD_LEFT) }}</span></span>
-                                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold {{ $account->role === 'developer' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' }}">{{ $account->role === 'tester' ? 'QA Tester' : 'Developer' }}{{ in_array($account->id, $assignedAccountIds, true) ? ' · Added' : '' }}</span>
-                                </button>
-                            @endforeach
-                                <p id="teamAccountNoResults" class="hidden px-3 py-3 text-xs text-slate-500">No account matches that profile ID, name, or email.</p>
-                            </div>
-                        </div>
-                        <div>
-                            <input id="selectedTeamLabel" type="text" readonly placeholder="No account selected" class="w-full min-w-0 rounded-xl border border-[#E2E8F0] bg-slate-50 px-3.5 py-2.5 text-xs text-slate-600">
-                            <input type="hidden" name="skills" value="">
-                        </div>
-                        <button id="addExistingAccountButton" type="submit" disabled class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Add to project</button>
-                    </form>
-                    @if($registeredAccounts->isEmpty())
-                        <p class="mt-3 text-xs text-slate-500">No developer or tester accounts have been created yet.</p>
-                    @endif
-                </section>
-
                 <!-- Developer Skill & Capacity Grid -->
                 <div class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4 mb-5">
                         <div>
                             <div class="flex items-center gap-2">
-                                <h3 class="text-base font-bold text-[#0F172A]">AI Developer Skill & Capacity Grid</h3>
+                                <h3 class="text-base font-bold text-[#0F172A]">Team Skill & Capacity Grid</h3>
                                 <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs font-bold text-indigo-700 font-mono-code">
-                                    {{ $developers->count() }} Profiles
+                                    {{ $developers->count() + $teamMembers->where('role', 'tester')->count() }} Profiles
                                 </span>
                             </div>
-                            <p class="text-xs text-[#64748B] mt-0.5">Real-time skills matrix and capacity monitored by the Python Triage Agent.</p>
+                            <p class="text-xs text-[#64748B] mt-0.5">Developer skills and capacity, alongside QA tester profiles assigned to this project.</p>
                         </div>
                     </div>
 
                     <!-- 2-Column Cards Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @forelse($developers as $dev)
+                        @foreach($developers as $dev)
                             @php
                                 $taskCount = (int) $dev->active_tasks;
                                 $capacity = (int) ($dev->capacity ?? 5);
@@ -207,11 +172,36 @@
                                     </form>
                                 </div>
                             </div>
-                        @empty
-                            <div class="col-span-2 text-center py-10 border border-dashed border-[#CBD5E1] rounded-2xl text-xs text-[#64748B]">
-                                No developer profiles created yet. Add developers using the form on the left.
+                        @endforeach
+                        @foreach($teamMembers->where('role', 'tester') as $tester)
+                            <article class="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4.5 shadow-xs card-hover-lift flex flex-col justify-between relative">
+                                <div class="flex items-start justify-between gap-2 border-b border-[#E2E8F0] pb-3">
+                                    <div class="flex min-w-0 items-center gap-3">
+                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-sm font-bold uppercase text-white shadow-xs">
+                                            @if($tester->profile_photo_path)<img src="{{ route('team-members.photo', $tester->id) }}" alt="{{ $tester->name }}" class="h-full w-full object-cover">@else{{ strtoupper(substr($tester->name, 0, 2)) }}@endif
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h4 class="truncate text-sm font-bold leading-snug text-[#0F172A]">{{ $tester->name }}</h4>
+                                            <span class="rounded border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">Tester</span>
+                                            <p class="mt-1 truncate text-[11px] text-slate-500">{{ $tester->email }}</p>
+                                        </div>
+                                    </div>
+                                    <form action="{{ route('team-members.remove', $tester->id) }}" method="POST" onsubmit="return confirm('Remove this tester from the project?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" title="Remove tester from project" aria-label="Remove {{ $tester->name }} from project" class="rounded-lg p-1 text-xs text-slate-400 transition hover:bg-rose-50 hover:text-rose-600">✕</button>
+                                    </form>
+                                </div>
+                                <div class="mt-3.5">
+                                    <p class="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#64748B]">QA profile</p>
+                                    <p class="text-xs text-slate-600">Can report bugs, review issues, and verify fixes for this project.</p>
+                                </div>
+                            </article>
+                        @endforeach
+                        @if($developers->isEmpty() && $teamMembers->where('role', 'tester')->isEmpty())
+                            <div class="col-span-2 rounded-2xl border border-dashed border-[#CBD5E1] py-10 text-center text-xs text-[#64748B]">
+                                No developer or tester profiles are assigned to this project yet.
                             </div>
-                        @endforelse
+                        @endif
                     </div>
                 </div>
 
@@ -244,6 +234,51 @@
                         @endforeach
                     </div>
                 </div>
+
+                <section class="rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm sm:p-8" aria-labelledby="available-members-title">
+                    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
+                        <div>
+                            <h2 id="available-members-title" class="flex items-center gap-2 text-xl font-extrabold text-slate-950"><span class="h-2.5 w-2.5 rounded-full bg-indigo-600"></span>Available Workspace Developers (Click to Assign)</h2>
+                            <p class="mt-1 text-sm text-slate-500">Choose an account to add it to <strong>{{ session('project_name', 'this project') }}</strong>.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Filter accounts by role">
+                            <button type="button" data-account-filter="all" aria-pressed="true" class="account-filter rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">All Members</button>
+                            <button type="button" data-account-filter="developer" aria-pressed="false" class="account-filter rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Developers</button>
+                            <button type="button" data-account-filter="tester" aria-pressed="false" class="account-filter rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">QA Testers</button>
+                        </div>
+                    </div>
+
+                    <label class="relative mt-5 block max-w-xl">
+                        <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400" aria-hidden="true"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></span>
+                        <span class="sr-only">Search developers and testers</span>
+                        <input id="workspaceAccountSearch" type="search" autocomplete="off" placeholder="Search accounts by name or email…" class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50">
+                    </label>
+
+                    <div id="workspaceAccountGrid" class="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+                        @forelse($registeredAccounts as $account)
+                            @php($isProjectMember = in_array($account->id, $assignedAccountIds, true))
+                            <article data-workspace-account data-role="{{ $account->role }}" data-search="{{ strtolower($account->name.' '.$account->email) }}" class="flex min-w-0 items-center justify-between gap-4 rounded-2xl border {{ $isProjectMember ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-white' }} p-4 transition hover:border-indigo-200 hover:shadow-sm sm:p-5">
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl {{ $account->role === 'developer' ? 'bg-gradient-to-br from-sky-500 to-blue-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600' }} text-sm font-extrabold text-white">{{ strtoupper(substr($account->name, 0, 2)) }}</span>
+                                    <div class="min-w-0"><h3 class="truncate text-base font-bold text-slate-900">{{ $account->name }}</h3><p class="truncate font-mono text-sm text-slate-400">{{ $account->email }}</p><span class="mt-2 inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold {{ $account->role === 'developer' ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }}">{{ $account->role === 'tester' ? 'QA Tester' : 'Developer' }}</span></div>
+                                </div>
+                                @if($isProjectMember)
+                                    <span class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-700"><span aria-hidden="true">✓</span> Assigned</span>
+                                @else
+                                    <form action="/team-members" method="POST" class="shrink-0">
+                                        @csrf
+                                        <input type="hidden" name="user_id" value="{{ $account->id }}">
+                                        <input type="hidden" name="skills" value="">
+                                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 sm:px-4"><span class="text-lg leading-none" aria-hidden="true">＋</span><span>Add to Project</span></button>
+                                    </form>
+                                @endif
+                            </article>
+                        @empty
+                            <p class="col-span-full rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">No developer or tester accounts have registered yet.</p>
+                        @endforelse
+                    </div>
+                    <p id="workspaceAccountEmpty" class="mt-5 hidden rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">No matching accounts. Try another name or email.</p>
+                </section>
             </div>
         </div>
             </div>
@@ -251,55 +286,41 @@
     </div>
 
     <script>
-        const teamAccountSearch = document.getElementById('teamAccountSearch');
-        const teamAccountResults = document.getElementById('teamAccountResults');
-        const selectedTeamAccountId = document.getElementById('selectedTeamAccountId');
-        const selectedTeamLabel = document.getElementById('selectedTeamLabel');
-        const existingAccountForm = document.getElementById('existingAccountForm');
-        const addExistingAccountButton = document.getElementById('addExistingAccountButton');
+        const workspaceAccountSearch = document.getElementById('workspaceAccountSearch');
+        const workspaceAccountCards = [...document.querySelectorAll('[data-workspace-account]')];
+        const workspaceAccountEmpty = document.getElementById('workspaceAccountEmpty');
+        let activeAccountRole = 'all';
 
-        if (teamAccountSearch) {
-            teamAccountSearch.addEventListener('input', () => {
-                const query = teamAccountSearch.value.trim().toLowerCase();
-                let visibleCount = 0;
-                selectedTeamAccountId.value = '';
-                selectedTeamLabel.value = '';
-                addExistingAccountButton.disabled = true;
-                teamAccountResults.querySelectorAll('.team-account-option').forEach((option) => {
-                    const matches = !query || option.dataset.name.includes(query) || option.dataset.email.includes(query) || option.dataset.id.includes(query) || option.dataset.profileId.includes(query);
-                    option.style.display = matches ? 'flex' : 'none';
-                    if (matches) visibleCount++;
-                });
-                document.getElementById('teamAccountNoResults').classList.toggle('hidden', visibleCount !== 0);
-                teamAccountResults.classList.toggle('hidden', query === '');
+        function filterWorkspaceAccounts() {
+            const query = workspaceAccountSearch?.value.trim().toLowerCase() || '';
+            let visible = 0;
+            workspaceAccountCards.forEach((card) => {
+                const matchesRole = activeAccountRole === 'all' || card.dataset.role === activeAccountRole;
+                const matchesSearch = !query || card.dataset.search.includes(query);
+                const show = matchesRole && matchesSearch;
+                card.classList.toggle('hidden', !show);
+                if (show) visible++;
             });
-
-            teamAccountSearch.addEventListener('focus', () => {
-                if (teamAccountSearch.value.trim()) teamAccountSearch.dispatchEvent(new Event('input'));
-            });
-
-            teamAccountResults.querySelectorAll('.team-account-option:not(:disabled)').forEach((option) => {
-                option.addEventListener('click', () => {
-                    selectedTeamAccountId.value = option.dataset.id;
-                    selectedTeamLabel.value = option.querySelector('span span').textContent + ' · ' + option.querySelector('span span + span').textContent;
-                    teamAccountSearch.value = option.querySelector('span span').textContent;
-                    teamAccountResults.classList.add('hidden');
-                    addExistingAccountButton.disabled = false;
-                });
-            });
-
-            document.addEventListener('click', (event) => {
-                if (!teamAccountResults.contains(event.target) && event.target !== teamAccountSearch) teamAccountResults.classList.add('hidden');
-            });
-
-            existingAccountForm.addEventListener('submit', (event) => {
-                if (!selectedTeamAccountId.value) {
-                    event.preventDefault();
-                    teamAccountSearch.focus();
-                    teamAccountResults.classList.remove('hidden');
-                }
-            });
+            workspaceAccountEmpty?.classList.toggle('hidden', visible !== 0 || workspaceAccountCards.length === 0);
         }
+
+        workspaceAccountSearch?.addEventListener('input', filterWorkspaceAccounts);
+        document.querySelectorAll('.account-filter').forEach((button) => {
+            button.addEventListener('click', () => {
+                activeAccountRole = button.dataset.accountFilter;
+                document.querySelectorAll('.account-filter').forEach((filterButton) => {
+                    const selected = filterButton === button;
+                    filterButton.setAttribute('aria-pressed', String(selected));
+                    filterButton.classList.toggle('bg-slate-900', selected);
+                    filterButton.classList.toggle('text-white', selected);
+                    filterButton.classList.toggle('border', !selected);
+                    filterButton.classList.toggle('border-slate-200', !selected);
+                    filterButton.classList.toggle('bg-white', !selected);
+                    filterButton.classList.toggle('text-slate-600', !selected);
+                });
+                filterWorkspaceAccounts();
+            });
+        });
 
         function handleRoleChange(role) {
             const group = document.getElementById('skillsFieldGroup');

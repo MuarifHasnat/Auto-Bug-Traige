@@ -6,13 +6,12 @@
     <title>{{ session('project_name', 'Workspace') }} · Kanban Board</title>
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
-    @if(auth()->user()->role === 'tester')<link rel="stylesheet" href="/css/tester-theme.css">@endif
     <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
     @if(file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite('resources/js/app.js')
     @endif
 </head>
-<body class="bg-[#F8FAFC] text-[#0F172A] antialiased {{ auth()->user()->role === 'tester' ? 'tester-shell' : '' }}">
+<body class="bg-[#F8FAFC] text-[#0F172A] antialiased">
     <div class="flex min-h-screen">
         <!-- Modern Light Glassmorphic Left Sidebar (250px) -->
         @include('components.app-sidebar', ['active' => 'workspace'])
@@ -21,14 +20,12 @@
         <main class="min-w-0 flex-1 flex flex-col">
             <!-- Sticky Header (60px) -->
             <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between gap-4 border-b border-[#E2E8F0] bg-white/90 px-5 py-3 backdrop-blur-md lg:px-8">
-                <div class="min-w-0 truncate text-xs font-semibold text-slate-500"><a href="/dashboard" class="hover:text-indigo-700">Workspace</a><span class="mx-2 text-slate-300">/</span><span>{{ $currentProject?->name ?? session('project_name', 'Project') }}</span><span class="mx-2 text-slate-300">/</span><span class="text-indigo-700">Kanban Workspace</span></div>
+                <div class="min-w-0 truncate text-xs font-semibold text-slate-500"><a href="/dashboard" class="hover:text-indigo-700">Workspace</a><span class="mx-2 text-slate-300">/</span><span>{{ $currentProject?->name ?? session('project_name', 'Project') }}</span><span class="mx-2 text-slate-300">/</span><span class="text-indigo-700">Kanban board</span></div>
                 <div class="ml-auto flex shrink-0 items-center gap-2.5">
-                    @if(auth()->user()->role !== 'tester')
-                        @include('components.project-switcher', ['variant' => 'header'])
-                    @else
+                    @if(auth()->user()->role === 'tester')
                         <span class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:inline-flex">● AI Agent Ready</span>
                     @endif
-                    @if(auth()->user()->role !== 'tester')<a href="/notifications" aria-label="Notifications" title="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>@endif
+                    <a href="/notifications" aria-label="Notifications" title="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
                     @include('components.profile-header')
                 </div>
             </header>
@@ -41,7 +38,7 @@
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
                 <section class="flex flex-wrap items-center justify-between gap-3" aria-labelledby="kanban-title">
-                    <div class="flex flex-wrap items-center gap-2"><h1 id="kanban-title" class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1>@if(auth()->user()->role === 'manager')<span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">View only</span>@endif</div>
+                    <div class="flex flex-wrap items-center gap-2"><h1 id="kanban-title" class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">Kanban board</h1>@if(auth()->user()->role === 'manager')<span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">View only</span>@endif</div>
                     <div class="flex flex-wrap items-center gap-2">
                         @if(auth()->user()->role === 'tester')
                             <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
@@ -53,10 +50,6 @@
                 <!-- Compact Board Filters -->
                 <section class="rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs" aria-label="Board filters">
                     <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2">
-                        @if(auth()->user()->role === 'manager')
-                            <label class="sr-only" for="kanbanProjectFilter">Project</label>
-                            <select id="kanbanProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">Select project</option>@foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $currentProjectId === (int) $project->id)>{{ $project->name }}</option>@endforeach</select>
-                        @endif
                         <label class="sr-only" for="issue-search">Search issues and stack traces</label>
                         <div class="relative min-w-[220px] flex-1 sm:max-w-sm">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
@@ -73,8 +66,6 @@
                             <label class="sr-only" for="kanbanDateTo">Created through</label><input id="kanbanDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
                             <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Apply</button>
                         @endif
-                        <label class="sr-only" for="kanbanLabelFilter">Label</label>
-                        <select id="kanbanLabelFilter" name="label" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All labels</option>@foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach</select>
                         <label class="sr-only" for="kanbanIssueTypeFilter">Issue type</label>
                         <select id="kanbanIssueTypeFilter" name="issue_type" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All issue types</option>@foreach(['Bug','Task','Story','Improvement'] as $type)<option value="{{ $type }}" @selected(($filters['issue_type'] ?? '') === $type)>{{ $type }}</option>@endforeach</select>
                         <label class="sr-only" for="savedFilterSelect">Saved filters</label>
@@ -82,16 +73,6 @@
                         <button type="button" id="clear-filters" class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Clear</button>
                         <button type="button" onclick="toggleDuplicates()" id="duplicatesToggle" aria-pressed="false" class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Hide Duplicates</button>
                     </form>
-                    <details class="w-full border-t border-slate-100 pt-2">
-                            <summary class="w-fit cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">More filters and saved filter actions <span aria-hidden="true">⌄</span></summary>
-                            <div class="mt-3 flex flex-wrap items-center gap-2.5">
-                                @if(auth()->user()->role === 'manager' && $stats['high'] > 0)<a href="/workspace?priority=High" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">🔥 Critical {{ $stats['high'] }}</a>@endif
-                                <button type="button" id="loadSavedFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
-                                <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
-                                <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">@csrf<div id="savedFilterPayload"></div><input type="hidden" name="name" id="savedFilterName"><button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white">Save current filter</button></form>
-                                <form id="deleteFilterForm" method="POST" class="hidden">@csrf @method('DELETE')</form>
-                            </div>
-                    </details>
                 </section>
 
                 <!-- Search Empty State -->
@@ -238,49 +219,6 @@
                             </div>
                         </section>
                     @endforeach
-                </div>
-                <!-- Interactive Quick-Start & Feature Tips Banner (Collapsible) -->
-                <div id="quickTipsBanner" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                    <div class="flex items-center justify-between cursor-pointer select-none" role="button" tabindex="0" onclick="toggleQuickTips()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();toggleQuickTips()}">
-                        <div class="flex items-center gap-2.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 font-bold text-sm">💡</span>
-                            <div>
-                                <h3 class="text-xs font-extrabold text-[#0F172A]">Workspace Quick Guide</h3>
-                                <p class="text-[11px] text-[#64748B]">A quick overview of the board’s main features.</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span id="quickTipsToggleText" class="text-[11px] font-bold text-indigo-600">Show Guide ▾</span>
-                        </div>
-                    </div>
-
-                    <div id="quickTipsContent" class="hidden mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-                        @if($canMoveKanbanIssues)<div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3"><div class="flex items-center gap-2 text-xs font-bold text-slate-900"><span class="text-indigo-600">🖱️</span><span>1. Drag and drop</span></div><p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag a bug card to another column to update its status.</p></div>@endif
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-purple-600">🔍</span>
-                                <span>2. Click to preview</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Click a card to open its side panel with AI diagnostics, root cause, and comments.</p>
-                        </div>
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-sky-600">📄</span>
-                                <span>3. Full issue page and GitHub</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Use “Open in Full Page” to review issue details and linked GitHub files.</p>
-                        </div>
-
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-emerald-600">⚡</span>
-                                <span>4. Submit a bug</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Select “+ Report Bug” to open AI Triage Studio and get an engineer assignment recommendation.</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
@@ -796,7 +734,7 @@
                 searchTimer = setTimeout(() => filterForm.requestSubmit(), 300);
             });
         }
-        filterForm.querySelectorAll('select').forEach(select => select.addEventListener('change', () => filterForm.requestSubmit()));
+        filterForm.querySelectorAll('select:not(#savedFilterSelect)').forEach(select => select.addEventListener('change', () => filterForm.requestSubmit()));
         document.querySelectorAll('[form="issue-filters"]').forEach(control => control.addEventListener('change', () => filterForm.requestSubmit()));
         if (clearFilters) {
             clearFilters.addEventListener('click', () => {
@@ -805,29 +743,13 @@
             });
         }
 
-        document.getElementById('loadSavedFilter').addEventListener('click', () => {
-            const selected = document.getElementById('savedFilterSelect').selectedOptions[0];
+        document.getElementById('savedFilterSelect')?.addEventListener('change', (event) => {
+            const selected = event.currentTarget.selectedOptions[0];
             if (!selected || !selected.value) return;
             let saved = {};
             try { saved = JSON.parse(selected.dataset.filters || '{}'); } catch (error) {}
             document.querySelectorAll('#issue-filters [name], [form="issue-filters"][name]').forEach(control => control.value = saved[control.name] || '');
             filterForm.requestSubmit();
-        });
-        document.getElementById('saveCurrentFilter').addEventListener('click', () => {
-            const name = prompt('Name this saved filter:');
-            if (!name || !name.trim()) return;
-            const payload = document.getElementById('savedFilterPayload'); payload.replaceChildren();
-            document.querySelectorAll('#issue-filters [name], [form="issue-filters"][name]').forEach(control => {
-                if (!control.value) return;
-                const input = document.createElement('input'); input.type = 'hidden'; input.name = `filters[${control.name}]`; input.value = control.value; payload.appendChild(input);
-            });
-            document.getElementById('savedFilterName').value = name.trim();
-            document.getElementById('saveFilterForm').requestSubmit();
-        });
-        document.getElementById('deleteSavedFilter').addEventListener('click', () => {
-            const id = document.getElementById('savedFilterSelect').value;
-            if (!id || !confirm('Delete this saved filter?')) return;
-            const form = document.getElementById('deleteFilterForm'); form.action = `/api/bug-filters/${encodeURIComponent(id)}`; form.requestSubmit();
         });
 
         // Quick Toggles
@@ -973,30 +895,7 @@
             }
         }
 
-        function toggleQuickTips() {
-            const content = document.getElementById('quickTipsContent');
-            const text = document.getElementById('quickTipsToggleText');
-            if (!content || !text) return;
-            if (content.classList.contains('hidden')) {
-                content.classList.remove('hidden');
-                text.textContent = 'Hide Guide ▴';
-                localStorage.setItem('abt_show_guide', '1');
-            } else {
-                content.classList.add('hidden');
-                text.textContent = 'Show Guide ▾';
-                localStorage.setItem('abt_show_guide', '0');
-            }
-        }
-
         window.addEventListener('DOMContentLoaded', () => {
-            const guideVisible = localStorage.getItem('abt_show_guide') === '1';
-            const guideContent = document.getElementById('quickTipsContent');
-            const guideText = document.getElementById('quickTipsToggleText');
-            if (guideContent && guideText) {
-                guideContent.classList.toggle('hidden', !guideVisible);
-                guideText.textContent = guideVisible ? 'Hide Guide ▴' : 'Show Guide ▾';
-            }
-
             const hash = window.location.hash;
             if (hash && hash.startsWith('#bug-')) {
                 const bugId = hash.replace('#bug-', '');

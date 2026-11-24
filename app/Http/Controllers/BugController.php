@@ -340,7 +340,7 @@ class BugController extends Controller
             ->whereIn('role', ['tester', 'developer'])
             ->whereIn('id', DB::table('project_members')->where('project_id', $projectId)->pluck('user_id'))
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role']);
+            ->get(['id', 'name', 'email', 'role', 'profile_photo_path']);
         $registeredAccounts = \App\Models\User::query()
             ->whereIn('role', ['tester', 'developer'])
             ->orderBy('name')
