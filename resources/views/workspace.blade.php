@@ -28,20 +28,20 @@
                     @else
                         <span class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:inline-flex">● AI Agent Ready</span>
                     @endif
-                    @if(auth()->user()->role !== 'tester')<a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>@endif
+                    @if(auth()->user()->role !== 'tester')<a href="/notifications" aria-label="Notifications" title="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>@endif
                     @include('components.profile-header')
                 </div>
             </header>
 
             <!-- Board Body Container -->
-            <div class="flex-1 mx-auto w-full max-w-[1700px] px-4 sm:px-6 lg:px-8 py-3.5 space-y-3.5">
+            <div class="flex-1 w-full px-5 lg:px-6 py-4 space-y-4">
                 
                 @php
                     $activeWorkflowStatuses = $workflowStatuses->where('is_done', false)->where('name', '!=', 'Duplicate')->pluck('name')->all();
                     $myAssignedCount = $bugs->where('assigned_to', auth()->user()->name)->whereIn('status', $activeWorkflowStatuses)->count();
                 @endphp
                 <section class="flex flex-wrap items-center justify-between gap-3" aria-labelledby="kanban-title">
-                    <div><h1 id="kanban-title" class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1></div>
+                    <div class="flex flex-wrap items-center gap-2"><h1 id="kanban-title" class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">{{ auth()->user()->role === 'tester' ? 'Kanban Workspace' : 'Kanban board' }}</h1>@if(auth()->user()->role === 'manager')<span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">View only</span>@endif</div>
                     <div class="flex flex-wrap items-center gap-2">
                         @if(auth()->user()->role === 'tester')
                             <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
@@ -53,6 +53,10 @@
                 <!-- Compact Board Filters -->
                 <section class="rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs" aria-label="Board filters">
                     <form id="issue-filters" method="GET" action="/workspace" class="flex flex-wrap items-center gap-2">
+                        @if(auth()->user()->role === 'manager')
+                            <label class="sr-only" for="kanbanProjectFilter">Project</label>
+                            <select id="kanbanProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">Select project</option>@foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $currentProjectId === (int) $project->id)>{{ $project->name }}</option>@endforeach</select>
+                        @endif
                         <label class="sr-only" for="issue-search">Search issues and stack traces</label>
                         <div class="relative min-w-[220px] flex-1 sm:max-w-sm">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
@@ -62,6 +66,13 @@
                         <select id="kanbanPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All priorities</option>@foreach(['High','Medium','Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }}</option>@endforeach</select>
                         <label class="sr-only" for="kanbanAssigneeFilter">Assignee</label>
                         <select id="kanbanAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All assignees</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach</select>
+                        <label class="sr-only" for="kanbanStatusFilter">Status</label>
+                        <select id="kanbanStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All statuses</option>@foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach</select>
+                        @if(auth()->user()->role === 'manager')
+                            <label class="sr-only" for="kanbanDateFrom">Created from</label><input id="kanbanDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
+                            <label class="sr-only" for="kanbanDateTo">Created through</label><input id="kanbanDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
+                            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Apply</button>
+                        @endif
                         <label class="sr-only" for="kanbanLabelFilter">Label</label>
                         <select id="kanbanLabelFilter" name="label" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"><option value="">All labels</option>@foreach($availableLabels as $label)<option value="{{ $label }}" @selected(($filters['label'] ?? '') === $label)>{{ $label }}</option>@endforeach</select>
                         <label class="sr-only" for="kanbanIssueTypeFilter">Issue type</label>
@@ -75,7 +86,6 @@
                             <summary class="w-fit cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">More filters and saved filter actions <span aria-hidden="true">⌄</span></summary>
                             <div class="mt-3 flex flex-wrap items-center gap-2.5">
                                 @if(auth()->user()->role === 'manager' && $stats['high'] > 0)<a href="/workspace?priority=High" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">🔥 Critical {{ $stats['high'] }}</a>@endif
-                                <label class="sr-only" for="kanbanStatusFilter">Status</label><select id="kanbanStatusFilter" name="status" form="issue-filters" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"><option value="">All statuses</option>@foreach($workflowStatuses as $workflowStatus)<option value="{{ $workflowStatus->name }}" @selected(($filters['status'] ?? '') === $workflowStatus->name)>{{ $workflowStatus->name }}</option>@endforeach</select>
                                 <button type="button" id="loadSavedFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">Load filter</button>
                                 <button type="button" id="deleteSavedFilter" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete saved</button>
                                 <form id="saveFilterForm" action="{{ route('bug-filters.store', [], false) }}" method="POST" class="ml-auto">@csrf<div id="savedFilterPayload"></div><input type="hidden" name="name" id="savedFilterName"><button type="button" id="saveCurrentFilter" class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white">Save current filter</button></form>
@@ -118,12 +128,10 @@
                             </div>
 
                             <!-- Column Cards Container with Independent Scroll & Drag Target -->
-                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[680px] pr-1 custom-scroll kanban-dropzone rounded-xl transition-all duration-150 p-1" 
+                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[680px] pr-1 custom-scroll {{ $canMoveKanbanIssues ? 'kanban-dropzone rounded-xl transition-all duration-150 p-1' : 'rounded-xl p-1' }}"
                                  id="column-{{ Str::slug($columnStatus) }}"
                                  data-status="{{ $columnStatus }}"
-                                 ondragover="handleDragOver(event)"
-                                 ondragleave="handleDragLeave(event)"
-                                 ondrop="handleDrop(event, '{{ $columnStatus }}')">
+                                 @if($canMoveKanbanIssues) ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '{{ $columnStatus }}')" @endif>
                                 @forelse($colBugs as $bug)
                                     @php
                                         $triage = json_decode($bug->triage_result ?? '', true);
@@ -138,15 +146,13 @@
                                     @endphp
                                     <!-- Refactored Premium SaaS Card Anatomy (Linear Style) -->
                                     <article id="bug-{{ $bug->id }}" 
-                                             class="bug-card group block card-hover-lift rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 mb-3 cursor-grab active:cursor-grabbing {{ $priorityClass }}"
+                                             class="bug-card group block card-hover-lift rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 mb-3 {{ $canMoveKanbanIssues ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer' }} {{ $priorityClass }}"
                                              data-id="{{ $bug->id }}"
                                              data-status="{{ $bug->status }}"
                                              data-assignee="{{ $bug->assigned_to }}"
                                              data-reporter-id="{{ $bug->reporter_id }}"
                                              data-duplicate="{{ $bug->is_duplicate ? 'true' : 'false' }}"
-                                             draggable="true"
-                                             ondragstart="handleDragStart(event, {{ $bug->id }}, '{{ $bug->status }}')"
-                                             ondragend="handleDragEnd(event)"
+                                             @if($canMoveKanbanIssues) draggable="true" ondragstart="handleDragStart(event, {{ $bug->id }}, '{{ $bug->status }}')" ondragend="handleDragEnd(event)" @endif
                                              onclick="openDrawer({{ $bug->id }})">
                                         
                                         <!-- Header: ID & Priority (No heavy borders) -->
@@ -249,13 +255,7 @@
                     </div>
 
                     <div id="quickTipsContent" class="hidden mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-                        <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
-                                <span class="text-indigo-600">🖱️</span>
-                                <span>1. Drag and drop</span>
-                            </div>
-                            <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag a bug card to another column to update its status.</p>
-                        </div>
+                        @if($canMoveKanbanIssues)<div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3"><div class="flex items-center gap-2 text-xs font-bold text-slate-900"><span class="text-indigo-600">🖱️</span><span>1. Drag and drop</span></div><p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag a bug card to another column to update its status.</p></div>@endif
 
                         <div class="rounded-xl bg-[#F8FAFC] border border-slate-200/80 p-3">
                             <div class="flex items-center gap-2 text-xs font-bold text-slate-900">
@@ -342,33 +342,6 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->role === 'manager')
-                    <form id="reassignBugForm" action="{{ route('bugs.reassign', [], false) }}" method="POST" class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3.5 space-y-2" onclick="event.stopPropagation()">
-                        @csrf
-                        <input type="hidden" name="id" id="reassignBugId">
-                        <label for="reassignDeveloper" class="block text-xs font-bold text-indigo-950">Reassign issue</label>
-                        <div class="flex gap-2">
-                            <select id="reassignDeveloper" name="assigned_to" class="min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs text-slate-800">
-                                <option value="Unassigned">Unassigned</option>
-                                @foreach($developers as $developer)
-                                    <option value="{{ $developer->name }}">{{ $developer->name }}</option>
-                                @endforeach
-                            </select>
-                            <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500">Save</button>
-                        </div>
-                    </form>
-                    <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs" onclick="event.stopPropagation()">
-                        <div><p class="text-xs font-bold text-slate-900">Agent Recommendation Review</p><p class="mt-0.5 text-[11px] text-slate-500">Confirm accuracy to train confidence metrics.</p></div>
-                        <p class="text-xs">Recommended: <b id="drawerRecommendedAssignee"></b><span id="drawerAssignmentFeedback" class="ml-2 text-[10px] text-slate-500"></span></p>
-                        <form id="acceptRecommendationForm" action="{{ route('bugs.recommendation.accept', [], false) }}" method="POST" class="hidden">@csrf<input type="hidden" name="id" id="acceptRecommendationBugId"><button id="acceptRecommendationButton" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white">Accept recommendation</button></form>
-                        <form id="duplicateReviewForm" action="{{ route('bugs.duplicate-review', [], false) }}" method="POST" class="space-y-2">
-                            @csrf<input type="hidden" name="id" id="reviewDuplicateBugId">
-                            <p id="duplicateReviewState" class="text-[11px] text-slate-600"></p>
-                            <div class="flex flex-wrap gap-2"><button id="confirmDuplicateValue" name="actual_duplicate" value="1" class="rounded-lg border border-slate-300 px-2.5 py-1 text-[10px] font-semibold">Confirm duplicate</button><button id="correctDuplicateValue" name="actual_duplicate" value="0" class="rounded-lg border border-slate-300 px-2.5 py-1 text-[10px] font-semibold">Not duplicate</button></div>
-                        </form>
-                    </div>
-                @endif
-
                 <!-- Validation Result -->
                 <div class="rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-800">
                     <p class="font-bold">Code Validation Result:</p>
@@ -434,10 +407,10 @@
             <div id="tabDiscussion" class="hidden space-y-4">
                 <div class="flex items-center justify-between gap-3">
                     <div><h4 class="text-xs font-bold uppercase tracking-wider text-[#64748B]">Comments & mentions</h4><p class="mt-1 text-[11px] text-slate-500">Mention a project member to notify them. Watch to receive bug updates.</p></div>
-                    <form action="{{ route('bugs.watch', [], false) }}" method="POST" onclick="event.stopPropagation()">
+                    @if(auth()->user()->role !== 'manager')<form action="{{ route('bugs.watch', [], false) }}" method="POST" onclick="event.stopPropagation()">
                         @csrf<input type="hidden" name="bug_id" id="watchBugId">
                         <button type="submit" id="watchBugButton" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700">Watch</button>
-                    </form>
+                    </form>@endif
                 </div>
                 <ol id="drawerCommentsList" class="space-y-3"></ol>
                 <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -451,13 +424,13 @@
                     @endif
                 </div>
                 <ol id="drawerClarificationsList" class="space-y-2"></ol>
-                <form action="{{ route('bugs.comments', [], false) }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
+                @if(auth()->user()->role !== 'manager')<form action="{{ route('bugs.comments', [], false) }}" method="POST" id="bugCommentForm" class="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" onclick="event.stopPropagation()">
                     @csrf<input type="hidden" name="bug_id" id="commentBugId">
                     <div id="mentionInputs"></div>
                     <div class="flex gap-2"><select id="mentionMember" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs"><option value="">Mention teammate…</option></select><button type="button" onclick="insertMention()" class="rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold">@ Mention</button></div>
                     <textarea name="body" id="commentBody" required maxlength="5000" rows="3" placeholder="Write a comment…" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs"></textarea>
                     <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white">Post comment</button>
-                </form>
+                </form>@endif
             </div>
         </div>
     </div>
@@ -470,20 +443,24 @@
             if (!container) return;
             const data = container.firstElementChild;
             const bugIdValue = data.getAttribute('data-id');
-            document.getElementById('watchBugId').value = bugIdValue;
-            document.getElementById('commentBugId').value = bugIdValue;
+            const watchBugId = document.getElementById('watchBugId');
+            const commentBugId = document.getElementById('commentBugId');
+            if (watchBugId) watchBugId.value = bugIdValue;
+            if (commentBugId) commentBugId.value = bugIdValue;
             const clarificationBugId = document.getElementById('clarificationBugId');
             if (clarificationBugId) clarificationBugId.value = bugIdValue;
             const watchButton = document.getElementById('watchBugButton');
-            watchButton.textContent = data.getAttribute('data-watching') === 'true' ? 'Unwatch' : 'Watch';
+            if (watchButton) watchButton.textContent = data.getAttribute('data-watching') === 'true' ? 'Unwatch' : 'Watch';
             const memberSelect = document.getElementById('mentionMember');
-            memberSelect.innerHTML = '<option value="">Mention teammate…</option>';
-            try {
-                JSON.parse(data.getAttribute('data-project-users') || '[]').forEach((member) => {
-                    if (String(member.id) === String({{ auth()->id() }})) return;
-                    const option = document.createElement('option'); option.value = member.id; option.textContent = `${member.name} · ${member.role}`; memberSelect.appendChild(option);
-                });
-            } catch (error) {}
+            if (memberSelect) {
+                memberSelect.innerHTML = '<option value="">Mention teammate…</option>';
+                try {
+                    JSON.parse(data.getAttribute('data-project-users') || '[]').forEach((member) => {
+                        if (String(member.id) === String({{ auth()->id() }})) return;
+                        const option = document.createElement('option'); option.value = member.id; option.textContent = `${member.name} · ${member.role}`; memberSelect.appendChild(option);
+                    });
+                } catch (error) {}
+            }
             renderComments(data.getAttribute('data-comments'));
             const signal = document.getElementById('drawerSentiment');
             const blocker = data.getAttribute('data-blocker') === 'true';
@@ -757,7 +734,7 @@
                     const item = document.createElement('li'); item.className = 'rounded-xl border border-slate-200 bg-white p-3 text-xs';
                     const question = document.createElement('p'); question.className = 'font-semibold text-slate-800'; question.textContent = `Clarification · ${request.status}: ${request.question}`; item.appendChild(question);
                     if (request.answer) { const answer = document.createElement('p'); answer.className = 'mt-2 whitespace-pre-wrap text-slate-600'; answer.textContent = `Answer: ${request.answer}`; item.appendChild(answer); }
-                    @if(auth()->user()->role === 'manager' || auth()->user()->role === 'tester')
+                    @if(auth()->user()->role === 'tester')
                     if (request.status === 'open') {
                         const form = document.createElement('form'); form.method = 'POST'; form.action = @json(route('bugs.clarifications.answer', [], false)); form.className = 'mt-2 space-y-2';
                         form.innerHTML = @json('<input type="hidden" name="_token" value="'.csrf_token().'"><input type="hidden" name="request_id" value="">');

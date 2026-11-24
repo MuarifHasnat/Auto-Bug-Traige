@@ -6,6 +6,11 @@
     <title>Command Center · AutoBugTriage AI</title>
     <script src="{{ file_exists(public_path('js/tailwind.js')) ? '/js/tailwind.js' : 'https://cdn.tailwindcss.com' }}"></script>
     <link rel="stylesheet" href="/css/modern-saas.css">
+    <style>
+        .dashboard-content .text-xs { font-size: .875rem; line-height: 1.35rem; }
+        .dashboard-content .text-\[11px\] { font-size: .8125rem; line-height: 1.2rem; }
+        .dashboard-content .text-\[10px\] { font-size: .75rem; line-height: 1rem; }
+    </style>
     <script>window.reverbConfig = {{ Illuminate\Support\Js::from(['key' => config('broadcasting.connections.reverb.key'), 'host' => config('broadcasting.connections.reverb.options.host'), 'port' => config('broadcasting.connections.reverb.options.port'), 'scheme' => config('broadcasting.connections.reverb.options.scheme')]) }};</script>
     @if(file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite('resources/js/app.js')
@@ -19,142 +24,21 @@
     <!-- Main Content Container -->
     <main class="min-w-0 flex-1 flex flex-col">
         <!-- Sticky Top Header (60px) -->
-        <header class="sticky top-0 z-10 flex h-[60px] items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 lg:px-8">
-            <!-- Center Search with Ctrl+K shortcut -->
-            <div class="hidden md:flex items-center">
-                <div class="relative">
-                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">⌕</span>
-                    <input id="dashboardQuickSearch" type="search" name="search" form="dashboardQuickSearchForm" aria-label="Search bugs by title or description" placeholder="Search bugs by title or description…"
-                           class="w-72 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-1.5 pl-8 pr-14 text-xs text-[#0F172A] outline-none transition focus:border-indigo-600 focus:bg-white">
-                    <span class="absolute inset-y-0 right-0 flex items-center pr-2">
-                        <kbd class="rounded border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[10px] font-mono-code font-bold text-[#64748B]">Ctrl + K</kbd>
-                    </span>
-                </div>
-            </div>
-            <form id="dashboardQuickSearchForm" action="/workspace" method="GET" class="hidden"></form>
-
+        <header class="sticky top-0 z-10 flex h-[60px] items-center justify-end border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-5 lg:px-8">
             <div class="flex items-center gap-3">
-                <span class="hidden rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 lg:inline-flex">● Python Triage Agent: Ready</span>
-                <a href="/notifications" aria-label="Notifications" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">♧ @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
+                <a href="/notifications" aria-label="Notifications" title="Notifications" class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $unreadNotificationCount }}</span>@endif</a>
                 @include('components.profile-header')
             </div>
         </header>
 
         <!-- Command Center Body -->
-        <div class="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+        <div class="dashboard-content flex-1 w-full px-5 lg:px-6 py-5 space-y-5">
             <section class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xs" aria-labelledby="command-center-title">
                 <div>
-                    <p class="text-xs font-semibold text-slate-500">{{ session('project_name', 'Project') }} / Command Center</p>
-                    <h1 id="command-center-title" class="mt-0.5 text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">Good day, {{ auth()->user()->name }}! All project queues are healthy and under control.</h1>
-                    <p class="mt-0.5 text-xs text-slate-600">Automated AST parsing and skill-based developer routing active across {{ $developers->count() }} profiles.</p>
+                    <p class="text-sm font-semibold text-slate-500">{{ session('project_name', 'Project') }} / Command Center</p>
+                    <h1 id="command-center-title" class="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">Good day, {{ auth()->user()->name }}! All project queues are healthy and under control.</h1>
                 </div>
-                <a href="/workspace" class="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-indigo-700 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600">Open Kanban board <span aria-hidden="true">→</span></a>
             </section>
-
-            <!-- AI Autonomous Performance & Value Impact Strip -->
-            <div class="rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-sm ring-1 ring-slate-800 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex min-w-0 flex-1 items-center gap-3">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-indigo-400 font-medium text-base shrink-0">
-                        ⚡
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h3 class="text-xs sm:text-sm font-semibold text-white">Autonomous AI Triage Efficiency &amp; Impact</h3>
-                            <span class="rounded-md bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 text-[9px] font-mono-code font-medium">Active Engine</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Automated NLP symptom categorization, GitHub culprit localization, and workload-aware developer dispatch.</p>
-                    </div>
-                </div>
-
-                @php
-                    $devHoursSaved = round(($stats['total'] * 0.75) + ($stats['resolved'] * 1.25), 1);
-                    $dupFiltered = (int) ($priorityCounts['Duplicate'] ?? 0);
-                @endphp
-
-                <div class="flex flex-wrap items-center gap-5">
-                    <div class="min-w-[90px] px-1 py-1 text-left">
-                        <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Est. Time Saved</span>
-                        <span class="text-xl font-extrabold text-white font-mono-code">{{ $devHoursSaved }} hrs</span>
-                    </div>
-                    <div class="min-w-[90px] px-1 py-1 text-left">
-                        <span class="text-[10px] text-slate-400 uppercase font-mono-code block">Duplicate Defense</span>
-                        <span class="text-xl font-extrabold text-white font-mono-code">{{ $dupFiltered }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-labelledby="dashboard-filters-title">
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div><h2 id="dashboard-filters-title" class="text-sm font-bold text-slate-900">Find project issues</h2><p class="mt-0.5 text-xs text-slate-500">Filter the issue list by project, priority, status, owner, and created date.</p></div>
-                    @if(collect($filters)->except(['account_search', 'account_role'])->filter(fn ($value) => filled($value))->isNotEmpty())
-                        <a href="/dashboard" class="text-xs font-semibold text-indigo-700 hover:underline">Clear issue filters</a>
-                    @endif
-                </div>
-                <form action="/dashboard" method="GET" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
-                    <label class="sr-only" for="dashboardProjectFilter">Project</label>
-                    <select id="dashboardProjectFilter" name="project_id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        @foreach($projects as $project)<option value="{{ $project->id }}" @selected((int) $project->id === (int) $currentProjectId)>{{ $project->name }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardPriorityFilter">Priority</label>
-                    <select id="dashboardPriorityFilter" name="priority" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All priorities</option>@foreach(['High', 'Medium', 'Low'] as $priority)<option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ $priority }} priority</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardStatusFilter">Status</label>
-                    <select id="dashboardStatusFilter" name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All statuses</option>@foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardAssigneeFilter">Assignee</label>
-                    <select id="dashboardAssigneeFilter" name="assignee" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                        <option value="">All assignees</option><option value="Unassigned" @selected(($filters['assignee'] ?? '') === 'Unassigned')>Unassigned</option>@foreach($availableAssignees as $assignee)<option value="{{ $assignee }}" @selected(($filters['assignee'] ?? '') === $assignee)>{{ $assignee }}</option>@endforeach
-                    </select>
-                    <label class="sr-only" for="dashboardDateFrom">Created from</label><input id="dashboardDateFrom" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="Created from" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
-                    <div class="flex gap-2"><label class="sr-only" for="dashboardDateTo">Created through</label><input id="dashboardDateTo" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="Created through" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Apply</button></div>
-                </form>
-            </section>
-
-            <!-- 4-Step Quick Workflow Guide for Team & Managers -->
-            <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">🧭</span>
-                        <span>Smart Bug Tracker · 4-step quick workflow</span>
-                    </div>
-                    <span class="text-[11px] font-semibold text-indigo-600">Show guide⌄</span>
-                </summary>
-                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <a href="/create-project" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-indigo-300 hover:bg-indigo-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-indigo-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-mono text-[11px] font-bold">1</span>
-                            <span>Set up the project and codebase</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Create a project with a GitHub link. The agent will index the codebase file structure.</p>
-                    </a>
-
-                    <a href="/add-developers" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-purple-300 hover:bg-purple-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-purple-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-mono text-[11px] font-bold">2</span>
-                            <span>Team and skills</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Add developer skills such as Kotlin, PHP, Python, or UI so AI can recommend a suitable assignee.</p>
-                    </a>
-
-                    <a href="/ai-agent" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-sky-300 hover:bg-sky-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-sky-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-mono text-[11px] font-bold">3</span>
-                            <span>AI triage and bug files</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">When testers attach a screenshot or describe an error, AI checks the syntax and finds relevant GitHub file links.</p>
-                    </a>
-
-                    <a href="/workspace" class="group rounded-xl border border-slate-200/80 bg-[#F8FAFC] p-3.5 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">4</span>
-                            <span>Track work on the Kanban board</span>
-                        </div>
-                        <p class="mt-1 text-[11px] text-slate-600 leading-relaxed">Drag cards to update status, review fix guidance, and discuss issues with your team.</p>
-                    </a>
-                </div>
-            </details>
 
             <!-- Empty Project State with Clear Guide Buttons (if 0 bugs in project) -->
             @if($stats['total'] === 0)
@@ -286,12 +170,15 @@
                     <div><h3 class="text-sm font-bold text-slate-900">Measured Triage Evaluation</h3><p class="mt-1 text-xs text-slate-500">Uses recorded runs and manager feedback for this project.</p></div>
                     <span class="text-[10px] text-slate-400">{{ $triageEvaluation['sample_size'] }} measured reports</span>
                 </div>
-                <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                    <div class="rounded-xl bg-indigo-50 p-3"><p class="text-[10px] font-bold uppercase text-indigo-700">Average latency</p><p class="mt-1 text-lg font-extrabold text-indigo-950">{{ $triageEvaluation['average_latency_ms'] !== null ? number_format($triageEvaluation['average_latency_ms']).' ms' : '—' }}</p><p class="text-[10px] text-indigo-700">{{ $triageEvaluation['under_five_seconds_percent'] !== null ? $triageEvaluation['under_five_seconds_percent'].'% under 5 seconds' : 'No measurements yet' }}</p></div>
+                <div class="grid grid-cols-2 gap-3 xl:grid-cols-6">
+                    <div class="rounded-xl bg-indigo-50 p-3"><p class="text-[10px] font-bold uppercase text-indigo-700">Average triage time</p><p class="mt-1 text-lg font-extrabold text-indigo-950">{{ $triageEvaluation['average_latency_ms'] !== null ? number_format($triageEvaluation['average_latency_ms']).' ms' : '—' }}</p><p class="text-[10px] text-indigo-700">{{ $triageEvaluation['under_five_seconds_percent'] !== null ? $triageEvaluation['under_five_seconds_percent'].'% under 5 seconds' : 'No measurements yet' }}</p></div>
+                    <div class="rounded-xl bg-violet-50 p-3"><p class="text-[10px] font-bold uppercase text-violet-700">95% triage time</p><p class="mt-1 text-lg font-extrabold text-violet-950">{{ $triageEvaluation['p95_latency_ms'] !== null ? number_format($triageEvaluation['p95_latency_ms']).' ms' : '—' }}</p><p class="text-[10px] text-violet-700">{{ $triageEvaluation['sample_size'] }} measured reports</p></div>
                     <div class="rounded-xl bg-emerald-50 p-3"><p class="text-[10px] font-bold uppercase text-emerald-700">Recommendation acceptance</p><p class="mt-1 text-lg font-extrabold text-emerald-950">{{ $triageEvaluation['assignment_acceptance_percent'] !== null ? $triageEvaluation['assignment_acceptance_percent'].'%' : '—' }}</p><p class="text-[10px] text-emerald-700">{{ $triageEvaluation['assignment_review_count'] }} manager reviews</p></div>
                     <div class="rounded-xl bg-amber-50 p-3"><p class="text-[10px] font-bold uppercase text-amber-700">Duplicate precision</p><p class="mt-1 text-lg font-extrabold text-amber-950">{{ $triageEvaluation['duplicate_precision_percent'] !== null ? $triageEvaluation['duplicate_precision_percent'].'%' : '—' }}</p><p class="text-[10px] text-amber-700">{{ $triageEvaluation['duplicate_review_count'] }} reviewed classifications</p></div>
                     <div class="rounded-xl bg-sky-50 p-3"><p class="text-[10px] font-bold uppercase text-sky-700">Duplicate recall</p><p class="mt-1 text-lg font-extrabold text-sky-950">{{ $triageEvaluation['duplicate_recall_percent'] !== null ? $triageEvaluation['duplicate_recall_percent'].'%' : '—' }}</p><p class="text-[10px] text-sky-700">Recorded from manager corrections</p></div>
+                    <div class="rounded-xl bg-rose-50 p-3"><p class="text-[10px] font-bold uppercase text-rose-700">Capacity overlaps</p><p class="mt-1 text-lg font-extrabold text-rose-950">{{ $triageEvaluation['capacity_overflow_count'] }}</p><p class="text-[10px] text-rose-700">Developers over active-task limit</p></div>
                 </div>
+                <p class="mt-3 text-[10px] text-slate-500">The 20% duplicate-reduction goal needs a pre-AI baseline to compare against; it is not claimed from these precision/recall scores.</p>
             </section>
 
             <!-- Bottom Row: 60% / 40% Split View -->
@@ -379,7 +266,7 @@
                         @forelse($triageReviewQueue as $item)
                             <a href="{{ route('bugs.show', $item->id) }}" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 hover:border-indigo-300 hover:bg-indigo-50/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <div class="min-w-0"><p class="truncate text-xs font-bold text-slate-900">#ABT-{{ $item->id }} · {{ $item->title }}</p><div class="mt-1 flex flex-wrap gap-1.5">
-                                    @if($item->predicted_duplicate)<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">Duplicate suggestion · {{ number_format((float) ($item->duplicate_similarity_score ?? 0), 0) }}% match</span>@endif
+                                    @if($item->predicted_duplicate)<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">Duplicate suggestion · {{ number_format((float) ($item->duplicate_similarity_score ?? 0), 0) }}% match · verify</span>@else<span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">No duplicate flagged · verify</span>@endif
                                     @if($item->recommended_assignee && !$item->assignment_feedback)<span class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">Suggested owner: {{ $item->recommended_assignee }}</span>@endif
                                 </div></div><span class="shrink-0 text-[11px] font-semibold text-indigo-700">Review →</span>
                             </a>
@@ -514,17 +401,6 @@
 
     window.liveProjectId = @json($currentProjectId);
     document.addEventListener('DOMContentLoaded', () => {
-        const quickSearch = document.getElementById('dashboardQuickSearch');
-        document.addEventListener('keydown', (event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-                event.preventDefault();
-                quickSearch?.focus();
-            }
-        });
-        quickSearch?.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && !quickSearch.value.trim()) event.preventDefault();
-        });
-
         if (window.Echo && window.liveProjectId) window.Echo.private(`project.${window.liveProjectId}`).listen('.bug.updated', (update) => {
             let toast = document.getElementById('liveDashboardToast');
             if (!toast) { toast = document.createElement('button'); toast.id = 'liveDashboardToast'; toast.className = 'fixed bottom-5 right-5 z-50 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-xl'; toast.onclick = () => window.location.reload(); document.body.appendChild(toast); }

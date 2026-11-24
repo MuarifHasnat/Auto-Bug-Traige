@@ -13,7 +13,7 @@
             <a href="/dashboard" class="inline-flex items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><span aria-hidden="true">←</span> Back to dashboard</a>
             <a href="/" class="text-base font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span><span class="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-700">AI v1.0</span></a>
         </div>
-        <a href="/logout" class="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50">Sign out</a>
+        <form action="/logout" method="POST">@csrf<button type="submit" aria-label="Log out" title="Log out" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
     </div>
 
     <nav aria-label="Project setup progress" class="mb-4 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3.5 shadow-xs sm:px-5">

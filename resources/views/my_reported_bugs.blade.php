@@ -24,7 +24,7 @@
         <header class="sticky top-0 z-20 flex min-h-[68px] items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-5 py-3 backdrop-blur sm:px-7">
             <div class="min-w-0 truncate text-xs font-semibold text-slate-500"><a href="/dashboard" class="hover:text-indigo-700">Workspace</a><span class="mx-2 text-slate-300">/</span><span>{{ $project?->name ?? 'Project' }}</span><span class="mx-2 text-slate-300">/</span><span class="text-indigo-700">My Reported Bugs</span></div>
             <div class="flex shrink-0 items-center gap-2.5">
-                <a href="/notifications" aria-label="Notifications" class="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 sm:flex">♧</a>
+                <a href="/notifications" aria-label="Notifications" title="Notifications" class="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 sm:flex"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></a>
                 @include('components.profile-header')
             </div>
         </header>

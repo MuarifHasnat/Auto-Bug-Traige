@@ -617,7 +617,7 @@
                         <span class="mt-0.5 text-base font-extrabold text-[#0F172A] block">{{ $bug->status }}</span>
                     </div>
 
-                    @if(in_array(auth()->user()->role, ['developer', 'manager'], true) && count($transitions) > 0)
+                    @if(auth()->user()->role === 'developer' && count($transitions) > 0)
                         <form action="/api/bugs/override" method="POST" class="space-y-1.5 pt-1">
                             @csrf
                             <input type="hidden" name="id" value="{{ $bug->id }}">

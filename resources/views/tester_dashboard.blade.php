@@ -21,19 +21,7 @@
 </head>
 <body class="min-h-screen antialiased">
 <div class="flex min-h-screen">
-    <aside class="hidden w-[250px] shrink-0 flex-col border-r border-slate-200 bg-white py-5 lg:flex">
-        <a href="/dashboard" aria-label="AutoBugTriage QA home" class="mb-8 flex items-center gap-3 border-b border-slate-200 px-5 pb-5">
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-2xl shadow-lg shadow-indigo-950">🐞</span>
-            <span class="text-base font-extrabold tracking-tight text-slate-900">AutoBug<span class="text-emerald-400">Triage</span></span>
-        </a>
-        <nav class="flex flex-1 flex-col gap-2 px-3" aria-label="Main navigation">
-            <a href="/dashboard" aria-current="page" class="flex min-h-12 items-center gap-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700"><span class="w-7 text-center text-2xl leading-none">⌂</span><span>Dashboard</span></a>
-            <a href="{{ route('my-reports.index') }}" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">▤</span><span>My Reported Bugs</span></a>
-            <a href="/workspace" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">▤</span><span>Kanban Workspace</span></a>
-            <a href="/ai-agent" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">⚡</span><span>AI Triage Studio</span></a>
-            <a href="/notifications" class="flex min-h-12 items-center gap-4 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"><span class="w-7 text-center text-2xl leading-none">♧</span><span>Notifications</span></a>
-        </nav>
-    </aside>
+    @include('components.app-sidebar', ['active' => 'dashboard'])
 
     <main class="min-w-0 flex-1">
         <header class="sticky top-0 z-20 flex min-h-[72px] flex-wrap items-center gap-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 xl:px-9">
@@ -47,9 +35,9 @@
             </form>
             <div class="ml-auto flex items-center gap-3">
                 <div class="md:hidden">@include('components.project-switcher', ['variant' => 'mobile'])</div>
-                <a href="/notifications" aria-label="Notifications" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">♧</a>
+                <a href="/notifications" aria-label="Notifications" title="Notifications" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></a>
                 <a href="{{ route('profile.show') }}" class="flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-slate-100"><span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">@if(auth()->user()->profile_photo_path)<img src="{{ route('profile.photo') }}" class="h-full w-full object-cover" alt="Profile">@else{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}@endif</span><span class="hidden sm:block"><span class="block max-w-36 truncate text-sm font-bold text-slate-900">{{ auth()->user()->name }}</span><span class="text-xs text-slate-400">{{ ucfirst(auth()->user()->role) }}</span></span></a>
-                <a href="/logout" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">Log out</a>
+                <form action="/logout" method="POST" class="flex">@csrf<button type="submit" aria-label="Log out" title="Log out" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
             </div>
         </header>
 
@@ -59,6 +47,8 @@
                     <div><p class="text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">{{ $project?->name ?? 'Project' }} · Tester workspace</p><h1 class="mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">Good day, {{ auth()->user()->name }}! Found a bug?</h1><p class="mt-1 text-sm qa-muted">Report it and the AI will find the file, suggest a fix, and route it to a developer.</p></div>
                     <a href="/ai-agent" class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700">＋ Report Bug</a>
                 </section>
+
+                @include('components.project-command-center')
 
                 <section aria-label="Tester dashboard summary" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
                     <article class="qa-panel rounded-2xl p-4 sm:p-5"><p class="text-xs font-semibold text-slate-500">Reported by me</p><p class="mt-2 text-3xl font-extrabold text-slate-900">{{ $totalReports }}</p><p class="mt-1 text-xs text-slate-500">In this project</p></article>

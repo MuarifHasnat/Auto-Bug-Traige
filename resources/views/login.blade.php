@@ -36,6 +36,12 @@
                     </div>
                 @endif
 
+                @if(session('login_session_expired'))
+                    <div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm font-medium text-amber-900" role="alert">
+                        This sign-in page expired. Please enter your details again.
+                    </div>
+                @endif
+
                 <form id="loginForm" action="/login" method="POST" class="mt-7 space-y-5">
                     @csrf
                     <div>

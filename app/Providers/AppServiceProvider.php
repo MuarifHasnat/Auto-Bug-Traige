@@ -32,7 +32,16 @@ class AppServiceProvider extends ServiceProvider
         }
 
         View::composer('*', function ($view) {
-            $view->with('unreadNotificationCount', Auth::check() ? Auth::user()->unreadNotifications()->count() : 0);
+            $request = request();
+
+            if (!$request->attributes->has('unread_notification_count')) {
+                $request->attributes->set(
+                    'unread_notification_count',
+                    Auth::check() ? Auth::user()->unreadNotifications()->count() : 0,
+                );
+            }
+
+            $view->with('unreadNotificationCount', $request->attributes->get('unread_notification_count'));
         });
     }
 }

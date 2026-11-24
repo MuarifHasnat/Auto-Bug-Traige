@@ -17,12 +17,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/project/switch', [BugController::class, 'switchProject'])->name('projects.switch');
     Route::post('/api/project/github-preview', [BugController::class, 'previewGitHubRepo'])->middleware('throttle:5,1')->name('projects.preview-github');
     Route::put('/profile', [BugController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [BugController::class, 'updatePassword'])->name('profile.password.update');
     Route::get('/profile', [BugController::class, 'profilePage'])->name('profile.show');
     Route::get('/profile/photo', [BugController::class, 'profilePhoto'])->name('profile.photo');
     Route::get('/team-members/{id}/photo', [BugController::class, 'teamMemberPhoto'])->whereNumber('id')->name('team-members.photo');
     Route::post('/api/project/sync-github', [BugController::class, 'syncGitHubRepo'])->middleware('throttle:10,1')->name('projects.sync-github');
 
     Route::get('/add-developers', [BugController::class, 'addDevelopersPage']);
+    Route::get('/team', [BugController::class, 'teamPage'])->name('team.index');
     Route::post('/team-members', [BugController::class, 'addTeamMember']);
     Route::post('/add-developers', [BugController::class, 'storeDeveloper']);
     Route::put('/developers/{id}', [BugController::class, 'updateDeveloper'])->whereNumber('id');
