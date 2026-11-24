@@ -12,12 +12,17 @@
     <main class="min-w-0 flex-1">
         <header class="sticky top-0 z-20 flex min-h-[60px] items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-5 backdrop-blur-md lg:px-8">
             <p class="truncate text-xs font-semibold text-slate-500">{{ $project?->name ?? 'Project' }} <span class="mx-1 text-slate-300">/</span> Developer Dashboard</p>
-            @include('components.profile-header')
+            <div class="flex shrink-0 items-center gap-2">
+                <a href="{{ route('notifications.index') }}" aria-label="Notifications{{ ($unreadNotificationCount ?? 0) > 0 ? ', '.$unreadNotificationCount.' unread' : '' }}" title="Notifications" class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                    @if(($unreadNotificationCount ?? 0) > 0)<span class="absolute -right-1 -top-1 min-w-4 rounded-full bg-rose-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">{{ $unreadNotificationCount }}</span>@endif
+                </a>
+                @include('components.profile-header')
+            </div>
         </header>
         <div class="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 xl:px-9">
             <section class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-white px-5 py-5 shadow-sm sm:px-7">
-                <div><p class="text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">{{ $project?->name ?? 'Project' }} · Developer workspace</p><h1 class="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">Welcome, {{ auth()->user()->name }}</h1><p class="mt-1 text-sm text-slate-500">Your assigned bugs, progress, and team are all in one place.</p></div>
-                <a href="/workspace" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700">Open Kanban board →</a>
+                <div><p class="text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">{{ $project?->name ?? 'Project' }} · Developer workspace</p><h1 class="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">Welcome, {{ auth()->user()->name }}</h1></div>
             </section>
             @include('components.project-command-center')
             <section class="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="My work summary">

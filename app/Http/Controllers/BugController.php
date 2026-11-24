@@ -49,8 +49,20 @@ class BugController extends Controller
 
     public function sharedProfile(int $id): View
     {
-        $profile = \App\Models\User::query()->select(['id', 'name', 'role', 'profile_photo_path'])->findOrFail($id);
-        return view('shared_profile', compact('profile'));
+        $accessibleProjectIds = $this->accessibleProjects()->pluck('id')->map(fn ($projectId) => (int) $projectId)->all();
+        $isProjectMember = DB::table('project_members')->whereIn('project_id', $accessibleProjectIds)->where('user_id', $id)->exists()
+            || DB::table('projects')->whereIn('id', $accessibleProjectIds)->where('manager_id', $id)->exists();
+        abort_unless($id === (int) Auth::id() || $isProjectMember, 403);
+        $profile = \App\Models\User::query()->select(['id', 'name', 'email', 'phone', 'role', 'profile_photo_path', 'last_seen_at'])->findOrFail($id);
+        $profilePhotoUrl = $profile->id === Auth::id() ? route('profile.photo') : route('team-members.photo', $profile->id);
+        return view('shared_profile', compact('profile', 'profilePhotoUrl'));
+    }
+
+    public function presencePing(): JsonResponse
+    {
+        Auth::user()->forceFill(['last_seen_at' => now()])->saveQuietly();
+
+        return response()->json(['ok' => true]);
     }
 
     public function updateProfile(Request $request): RedirectResponse
@@ -365,7 +377,7 @@ class BugController extends Controller
         $currentProject = $projects->firstWhere('id', $projectId);
         $members = \App\Models\User::query()->whereIn('id', $this->projectParticipantIds($projectId))
             ->orderByRaw("CASE role WHEN 'manager' THEN 0 WHEN 'developer' THEN 1 ELSE 2 END")
-            ->orderBy('name')->get(['id', 'name', 'email', 'role', 'profile_photo_path']);
+            ->orderBy('name')->get(['id', 'name', 'email', 'phone', 'role', 'profile_photo_path', 'last_seen_at']);
         $developerSkills = DB::table('developers')->where('project_id', $projectId)->pluck('skills', 'name');
         $unreadNotificationCount = Auth::user()->unreadNotifications()->count();
 
@@ -1790,7 +1802,8 @@ class BugController extends Controller
                 default => [],
             };
             if ($events) {
-                $notificationQuery->whereIn('data->event', $events);
+                $eventPlaceholders = implode(', ', array_fill(0, count($events), '?'));
+                $notificationQuery->whereRaw("CAST(data AS jsonb) ->> 'event' IN ({$eventPlaceholders})", $events);
             } else {
                 $notificationType = 'all';
             }

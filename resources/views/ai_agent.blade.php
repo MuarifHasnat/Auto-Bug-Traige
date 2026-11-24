@@ -31,10 +31,6 @@
 
             <div class="flex items-center gap-3">
                 @include('components.project-switcher', ['variant' => 'mobile'])
-                <div class="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="font-mono-code">Python Triage Agent: Ready</span>
-                </div>
                 @include('components.profile-header')
             </div>
         </header>
@@ -59,6 +55,10 @@
                 $studioCodeHelp = $studioTriage['code_help'] ?? [];
                 $studioFiles = $studioCodeHelp['suspected_files'] ?? $studioTriage['suspected_files'] ?? [];
                 $studioFixes = $studioCodeHelp['fix_suggestions'] ?? $studioCodeHelp['suggestions'] ?? [];
+                $cloneUrl = rtrim((string) ($projectGithubRepo ?? ''), '/');
+                if ($cloneUrl !== '' && !str_ends_with($cloneUrl, '.git')) {
+                    $cloneUrl .= '.git';
+                }
             @endphp
 
             @if(auth()->user()->role !== 'tester')
@@ -72,7 +72,7 @@
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         @if(!empty($projectGithubRepo))
-                            <a href="{{ $projectGithubRepo }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-indigo-300">⌘ <span class="max-w-52 truncate">{{ basename(parse_url($projectGithubRepo, PHP_URL_PATH) ?: $projectGithubRepo) }}</span></a>
+                            <button type="button" data-clone-command="git clone {{ $cloneUrl }}" onclick="copyCloneCommand(this)" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-indigo-300" title="Copy git clone command">⎘ <span data-clone-label>Copy git clone command</span></button>
                         @endif
                         @if(auth()->user()->role === 'manager')
                             <form action="{{ route('projects.sync-github') }}" method="POST">@csrf
@@ -1152,6 +1152,37 @@
 </div>
 
 <script>
+    async function copyCloneCommand(button) {
+        const command = button.dataset.cloneCommand;
+        let copied = false;
+        try {
+            await navigator.clipboard.writeText(command);
+            copied = true;
+        } catch (error) {
+            const input = document.createElement('textarea');
+            input.value = command;
+            input.style.position = 'fixed';
+            input.style.left = '-9999px';
+            document.body.appendChild(input);
+            input.focus();
+            input.select();
+            try {
+                copied = document.execCommand('copy');
+            } catch (fallbackError) {
+                copied = false;
+            }
+            input.remove();
+        }
+        if (!copied) {
+            window.prompt('Copy this command and run it in Terminal:', command);
+            return;
+        }
+        const label = button.querySelector('[data-clone-label]');
+        if (!label) return;
+        label.textContent = 'Copied — run in Terminal';
+        window.setTimeout(() => { label.textContent = 'Copy git clone command'; }, 3000);
+    }
+
     function openTriageForm() {
         const workflow = document.getElementById('triageWorkflow');
         if (workflow) workflow.open = true;

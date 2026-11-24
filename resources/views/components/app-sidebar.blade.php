@@ -38,3 +38,17 @@
         <form action="/logout" method="POST">@csrf<button type="submit" class="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700"><span aria-hidden="true">⇥</span><span>Logout</span></button></form>
     </div>
 </aside>
+<script>
+    (() => {
+        const pingPresence = () => {
+            if (document.visibilityState !== 'visible') return;
+            fetch('{{ route('presence.ping') }}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+            }).catch(() => {});
+        };
+        pingPresence();
+        window.setInterval(pingPresence, 60000);
+    })();
+</script>

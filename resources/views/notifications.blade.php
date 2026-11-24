@@ -25,7 +25,7 @@
             </div>
         </header>
 
-        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+        <div class="mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-6 sm:py-5 xl:px-9">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 class="text-xl sm:text-2xl font-extrabold">Notifications</h1>

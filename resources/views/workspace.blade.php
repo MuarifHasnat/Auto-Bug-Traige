@@ -43,7 +43,6 @@
                         @if(auth()->user()->role === 'tester')
                             <button type="button" onclick="toggleMyIssues('{{ auth()->user()->name }}')" id="myIssuesToggle" aria-pressed="false" class="inline-flex min-h-9 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 shadow-2xs"><span>Show Only Reported by Me ({{ $reportedByMeCount }})</span></button>
                         @endif
-                        @if(auth()->user()->role !== 'manager')<a href="/ai-agent" class="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-indigo-700 px-4 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-indigo-600">＋ Report Bug</a>@endif
                     </div>
                 </section>
 
@@ -376,6 +375,7 @@
     <script>
         window.liveProjectId = @json($currentProjectId);
         window.projectGithubRepo = @json($projectGithubRepo ?? '');
+        window.isTester = @json(auth()->user()->role === 'tester');
         function openDrawer(bugId) {
             const container = document.getElementById('drawer-data-' + bugId);
             if (!container) return;
@@ -526,7 +526,7 @@
                             let encodedPath = cleanPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
                             ghUrl = `https://github.com/${repoSlug}/blob/${encodeURIComponent(effBranch)}/${encodedPath}`;
                         }
-                        if (ghUrl) {
+                        if (ghUrl && !window.isTester) {
                             const link = document.createElement('a');
                             link.href = ghUrl;
                             link.target = '_blank';
@@ -534,6 +534,11 @@
                             link.className = 'inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition';
                             link.innerHTML = `<span>Open in GitHub</span> ↗`;
                             item.appendChild(link);
+                        } else if (ghUrl && window.isTester) {
+                            const accessNote = document.createElement('span');
+                            accessNote.className = 'shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500';
+                            accessNote.textContent = 'GitHub link unavailable';
+                            item.appendChild(accessNote);
                         }
                         suspectedList.appendChild(item);
                     });
@@ -543,16 +548,28 @@
                     const repoSlug = currentRepo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '') || 'MuarifHasnat/Auto-Bug-Traige';
                     const item = document.createElement('div');
                     item.className = 'flex items-center justify-between gap-2 rounded-lg bg-white border border-sky-200 px-2.5 py-1.5 text-xs';
-                    item.innerHTML = `<span class="text-slate-600 text-[11px]">Inspect project repository components:</span>
-                        <a href="https://github.com/${repoSlug}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition">
-                            <span>Open in GitHub</span> ↗
-                        </a>`;
+                    item.innerHTML = `<span class="text-slate-600 text-[11px]">Inspect project repository components:</span>`;
+                    if (!window.isTester) {
+                        const repoLink = document.createElement('a');
+                        repoLink.href = `https://github.com/${repoSlug}`;
+                        repoLink.target = '_blank';
+                        repoLink.rel = 'noreferrer noopener';
+                        repoLink.className = 'inline-flex items-center gap-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold px-2 py-0.5 shrink-0 transition';
+                        repoLink.textContent = 'Open in GitHub ↗';
+                        item.appendChild(repoLink);
+                    } else {
+                        const accessNote = document.createElement('span');
+                        accessNote.className = 'shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500';
+                        accessNote.textContent = 'GitHub link unavailable';
+                        item.appendChild(accessNote);
+                    }
                     suspectedList.appendChild(item);
                     suspectedSection.classList.remove('hidden');
                 }
             }
             document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No submitted code provided.';
-            document.getElementById('drawerDiff').value = data.getAttribute('data-diff') || '// No diff available.';
+            const drawerDiff = document.getElementById('drawerDiff');
+            if (drawerDiff) drawerDiff.value = data.getAttribute('data-diff') || '// No diff available.';
 
             const activityList = document.getElementById('drawerActivityList');
             activityList.innerHTML = '';
@@ -613,7 +630,7 @@
                 });
             } catch(e) {}
 
-            switchDrawerTab('tabDetails');
+            switchDrawerTab('tabAI');
             togglePatchView('final');
             document.getElementById('drawerBackdrop').classList.remove('hidden');
             setTimeout(() => document.getElementById('drawerBackdrop').classList.remove('opacity-0'), 10);
@@ -701,16 +718,21 @@
         }
 
         function togglePatchView(mode) {
+            const finalContainer = document.getElementById('viewFinalContainer');
+            const diffContainer = document.getElementById('viewDiffContainer');
+            const finalButton = document.getElementById('btnViewFinal');
+            const diffButton = document.getElementById('btnViewDiff');
+            if (!finalContainer || !diffContainer || !finalButton || !diffButton) return;
             if (mode === 'final') {
-                document.getElementById('viewFinalContainer').classList.remove('hidden');
-                document.getElementById('viewDiffContainer').classList.add('hidden');
-                document.getElementById('btnViewFinal').className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200';
-                document.getElementById('btnViewDiff').className = 'px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50';
+                finalContainer.classList.remove('hidden');
+                diffContainer.classList.add('hidden');
+                finalButton.className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200';
+                diffButton.className = 'px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50';
             } else {
-                document.getElementById('viewFinalContainer').classList.add('hidden');
-                document.getElementById('viewDiffContainer').classList.remove('hidden');
-                document.getElementById('btnViewDiff').className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200';
-                document.getElementById('btnViewFinal').className = 'px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50';
+                finalContainer.classList.add('hidden');
+                diffContainer.classList.remove('hidden');
+                diffButton.className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200';
+                finalButton.className = 'px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50';
             }
         }
 
