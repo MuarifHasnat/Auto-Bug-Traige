@@ -10,7 +10,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use App\Events\AgentProgressUpdated;
 use App\Notifications\BugUpdateNotification;
+use App\Services\BugAssistant;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -804,12 +807,18 @@ class BugController extends Controller
         $workflowStatuses = DB::table('project_workflow_statuses')->where('project_id', $projectId)->orderBy('position')->get();
         $transitions = DB::table('project_workflow_transitions')->where('project_id', $projectId)->where('from_status', $bug->status)->pluck('to_status')->all();
         $triageMetric = DB::table('bug_triage_metrics')->where('project_id', $projectId)->where('bug_id', $id)->first();
+        $assistantMessages = DB::table('bug_assistant_messages')
+            ->where('project_id', $projectId)
+            ->where('bug_id', $id)
+            ->orderBy('id')
+            ->limit(40)
+            ->get(['id', 'user_id', 'role', 'content', 'created_at']);
         $projects = $this->accessibleProjects();
 
         return view('bug_details', compact(
             'bug', 'comments', 'activities', 'clarifications', 'isWatching',
             'projectMembers', 'developers', 'workflowStatuses', 'transitions',
-            'triageMetric', 'projects'
+            'triageMetric', 'assistantMessages', 'projects'
         ) + [
             'currentProjectId' => $projectId,
             'projectRepo' => $projectRepo,
@@ -963,7 +972,9 @@ class BugController extends Controller
                 'total' => (clone $mine)->count(),
                 'open' => (clone $mine)->whereIn('status', $activeStatuses)->whereRaw('is_duplicate = false')->count(),
                 'review' => (clone $mine)->where(function ($query) {
-                    $query->where('status', 'ilike', '%review%')->orWhere('status', 'ilike', '%qa%')->orWhere('status', 'ilike', '%test%');
+                    $query->whereRaw('LOWER(status) LIKE ?', ['%review%'])
+                        ->orWhereRaw('LOWER(status) LIKE ?', ['%qa%'])
+                        ->orWhereRaw('LOWER(status) LIKE ?', ['%test%']);
                 })->count(),
                 'resolved' => (clone $mine)->whereIn('status', $doneStatuses)->count(),
             ];
@@ -1158,6 +1169,7 @@ class BugController extends Controller
         $projectId = $this->currentProjectId();
         $this->ensureProjectWorkflow($projectId);
         $projectBugCount = DB::table('bugs')->where('project_id', $projectId)->count();
+        $projectHighCount = DB::table('bugs')->where('project_id', $projectId)->where('priority', 'High')->count();
         $bugsQuery = DB::table('bugs')->where('project_id', $projectId);
         if (Auth::user()->role === 'tester') {
             $bugsQuery->where('reporter_id', Auth::id());
@@ -1194,7 +1206,7 @@ class BugController extends Controller
             ->limit(100)
             ->get();
 
-        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects', 'projectBugCount', 'pastBugs') + [
+        return view('ai_agent', compact('bugs', 'assignedBugs', 'myReports', 'mode', 'projects', 'projectBugCount', 'projectHighCount', 'pastBugs') + [
             'currentProjectId' => $projectId,
             'currentProject' => $currentProject,
             'projectGithubRepo' => $projectGithubRepo,
@@ -1213,6 +1225,7 @@ class BugController extends Controller
         set_time_limit(120);
 
         $data = $request->validate([
+            'run_id' => ['nullable', 'string', 'max:80'],
             'title' => ['required', 'string', 'max:200'],
             'description' => ['required', 'string', 'max:5000'],
             'expected_result' => ['nullable', 'string', 'max:2000'],
@@ -1334,8 +1347,33 @@ class BugController extends Controller
                 'source_file_name' => $request->file('source_file')?->getClientOriginalName(),
             ], JSON_THROW_ON_ERROR));
 
+            $runId = trim((string) ($data['run_id'] ?? '')) ?: (string) Str::uuid();
+            $progressTrace = [];
+            $stderrBuffer = '';
             $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $result = Process::timeout(110)->run([$python, base_path('agent/triage.py'), $payloadPath]);
+            $result = Process::timeout(110)->run(
+                [$python, base_path('agent/triage.py'), $payloadPath],
+                function (string $type, string $output) use (&$stderrBuffer, &$progressTrace, $projectId, $runId): void {
+                    if ($type !== 'err') {
+                        return;
+                    }
+                    $stderrBuffer .= $output;
+                    while (($newlinePos = strpos($stderrBuffer, "\n")) !== false) {
+                        $line = trim(substr($stderrBuffer, 0, $newlinePos));
+                        $stderrBuffer = substr($stderrBuffer, $newlinePos + 1);
+                        $this->handleAgentProgressLine($line, $projectId, $runId, $progressTrace);
+                    }
+                }
+            );
+
+            if (trim($stderrBuffer) !== '') {
+                $this->handleAgentProgressLine(trim($stderrBuffer), $projectId, $runId, $progressTrace);
+            }
+            if (empty($progressTrace) && trim($result->errorOutput()) !== '') {
+                foreach (preg_split('/\r\n|\r|\n/', $result->errorOutput()) ?: [] as $errLine) {
+                    $this->handleAgentProgressLine(trim($errLine), $projectId, $runId, $progressTrace);
+                }
+            }
         } finally {
             @unlink($payloadPath);
         }
@@ -1369,6 +1407,8 @@ class BugController extends Controller
         $priority = $aiResult['priority'] ?? 'Medium';
         $status = $isDuplicate ? 'Duplicate' : $projectWorkflow->first(fn ($workflowStatus) => $workflowStatus->name !== 'Duplicate')->name;
         $aiResult['status'] = $status;
+        $aiResult['run_id'] = $runId;
+        $aiResult['progress_trace'] = $progressTrace;
         $labels = array_values(array_unique(array_filter(array_map('trim', explode(',', $data['labels'] ?? '')))));
         $recommendedAssignee = $assignedTo;
         $bugId = DB::transaction(function () use (
@@ -1463,6 +1503,7 @@ class BugController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
+                'run_id' => $runId,
                 'bug_id' => $bugId,
                 'assigned_to' => $assignedTo,
                 'status' => $status,
@@ -1789,6 +1830,68 @@ class BugController extends Controller
         return back()->with('success', 'You are now watching this bug.');
     }
 
+    public function assistantChat(Request $request, int $id, BugAssistant $assistant): JsonResponse
+    {
+        abort_unless(in_array(Auth::user()?->role, ['manager', 'developer', 'tester'], true), 403);
+
+        $projectId = $this->currentProjectId();
+        $bug = DB::table('bugs')->where('project_id', $projectId)->where('id', $id)->first();
+        if (!$bug) {
+            abort_unless(DB::table('bugs')->where('id', $id)->exists(), 404);
+            abort(403, 'You do not have access to this bug report.');
+        }
+
+        $data = $request->validate([
+            'message' => ['required', 'string', 'max:1000'],
+        ]);
+        $question = trim($data['message']);
+
+        $history = DB::table('bug_assistant_messages')
+            ->where('project_id', $projectId)
+            ->where('bug_id', $id)
+            ->orderBy('id')
+            ->limit(16)
+            ->get(['role', 'content'])
+            ->map(fn ($row) => ['role' => (string) $row->role, 'content' => (string) $row->content])
+            ->all();
+
+        $now = now();
+        DB::table('bug_assistant_messages')->insert([
+            'project_id' => $projectId,
+            'bug_id' => $id,
+            'user_id' => Auth::id(),
+            'role' => 'user',
+            'content' => $question,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $triage = json_decode($bug->triage_result ?: '', true) ?: [];
+        $result = $assistant->reply($bug, $triage, $history, $question);
+
+        $replyTime = now();
+        DB::table('bug_assistant_messages')->insert([
+            'project_id' => $projectId,
+            'bug_id' => $id,
+            'user_id' => Auth::id(),
+            'role' => 'assistant',
+            'content' => $result['reply'],
+            'created_at' => $replyTime,
+            'updated_at' => $replyTime,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => [
+                'role' => 'assistant',
+                'content' => $result['reply'],
+                'created_at' => $replyTime->toIso8601String(),
+            ],
+            'used_llm' => $result['used_llm'],
+            'fallback_reason' => $result['fallback_reason'],
+        ]);
+    }
+
     public function notificationsPage(Request $request): View
     {
         $notificationType = $request->query('type', 'all');
@@ -1867,90 +1970,6 @@ class BugController extends Controller
     {
         DB::table('saved_bug_filters')->where('id', $id)->where('user_id', Auth::id())->where('project_id', $this->currentProjectId())->delete();
         return back()->with('success', 'Saved filter deleted.');
-    }
-
-    public function workflowPage(): View
-    {
-        abort_unless(Auth::user()?->role === 'manager', 403);
-        $projectId = $this->currentProjectId();
-        $statuses = $this->ensureProjectWorkflow($projectId);
-        $transitions = DB::table('project_workflow_transitions')->where('project_id', $projectId)->orderBy('from_status')->orderBy('to_status')->get();
-        $currentProject = DB::table('projects')->where('id', $projectId)->first();
-        $projectGithubRepo = $currentProject?->github_repo ?: session('github_repo', '');
-        $projectStack = $currentProject?->stack ?: session('project_stack', 'Multi-stack');
-        return view('workflow_settings', compact('statuses', 'transitions', 'projectGithubRepo', 'projectStack'));
-    }
-
-    public function saveWorkflow(Request $request): RedirectResponse
-    {
-        abort_unless(Auth::user()?->role === 'manager', 403);
-        $projectId = $this->currentProjectId();
-        $this->ensureProjectWorkflow($projectId);
-        $data = $request->validate([
-            'statuses' => ['required', 'string', 'max:2000'],
-            'done_statuses' => ['nullable', 'string', 'max:500'],
-            'transitions' => ['nullable', 'string', 'max:4000'],
-        ]);
-
-        $statuses = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $data['statuses'])))));
-        $normalized = array_map(fn ($name) => mb_strtolower($name), $statuses);
-        if (count($statuses) < 3 || count($statuses) > 12 || count(array_unique($normalized)) !== count($normalized)
-            || !in_array('Duplicate', $statuses, true) || $statuses[0] === 'Duplicate') {
-            return back()->withErrors(['statuses' => 'Use 3–12 unique status names, one per line. Keep the reserved Duplicate status, and put the initial status first.']);
-        }
-        foreach ($statuses as $name) {
-            if (mb_strlen($name) > 40 || preg_match('/[<>]/u', $name) || str_contains($name, '->')) {
-                return back()->withErrors(['statuses' => 'Each status must be 40 characters or fewer and cannot contain angle brackets or “->”.']);
-            }
-        }
-        $usedStatuses = DB::table('bugs')->where('project_id', $projectId)->distinct()->pluck('status')->all();
-        if (array_diff($usedStatuses, $statuses)) {
-            return back()->withErrors(['statuses' => 'Keep every status currently used by a bug. Move those bugs first before removing a status.']);
-        }
-
-        $doneStatuses = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $data['done_statuses'] ?? '')))));
-        if (array_diff($doneStatuses, $statuses)) {
-            return back()->withErrors(['done_statuses' => 'Completed statuses must also appear in the status list.']);
-        }
-        if (!$doneStatuses || in_array('Duplicate', $doneStatuses, true)) {
-            return back()->withErrors(['done_statuses' => 'Choose at least one completed status. Duplicate cannot be a completed status.']);
-        }
-
-        $transitionPairs = [];
-        foreach (preg_split('/\R/', $data['transitions'] ?? '') as $line) {
-            $line = trim(str_replace('→', '->', $line));
-            if ($line === '') continue;
-            $pair = preg_split('/\s*->\s*/', $line);
-            if (count($pair) !== 2 || !in_array($pair[0], $statuses, true) || !in_array($pair[1], $statuses, true) || $pair[0] === $pair[1]) {
-                return back()->withErrors(['transitions' => 'Each transition must use existing status names, like “To Do -> In Progress”.']);
-            }
-            $transitionPairs[$pair[0]."\0".$pair[1]] = [$pair[0], $pair[1]];
-        }
-        if (!$transitionPairs) return back()->withErrors(['transitions' => 'Add at least one allowed transition.']);
-
-        DB::transaction(function () use ($projectId, $statuses, $doneStatuses, $transitionPairs) {
-            DB::table('project_workflow_transitions')->where('project_id', $projectId)->delete();
-            DB::table('project_workflow_statuses')->where('project_id', $projectId)->delete();
-            foreach ($statuses as $position => $name) {
-                DB::table('project_workflow_statuses')->insert([
-                    'project_id' => $projectId, 'name' => $name, 'position' => $position,
-                    'is_done' => DB::raw(in_array($name, $doneStatuses, true) ? 'true' : 'false'), 'created_at' => now(), 'updated_at' => now(),
-                ]);
-            }
-            foreach (array_values($transitionPairs) as [$from, $to]) {
-                DB::table('project_workflow_transitions')->insert([
-                    'project_id' => $projectId, 'from_status' => $from, 'to_status' => $to,
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
-            }
-            $activeNames = DB::table('project_workflow_statuses')->where('project_id', $projectId)->whereRaw('is_done = false')->where('name', '!=', 'Duplicate')->pluck('name')->all();
-            foreach (DB::table('developers')->where('project_id', $projectId)->get(['name']) as $developer) {
-                $activeCount = DB::table('bugs')->where('project_id', $projectId)->where('assigned_to', $developer->name)
-                    ->whereIn('status', $activeNames)->whereRaw('is_duplicate = false')->count();
-                DB::table('developers')->where('project_id', $projectId)->where('name', $developer->name)->update(['active_tasks' => $activeCount]);
-            }
-        });
-        return back()->with('success', 'Project workflow updated.');
     }
 
     private function projectParticipants(int $projectId)
@@ -2146,6 +2165,89 @@ class BugController extends Controller
         }
 
         return false;
+    }
+
+    private function handleAgentProgressLine(string $line, int $projectId, string $runId, array &$progressTrace): void
+    {
+        $prefix = '::PROGRESS::';
+        if (!str_starts_with($line, $prefix)) {
+            return;
+        }
+        $decoded = json_decode(substr($line, strlen($prefix)), true);
+        if (!is_array($decoded)) {
+            return;
+        }
+        $step = trim((string) ($decoded['step'] ?? ''));
+        $label = mb_substr(trim((string) ($decoded['label'] ?? $step)), 0, 80);
+        $status = strtolower(trim((string) ($decoded['status'] ?? 'started')));
+        if (!in_array($status, ['started', 'completed', 'skipped', 'failed'], true) || $step === '') {
+            return;
+        }
+        $message = mb_substr(trim((string) ($decoded['message'] ?? '')), 0, 280);
+        $message = preg_replace('/\b(?:gsk_[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b/', '[redacted]', $message) ?? $message;
+        $message = preg_replace('/\bBearer\s+\S+/i', 'Bearer [redacted]', $message) ?? $message;
+        $summary = $this->sanitizeProgressSummary(is_array($decoded['summary'] ?? null) ? $decoded['summary'] : []);
+        $timestamp = is_string($decoded['timestamp'] ?? null) ? $decoded['timestamp'] : now()->toIso8601String();
+
+        $progressTrace[] = [
+            'step' => $step,
+            'label' => $label,
+            'status' => $status,
+            'message' => $message,
+            'summary' => $summary,
+            'timestamp' => $timestamp,
+        ];
+
+        try {
+            AgentProgressUpdated::dispatch($projectId, $runId, $step, $label, $status, $message, $summary, $timestamp);
+        } catch (\Throwable) {
+            // Do not fail bug triage if the websocket server is offline.
+        }
+    }
+
+    /**
+     * Strip any raw code, screenshot data, or secrets from progress summaries.
+     *
+     * @param array<string, mixed> $summary
+     * @return array<string, mixed>
+     */
+    private function sanitizeProgressSummary(array $summary): array
+    {
+        $allowedKeys = [
+            'method', 'feature', 'page_type', 'confidence', 'error_name',
+            'feature_reason', 'priority', 'priority_reason', 'blocker_signal',
+            'language', 'syntax_status', 'syntax_checker', 'similarity_score',
+            'is_duplicate', 'duplicate_of', 'compared_count', 'top_matches_count',
+            'assigned_to', 'assignment_reason', 'needs_review', 'files_count',
+            'suspected_files', 'llm_used', 'source_files_inspected',
+            'fix_suggestions_count',
+        ];
+        $clean = [];
+        foreach ($summary as $key => $value) {
+            $lowerKey = strtolower((string) $key);
+            if (!in_array($lowerKey, $allowedKeys, true)) {
+                continue;
+            }
+            if ($lowerKey === 'suspected_files' && is_array($value)) {
+                $clean['suspected_files'] = array_values(array_map(function ($item) {
+                    if (is_array($item)) {
+                        return [
+                            'path' => mb_substr((string) ($item['path'] ?? ''), 0, 300),
+                            'confidence' => is_numeric($item['confidence'] ?? null) ? (float) $item['confidence'] : null,
+                            'branch' => mb_substr((string) ($item['branch'] ?? ''), 0, 100),
+                        ];
+                    }
+                    return ['path' => mb_substr((string) $item, 0, 300)];
+                }, array_slice($value, 0, 5)));
+                continue;
+            }
+            if (is_string($value)) {
+                $clean[$key] = mb_substr($value, 0, 280);
+            } elseif (is_scalar($value) || $value === null) {
+                $clean[$key] = $value;
+            }
+        }
+        return $clean;
     }
 
     private function setCurrentProject(Request $request, object $project): void

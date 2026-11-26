@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Events\AgentProgressUpdated;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
 
@@ -114,11 +116,17 @@ class BugTriageAndHistoryTest extends TestCase
             'to_value' => 'Dev Two',
         ]);
 
-        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'In Progress'])->assertRedirect();
+        $devTwoUser = User::factory()->create(['name' => 'Dev Two', 'role' => 'developer']);
+        $this->addMember($projectId, $devTwoUser);
+
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'In Progress'])->assertForbidden();
+
+        $this->actingAs($devTwoUser)->withSession(['project_id' => $projectId])
+            ->post('/api/bugs/override', ['id' => $bugId, 'status' => 'In Progress'])->assertRedirect();
 
         $this->assertDatabaseHas('bug_activities', [
             'bug_id' => $bugId,
-            'actor_id' => $manager->id,
+            'actor_id' => $devTwoUser->id,
             'event_type' => 'status_changed',
             'from_value' => 'To Do',
             'to_value' => 'In Progress',
@@ -131,7 +139,7 @@ class BugTriageAndHistoryTest extends TestCase
 
         $this->assertDatabaseHas('bug_activities', [
             'bug_id' => $bugId,
-            'actor_id' => $manager->id,
+            'actor_id' => $devTwoUser->id,
             'event_type' => 'status_changed',
             'from_value' => 'Review',
             'to_value' => 'Done',
@@ -151,30 +159,25 @@ class BugTriageAndHistoryTest extends TestCase
         $this->post('/api/bugs/reassign', [])->assertForbidden();
     }
 
-    public function test_manager_can_configure_workflow_and_unlisted_moves_are_rejected(): void
+    public function test_unlisted_default_workflow_moves_are_rejected(): void
     {
         $manager = User::factory()->create(['role' => 'manager']);
+        $developer = User::factory()->create(['role' => 'developer']);
         $projectId = $this->createProject($manager, 'Workflow project');
+        $this->addMember($projectId, $developer);
         $bugId = (int) DB::table('bugs')->insertGetId([
-            'project_id' => $projectId, 'title' => 'Workflow ticket', 'description' => 'Move through configured states.',
+            'project_id' => $projectId, 'title' => 'Workflow ticket', 'description' => 'Move through default states.',
             'priority' => 'Medium', 'status' => 'To Do', 'issue_type' => 'Task', 'assigned_to' => 'Unassigned',
             'is_duplicate' => false, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        $this->actingAs($manager)->withSession(['project_id' => $projectId])->post('/workflow', [
-            'statuses' => "To Do\nBuild\nReview\nDone\nDuplicate",
-            'done_statuses' => 'Done',
-            'transitions' => "To Do -> Build\nBuild -> Review\nReview -> Done\nDone -> To Do",
-        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/workspace')->assertOk();
 
         $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Done'])->assertStatus(422);
         $this->assertDatabaseHas('bugs', ['id' => $bugId, 'status' => 'To Do']);
 
-        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'Build'])->assertRedirect();
-        $this->assertDatabaseHas('bugs', ['id' => $bugId, 'status' => 'Build']);
-        $this->assertDatabaseHas('project_workflow_transitions', [
-            'project_id' => $projectId, 'from_status' => 'Review', 'to_status' => 'Done',
-        ]);
+        $this->post('/api/bugs/override', ['id' => $bugId, 'status' => 'In Progress'])->assertRedirect();
+        $this->assertDatabaseHas('bugs', ['id' => $bugId, 'status' => 'In Progress']);
     }
 
     public function test_manager_duplicate_review_corrects_classification_and_tracks_the_original_prediction(): void
@@ -338,11 +341,13 @@ class BugTriageAndHistoryTest extends TestCase
         $this->assertSame('Kotlin Dev', $bug->assigned_to);
     }
 
-    public function test_manager_can_move_bug_status_via_ajax_kanban_override(): void
+    public function test_developer_can_move_bug_status_via_ajax_kanban_override_and_manager_cannot(): void
     {
         $manager = User::factory()->create(['role' => 'manager']);
+        $developer = User::factory()->create(['role' => 'developer']);
         $projectId = $this->createProject($manager, 'Kanban Project');
         $this->addMember($projectId, $manager);
+        $this->addMember($projectId, $developer);
 
         $bugId = DB::table('bugs')->insertGetId([
             'project_id' => $projectId,
@@ -355,7 +360,13 @@ class BugTriageAndHistoryTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->actingAs($manager)->withSession(['project_id' => $projectId])
+        $this->actingAs($manager)->withSession(['project_id' => $projectId])
+            ->postJson('/api/bugs/override', [
+                'id' => $bugId,
+                'status' => 'In Progress',
+            ])->assertForbidden();
+
+        $response = $this->actingAs($developer)->withSession(['project_id' => $projectId])
             ->postJson('/api/bugs/override', [
                 'id' => $bugId,
                 'status' => 'In Progress',
@@ -393,6 +404,101 @@ class BugTriageAndHistoryTest extends TestCase
 
         $repo = DB::table('projects')->where('id', $projectId)->value('github_repo');
         $this->assertSame('https://github.com/owner/sample-repo', $repo);
+    }
+
+    public function test_bug_store_broadcasts_sanitized_agent_progress_and_persists_trace(): void
+    {
+        Event::fake([AgentProgressUpdated::class]);
+
+        $manager = User::factory()->create(['role' => 'manager']);
+        $tester = User::factory()->create(['name' => 'Trace Tester', 'role' => 'tester']);
+        $projectId = $this->createProject($manager, 'Live Progress Project');
+        $this->addMember($projectId, $tester);
+        $this->addDeveloper($projectId, 'Dev One', 'php laravel', 0);
+
+        $progressLines = implode("\n", [
+            '::PROGRESS::'.json_encode([
+                'step' => 'vision_ocr',
+                'label' => 'Vision & OCR',
+                'status' => 'skipped',
+                'message' => 'No screenshot attached. gsk_test_secret_value_12345',
+                'summary' => ['api_key' => 'SECRET_KEY_123'],
+            ], JSON_THROW_ON_ERROR),
+            '::PROGRESS::'.json_encode([
+                'step' => 'duplicate_check',
+                'label' => 'Duplicate Vector Check',
+                'status' => 'completed',
+                'message' => 'Unique issue (12.5% similarity)',
+                'summary' => [
+                    'similarity_score' => 12.5,
+                    'is_duplicate' => false,
+                    'code_snippet' => 'RAW_CODE_SHOULD_NOT_LEAK',
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        Process::fake([
+            '*' => Process::result(
+                output: json_encode([
+                    'is_duplicate' => false,
+                    'duplicate_of' => null,
+                    'similarity_score' => 12.5,
+                    'assigned_to' => 'Dev One',
+                    'priority' => 'Medium',
+                    'feature' => 'Authentication',
+                    'status' => 'Open',
+                    'code_help' => [
+                        'language' => 'PHP',
+                        'syntax_status' => 'passed',
+                        'error_name' => 'No syntax errors',
+                        'steps' => ['Inspect login handler.'],
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                errorOutput: $progressLines
+            ),
+        ]);
+
+        $response = $this->actingAs($tester)->withSession(['project_id' => $projectId])
+            ->postJson('/api/bugs/store', [
+                'run_id' => 'run-test-123',
+                'title' => 'Login button unresponsive',
+                'description' => 'Clicking login does not submit the form.',
+                'issue_type' => 'Bug',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('run_id', 'run-test-123');
+
+        Event::assertDispatched(AgentProgressUpdated::class, function (AgentProgressUpdated $event) use ($projectId) {
+            return $event->projectId === $projectId
+                && $event->runId === 'run-test-123'
+                && $event->step === 'duplicate_check'
+                && $event->status === 'completed'
+                && ($event->summary['similarity_score'] ?? null) === 12.5
+                && !array_key_exists('code_snippet', $event->summary);
+        });
+
+        Event::assertDispatched(AgentProgressUpdated::class, function (AgentProgressUpdated $event) {
+            return $event->step === 'vision_ocr'
+                && $event->status === 'skipped'
+                && !array_key_exists('api_key', $event->summary)
+                && !str_contains($event->message, 'gsk_test_secret_value_12345')
+                && str_contains($event->message, '[redacted]');
+        });
+
+        $bugId = (int) $response->json('bug_id');
+        $bug = DB::table('bugs')->where('id', $bugId)->first();
+        $savedTriage = json_decode($bug->triage_result, true);
+        $this->assertSame('run-test-123', $savedTriage['run_id']);
+        $this->assertCount(2, $savedTriage['progress_trace']);
+
+        $this->actingAs($tester)->withSession(['project_id' => $projectId])
+            ->get("/bugs/{$bugId}")
+            ->assertOk()
+            ->assertSee('Agent Execution Trace')
+            ->assertSee('Duplicate Vector Check')
+            ->assertSee('Unique issue (12.5% similarity)');
     }
 
     private function createProject(User $manager, string $name): int

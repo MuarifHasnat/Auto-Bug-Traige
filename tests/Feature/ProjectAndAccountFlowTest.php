@@ -57,7 +57,7 @@ class ProjectAndAccountFlowTest extends TestCase
         $this->assertAuthenticatedAs($tester);
         $this->post('/logout')->assertRedirect('/login');
         $this->post('/login', ['email' => $developer->email, 'password' => 'password-123'])
-            ->assertRedirect('/workspace');
+            ->assertRedirect('/dashboard');
         $this->assertAuthenticatedAs($developer);
     }
 
@@ -85,7 +85,7 @@ class ProjectAndAccountFlowTest extends TestCase
         $developer = User::factory()->create(['role' => 'developer']);
         DB::table('project_members')->insert(['project_id' => $projectId, 'user_id' => $developer->id]);
 
-        $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/dashboard')->assertForbidden();
+        $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/dashboard')->assertOk();
         $this->actingAs($developer)->withSession(['project_id' => $projectId])->get('/create-project')->assertForbidden();
         $this->post('/team-members', [])->assertForbidden();
         $this->post('/api/bugs/reassign', [])->assertForbidden();

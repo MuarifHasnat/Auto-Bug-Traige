@@ -1,0 +1,222 @@
+{
+  "developers": [
+    {"name": "Auth Dev", "skills": "auth python php login jwt", "active_tasks": 1, "capacity": 4},
+    {"name": "Payments Dev", "skills": "payments api php billing stripe", "active_tasks": 1, "capacity": 4},
+    {"name": "Database Dev", "skills": "database sql postgres migration", "active_tasks": 0, "capacity": 4},
+    {"name": "Frontend Dev", "skills": "frontend ui javascript css blade", "active_tasks": 0, "capacity": 4},
+    {"name": "Performance Dev", "skills": "performance backend python sql", "active_tasks": 0, "capacity": 4},
+    {"name": "Overloaded Dev", "skills": "auth payments database api frontend", "active_tasks": 4, "capacity": 4}
+  ],
+  "past_bugs": [
+    {"id": 101, "title": "Login token rejected on valid session", "description": "Auth session token fails with 401 for a valid user login"},
+    {"id": 102, "title": "Payment invoice crashes during checkout", "description": "Billing invoice calculation throws ZeroDivisionError at checkout"},
+    {"id": 103, "title": "Database migration fails on postgres table", "description": "SQL migration query exception when altering users schema"},
+    {"id": 104, "title": "Submit button clipped on mobile modal", "description": "Frontend modal submit button overflows on small screen layout"},
+    {"id": 105, "title": "API endpoint returns 500 timeout", "description": "HTTP JSON request to REST controller endpoint times out"}
+  ],
+  "cases": [
+    {
+      "id": "EVAL-01",
+      "title": "Login token rejected on valid session",
+      "description": "Auth session token fails with 401 for a valid user login",
+      "language": "PHP",
+      "expected_feature": "Authentication",
+      "expected_priority": "Medium",
+      "expected_duplicate": true,
+      "expected_file_keywords": ["Auth", "login", "BugController", "User"]
+    },
+    {
+      "id": "EVAL-02",
+      "title": "Payment invoice crashes during checkout",
+      "description": "Billing invoice calculation throws ZeroDivisionError at checkout",
+      "language": "PHP",
+      "expected_feature": "Payments",
+      "expected_priority": "High",
+      "expected_duplicate": true,
+      "expected_file_keywords": ["BugController", "payment", "invoice", "checkout"]
+    },
+    {
+      "id": "EVAL-03",
+      "title": "Database migration fails on postgres table",
+      "description": "SQL migration query exception when altering users schema",
+      "language": "SQL",
+      "expected_feature": "Database",
+      "expected_priority": "High",
+      "expected_duplicate": true,
+      "expected_file_keywords": ["migration", "database", "sql", "schema"]
+    },
+    {
+      "id": "EVAL-04",
+      "title": "Submit button clipped on mobile modal",
+      "description": "Frontend modal submit button overflows on small screen layout",
+      "language": "JavaScript",
+      "expected_feature": "Frontend",
+      "expected_priority": "Medium",
+      "expected_duplicate": true,
+      "expected_file_keywords": ["LoginForm", "CheckoutCard", "apiClient"]
+    },
+    {
+      "id": "EVAL-05",
+      "title": "API endpoint returns 500 timeout",
+      "description": "HTTP JSON request to REST controller endpoint times out",
+      "language": "PHP",
+      "expected_feature": "API",
+      "expected_priority": "Medium",
+      "expected_duplicate": true,
+      "expected_file_keywords": ["BugController", "api", "web", "routes"]
+    },
+    {
+      "id": "EVAL-06",
+      "title": "OAuth signup fails with invalid jwt",
+      "description": "Users registering via oauth get a token mismatch error in AuthController.php",
+      "source_file_name": "AuthController.php",
+      "language": "PHP",
+      "expected_feature": "Authentication",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["auth.php", "User.php", "login.blade.php"]
+    },
+    {
+      "id": "EVAL-07",
+      "title": "Password reset link expires immediately",
+      "description": "Clicking password reset after signin shows expired credential",
+      "language": "PHP",
+      "expected_feature": "Authentication",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["Auth", "User", "password", "BugController"]
+    },
+    {
+      "id": "EVAL-08",
+      "title": "No crash on login when password is empty",
+      "description": "Validation message appears cleanly without any error",
+      "language": "PHP",
+      "expected_feature": "Authentication",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["Auth", "login", "BugController"]
+    },
+    {
+      "id": "EVAL-09",
+      "title": "Stripe webhook throws exception on refund",
+      "description": "Payment transaction refund crashes inside BillingController.php",
+      "source_file_name": "BillingController.php",
+      "language": "PHP",
+      "expected_feature": "Payments",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["BugController.php", "BillingController.php"]
+    },
+    {
+      "id": "EVAL-10",
+      "title": "Cart discount badge misaligned",
+      "description": "Checkout order summary displays wrong currency symbol",
+      "language": "JavaScript",
+      "expected_feature": "Payments",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["CheckoutCard", "apiClient"]
+    },
+    {
+      "id": "EVAL-11",
+      "title": "Query deadlock in sqlite analytics report",
+      "description": "Database model throws SQL exception during concurrent writes",
+      "language": "SQL",
+      "expected_feature": "Database",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["database", "migration", "BugController"]
+    },
+    {
+      "id": "EVAL-12",
+      "title": "Schema table column width too narrow",
+      "description": "Postgres table export truncates long project descriptions",
+      "language": "SQL",
+      "expected_feature": "Database",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["database", "migration", "BugController"]
+    },
+    {
+      "id": "EVAL-13",
+      "title": "REST endpoint throws fatal error on empty payload",
+      "description": "HTTP POST request to controller route crashes with null pointer",
+      "language": "PHP",
+      "expected_feature": "API",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["BugController", "web.php", "api"]
+    },
+    {
+      "id": "EVAL-14",
+      "title": "Fetch response headers missing CORS",
+      "description": "Axios JSON request from browser is blocked by API route",
+      "language": "JavaScript",
+      "expected_feature": "API",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["apiClient", "App.tsx", "authService"]
+    },
+    {
+      "id": "EVAL-15",
+      "title": "CSS layout breaks on workspace Kanban board",
+      "description": "Frontend blade view columns overlap when dragging cards in workspace.blade.php",
+      "source_file_name": "workspace.blade.php",
+      "language": "JavaScript",
+      "expected_feature": "Frontend",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["CheckoutCard", "LoginForm", "App.tsx", "workspace.blade.php"]
+    },
+    {
+      "id": "EVAL-16",
+      "title": "Modal component crashes on ESC key",
+      "description": "UI view throws TypeError when closing detail modal",
+      "language": "JavaScript",
+      "expected_feature": "Frontend",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["LoginForm", "CheckoutCard", "App.tsx"]
+    },
+    {
+      "id": "EVAL-17",
+      "title": "Slow dashboard rendering with 500 tickets",
+      "description": "High latency and memory lag when loading project metrics",
+      "language": "Python",
+      "expected_feature": "Performance",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["main.py", "endpoints.py"]
+    },
+    {
+      "id": "EVAL-18",
+      "title": "Export worker freezes with fatal memory error",
+      "description": "Timeout and memory crash during large report generation",
+      "language": "Python",
+      "expected_feature": "Performance",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["endpoints.py", "main.py", "payment.py"]
+    },
+    {
+      "id": "EVAL-19",
+      "title": "Notification badge count does not update",
+      "description": "Unread counter remains stale after marking item read",
+      "language": "PHP",
+      "expected_feature": "General",
+      "expected_priority": "Medium",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["notifications", "BugController"]
+    },
+    {
+      "id": "EVAL-20",
+      "title": "Attachment upload crashes with broken pipe",
+      "description": "Uploading a large archive triggers an unhandled blocker exception",
+      "language": "PHP",
+      "expected_feature": "General",
+      "expected_priority": "High",
+      "expected_duplicate": false,
+      "expected_file_keywords": ["attachments", "BugController", "ai_agent"]
+    }
+  ]
+}

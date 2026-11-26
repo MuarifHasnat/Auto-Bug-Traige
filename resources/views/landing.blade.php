@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="/css/modern-saas.css">
     <style>
         html { scroll-behavior: smooth; }
-        body, body.font-sans { font-family: Arial, Helvetica, sans-serif !important; }
-        .font-mono-code { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: normal; }
+        body, body.font-sans { font-family: var(--font-sans) !important; }
+        .font-mono-code { font-family: var(--font-sans) !important; letter-spacing: normal; }
         [class~="text-xs"] { font-size: 0.9rem !important; line-height: 1.4rem !important; }
         [class~="text-sm"] { font-size: 1.05rem !important; line-height: 1.6rem !important; }
         [class~="text-base"] { font-size: 1.15rem !important; line-height: 1.8rem !important; }

@@ -168,7 +168,7 @@
                                             
                                             <div class="flex items-center gap-1.5">
                                                 @if($hasAi)
-                                                    <span title="AI code patch available in drawer" class="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded cursor-help">&lt;/&gt; Patch</span>
+                                                    <span title="AI triage evidence available in drawer" class="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">AI Triaged</span>
                                                 @endif
                                                 @if(!empty($bug->detected_feature ?? $feat))
                                                     <span class="text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{{ $bug->detected_feature ?? $feat }}</span>
@@ -277,15 +277,6 @@
                         <span class="text-slate-500 font-medium">Assigned Developer:</span>
                         <span id="drawerAssignee" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200"></span>
                     </div>
-                </div>
-
-                <!-- Validation Result -->
-                <div class="rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-800">
-                    <p class="font-bold">Code Validation Result:</p>
-                    <p id="drawerSyntaxStatus" class="mt-1 font-bold"></p>
-                    <p id="drawerError" class="mt-1 font-mono-code"></p>
-                    <p id="drawerSyntaxChecker" class="mt-1"></p>
-                    <p id="drawerScope" class="mt-2"></p>
                 </div>
 
                 <!-- Suspected Culprit Files -->
@@ -448,12 +439,6 @@
                 confirmDuplicateValue.disabled = actualDuplicate !== '';
                 correctDuplicateValue.disabled = actualDuplicate !== '';
             }
-            document.getElementById('drawerError').innerText = data.getAttribute('data-error');
-            const syntaxStatus = data.getAttribute('data-syntax-status') || 'unknown';
-            const syntaxLabels = { passed: 'Syntax check passed', failed: 'Syntax errors found', timeout: 'Checker timed out', not_available: 'Checker unavailable', not_run: 'Check not run', unknown: 'Check status unknown' };
-            document.getElementById('drawerSyntaxStatus').innerText = syntaxLabels[syntaxStatus] || 'Check status unknown';
-            document.getElementById('drawerSyntaxChecker').innerText = data.getAttribute('data-syntax-checker') ? `Checker: ${data.getAttribute('data-syntax-checker')}` : '';
-            document.getElementById('drawerScope').innerText = data.getAttribute('data-scope');
             const suggestionsList = document.getElementById('drawerFixSuggestions');
             suggestionsList.innerHTML = '';
             try {

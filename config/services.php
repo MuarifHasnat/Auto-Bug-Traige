@@ -39,6 +39,8 @@ return [
         'key' => env('GROQ_API_KEY'),
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
         'vision_model' => env('GROQ_VISION_MODEL', 'qwen/qwen3.8-27b'),
+        'assistant_model' => env('GROQ_ASSISTANT_MODEL', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
+        'assistant_timeout' => (int) env('GROQ_ASSISTANT_TIMEOUT', 25),
     ],
 
     'github' => [

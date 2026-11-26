@@ -45,6 +45,7 @@ def detect_duplicates(title, description, past_bugs, threshold=0.75):
     is_duplicate = False
     duplicate_of = None
     similarity_percent = 0.0
+    top_matches = []
 
     if past_bugs and len(past_bugs) > 0:
         all_texts = [b.get("title", "") + " " + b.get("description", "") for b in past_bugs]
@@ -52,16 +53,31 @@ def detect_duplicates(title, description, past_bugs, threshold=0.75):
 
         scores = cosine_similarity(current_text, all_texts)
         if scores:
-            best_score = max(scores)
-            max_index = scores.index(best_score)
-            similarity_percent = round(best_score * 100, 1)
+            ranked = sorted(
+                zip(scores, past_bugs),
+                key=lambda item: item[0],
+                reverse=True,
+            )
+            top_matches = [
+                {
+                    "id": bug.get("id"),
+                    "title": bug.get("title", ""),
+                    "similarity_score": round(float(score) * 100, 1),
+                }
+                for score, bug in ranked[:3]
+                if float(score) > 0
+            ]
 
-            if best_score >= threshold:
+            best_score, best_bug = ranked[0]
+            similarity_percent = round(float(best_score) * 100, 1)
+
+            if float(best_score) >= threshold:
                 is_duplicate = True
-                duplicate_of = past_bugs[max_index].get("id")
+                duplicate_of = best_bug.get("id")
 
     return {
         "is_duplicate": is_duplicate,
         "duplicate_of": duplicate_of,
         "similarity_score": similarity_percent,
+        "top_matches": top_matches,
     }

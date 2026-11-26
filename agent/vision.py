@@ -106,7 +106,17 @@ def parse_ocr_text(lines: list[str]) -> dict:
         detected_language = 'Java'
 
     error_name = error_names[0] if error_names else None
-    error_message = stack_trace_lines[0] if stack_trace_lines else (lines[0] if lines else "")
+    error_lines = [
+        line.strip()
+        for line in lines
+        if re.search(r'(?:exception|error|failed|fatal|crash|timeout|denied|unauthorized|forbidden|not found|\b4\d{2}\b|\b5\d{2}\b)', line, re.IGNORECASE)
+    ]
+    error_message = stack_trace_lines[0] if stack_trace_lines else (error_lines[0] if error_lines else "")
+    summary = (
+        f"Detected {error_name} with {len(suspected_files)} suspected files."
+        if error_name
+        else f"Extracted {len(lines)} text lines via local OCR ({len(suspected_files)} suspected files)."
+    )
 
     return {
         "success": bool(lines),
@@ -118,7 +128,7 @@ def parse_ocr_text(lines: list[str]) -> dict:
         "line_numbers": line_numbers[:8],
         "stack_traces": stack_trace_lines[:6],
         "detected_language": detected_language,
-        "summary": f"Detected {error_name or 'error'} with {len(suspected_files)} suspected files."
+        "summary": summary
     }
 
 
@@ -159,15 +169,38 @@ def _run_gemini_vision(image_path: str, api_key: str) -> dict:
     return _run_groq_vision(image_path, api_key)
 
 
+def _prepare_image_base64(image_path: str) -> tuple[str, str]:
+    """Reads and optionally downscales oversized screenshots for reliable Vision API delivery."""
+    with open(image_path, "rb") as img_file:
+        image_bytes = img_file.read()
+
+    mime_type = mimetypes.guess_type(image_path)[0] or "image/png"
+    try:
+        import io
+        from PIL import Image
+
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            max_dim = 1600
+            if max(img.size) > max_dim or len(image_bytes) > 1_200_000:
+                img.thumbnail((max_dim, max_dim))
+                buf = io.BytesIO()
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                img.save(buf, format="JPEG", quality=88, optimize=True)
+                return base64.b64encode(buf.getvalue()).decode("utf-8"), "image/jpeg"
+    except Exception:
+        pass
+
+    return base64.b64encode(image_bytes).decode("utf-8"), mime_type
+
+
 def _run_groq_vision(image_path: str, api_key: str) -> dict:
     """Analyze a bug screenshot with Groq's current multimodal model."""
     try:
-        with open(image_path, "rb") as img_file:
-            image_bytes = img_file.read()
-        b64_image = base64.b64encode(image_bytes).decode("utf-8")
-        mime_type = mimetypes.guess_type(image_path)[0] or "image/png"
-        if mime_type not in {"image/jpeg", "image/png", "image/webp"}:
-            return {"success": False, "method": "groq_vision", "error": f"Unsupported screenshot type: {mime_type}", "extracted_text": "", "suspected_files": []}
+        mime_guess = mimetypes.guess_type(image_path)[0] or "image/png"
+        if mime_guess not in {"image/jpeg", "image/png", "image/webp"}:
+            return {"success": False, "method": "groq_vision", "error": f"Unsupported screenshot type: {mime_guess}", "extracted_text": "", "suspected_files": []}
+        b64_image, mime_type = _prepare_image_base64(image_path)
 
         prompt = (
             "Inspect this software screenshot as visual evidence. Analyze the image itself first; do not infer facts from a possibly incorrect bug title. "
@@ -205,7 +238,7 @@ def _run_groq_vision(image_path: str, api_key: str) -> dict:
             },
             method="POST",
         )
-        raw_bytes = _perform_http_request(req, timeout=15.0)
+        raw_bytes = _perform_http_request(req, timeout=25.0)
         res_json = json.loads(raw_bytes.decode("utf-8"))
         content = res_json["choices"][0]["message"]["content"]
         parsed = json.loads(content)
@@ -224,7 +257,7 @@ def _run_groq_vision(image_path: str, api_key: str) -> dict:
             value = parsed.get(field, [])
             parsed[field] = value[:8] if isinstance(value, list) else []
         parsed["line_numbers"] = [int(line) for line in parsed["line_numbers"] if str(line).isdigit()][:8]
-        parsed["suspected_files"] = [str(name)[:240] for name in parsed["suspected_files"] if isinstance(name, str) and name.strip()][:8]
+        parsed["suspected_files"] = [name[:240] for name in parsed["suspected_files"] if isinstance(name, str) and name.strip()][:8]
         parsed["visual_evidence"] = [str(clue)[:300] for clue in parsed["visual_evidence"] if str(clue).strip()][:8]
         parsed["success"] = True
         parsed["method"] = "groq_vision"

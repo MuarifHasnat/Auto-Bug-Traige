@@ -85,6 +85,22 @@ class FileLocatorTests(unittest.TestCase):
         self.assertIn("AuthRepository.kt", results[0]["path"])
         self.assertFalse(any(".blade.php" in r["path"] for r in results))
 
+    def test_dashboard_activity_text_does_not_misclassify_php_project_as_kotlin(self):
+        results = locate_suspected_files(
+            title="dashboard not working",
+            description="Live Activity Stream metrics not loading on dashboard",
+            feature="General",
+            project_stack="php,css",
+            selected_language="auto",
+            github_repo="https://github.com/MuarifHasnat/Auto-Bug-Traige",
+            screenshot_data={
+                "success": True,
+                "extracted_text": "POCKET_NOTE - Dashboard\nLive Activity Stream\nTotal Issues",
+            },
+        )
+        self.assertTrue(len(results) > 0)
+        self.assertFalse(any(r["path"].endswith(".kt") for r in results))
+
     def test_index_repository_structure_handles_invalid_slugs(self):
         invalid_res = index_repository_structure("invalid_slug_with_no_slash")
         self.assertFalse(invalid_res["success"])

@@ -11,22 +11,27 @@ class BestDevDetails(TypedDict):
     feature_match: bool
 
 
-def assign_developer(developers, full_text, selected_language, feature, is_duplicate):
+def assign_developer_with_breakdown(developers, full_text, selected_language, feature, is_duplicate):
     """
-    Finds the most suitable developer based on:
-    - skills matching the bug context (title + description + code + feature)
-    - language specialization
-    - feature specialization
-    - prior resolved feature/language history
-    - active workload compared with configured capacity
+    Finds the most suitable developer and returns structured score breakdown & needs_review flag.
     """
     assigned_to = "Unassigned"
     reason = ""
 
     if is_duplicate:
-        return assigned_to, "Duplicate reports are not assigned until a manager reviews them."
+        return {
+            "assigned_to": assigned_to,
+            "reason": "Duplicate reports are not assigned until a manager reviews them.",
+            "needs_review": True,
+            "score_breakdown": None,
+        }
     if not developers:
-        return assigned_to, reason
+        return {
+            "assigned_to": assigned_to,
+            "reason": "No developer profiles are configured for this project; manager review is required.",
+            "needs_review": True,
+            "score_breakdown": None,
+        }
 
     # Defensive normalization so None values never cause AttributeError
     selected_language = (selected_language or "auto").strip().lower()
@@ -44,7 +49,12 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
         if int(dev.get("active_tasks", 0) or 0) < int(dev.get("capacity", 5) or 5)
     ]
     if not available:
-        return assigned_to, "All developers are at their configured task capacity; manager review is required."
+        return {
+            "assigned_to": assigned_to,
+            "reason": "All developers are at their configured task capacity; manager review is required.",
+            "needs_review": True,
+            "score_breakdown": None,
+        }
 
     best_dev_name = available[0].get("name", "Unassigned")
     highest_score = -999
@@ -57,6 +67,7 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
         "capacity": int(available[0].get("capacity", 5) or 5),
         "feature_match": False,
     }
+    best_breakdown = {}
 
     language_for_history = language_key.lower()
     for dev in available:
@@ -76,14 +87,12 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
         skill_match_count = len(matched_skills)
         language_match = selected_language != "auto" and language_key in dev_skills
         feature_match = feature.lower() in dev_skills
-        total_score = (
-            skill_match_count * 2
-            + (5 if language_match else 0)
-            + (4 if feature_match else 0)
-            + (3 * feature_history)
-            + (2 * language_history)
-            - (active_tasks * 2)
-        )
+        skill_score = skill_match_count * 2
+        language_score = 5 if language_match else 0
+        feature_score = 4 if feature_match else 0
+        history_score = (3 * feature_history) + (2 * language_history)
+        workload_penalty = active_tasks * 2
+        total_score = skill_score + language_score + feature_score + history_score - workload_penalty
 
         if total_score > highest_score:
             highest_score = total_score
@@ -95,6 +104,17 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
                 "active_tasks": active_tasks,
                 "capacity": capacity,
                 "feature_match": feature_match,
+            }
+            best_breakdown = {
+                "skill_score": skill_score,
+                "language_score": language_score,
+                "feature_score": feature_score,
+                "history_score": history_score,
+                "workload_penalty": workload_penalty,
+                "total_score": total_score,
+                "matched_skills": matched_skills,
+                "active_tasks": active_tasks,
+                "capacity": capacity,
             }
 
     assigned_to = best_dev_name
@@ -119,5 +139,19 @@ def assign_developer(developers, full_text, selected_language, feature, is_dupli
     reasons.append(f"available capacity ({active_cnt}/{cap_cnt} active)")
 
     reason = f"{assigned_to} was selected for {feature} work based on " + ", ".join(reasons) + "."
+    needs_review = len(matched_skills) == 0 and not best_dev_details["feature_match"] and feature_history == 0
 
-    return assigned_to, reason
+    return {
+        "assigned_to": assigned_to,
+        "reason": reason,
+        "needs_review": needs_review,
+        "score_breakdown": best_breakdown,
+    }
+
+
+def assign_developer(developers, full_text, selected_language, feature, is_duplicate):
+    """
+    Finds the most suitable developer based on skills, history, and workload capacity.
+    """
+    res = assign_developer_with_breakdown(developers, full_text, selected_language, feature, is_duplicate)
+    return res["assigned_to"], res["reason"]

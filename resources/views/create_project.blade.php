@@ -8,12 +8,15 @@
 </head>
 <body class="wizard-font min-h-screen bg-[#F5F6FA] text-[#111827] antialiased selection:bg-indigo-500 selection:text-white">
 <style>
-    .wizard-font { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+    .wizard-font { font-family: var(--font-sans); }
 </style>
 <main class="mx-auto w-full max-w-3xl px-4 py-7 sm:px-6 lg:py-9">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-3">
-            <a href="/" class="text-base font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span><span class="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-700">AI v1.0</span></a>
+            <a href="/dashboard" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition shadow-2xs">
+                ← Back to Dashboard
+            </a>
+            <a href="/" class="text-base font-extrabold tracking-tight text-[#0F172A]">AutoBug<span class="text-indigo-600">Triage</span></a>
         </div>
         <form action="/logout" method="POST">@csrf<button type="submit" aria-label="Log out" title="Log out" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
     </div>

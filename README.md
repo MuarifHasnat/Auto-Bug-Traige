@@ -30,27 +30,21 @@
 ```mermaid
 flowchart LR
     A[Tester / QA] -->|Bug & Screenshot| B(Laravel 11 App)
-    B -->|Rate Limiter: throttle:10,1| G[BugController API]
-    G -->|Async Queue Job| C(Python AI Microservice :8001)
+    B -->|Rate Limiter: throttle:10,1| G[BugController::store]
+    G -->|Streams stderr ::PROGRESS::| C(agent/triage.py)
     C -->|OCR / VLM Fallback| D[Groq Vision / OpenAI]
     C -->|Scan File Tree| E[GitHub REST API]
-    C -->|Triage JSON| G
-    G -->|WebSocket Push| F[Laravel Reverb]
-    F -->|Live 5-Phase HUD & Kanban| A
+    C -->|Final Triage JSON| G
+    G -->|AgentProgressUpdated on project.{id}| F[Laravel Reverb]
+    F -->|Live Execution Timeline| A
 ```
 
-For the comprehensive system diagram, sequence flow, and mathematical multi-factor routing formulas, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
-
----
-
-## ⚙️ How Triage Works (Step-by-Step)
+## ⚙️ How Live Triage & Progress Streaming Works
 
 1. **Submission:** A tester enters what happened, reproduction steps, expected behavior, and attaches an optional crash screenshot or code snippet.
-2. **Phase 1 (Ingestion & OCR):** The AI Agent extracts text tokens and uses Groq/OpenAI vision to transcribe error traces.
-3. **Phase 2 (GitHub Repository Tree Scan):** Streams file paths from the linked GitHub repository to identify the culprit source file.
-4. **Phase 3 (AST Diagnostics):** Parses the snippet with the target language's abstract syntax tree compiler to detect syntax or logic flaws.
-5. **Phase 4 (TF-IDF Vector Deduplication):** Vectorizes title and symptoms across all existing tickets using word n-grams and cosine similarity ($> 0.75$ flag).
-6. **Phase 5 (Multi-Factor Developer Dispatch):** Evaluates developer skill tags, historical fix velocity, and active task queues to assign the ideal engineer.
+2. **Real-Time Agent Progress (`agent/triage.py`):** Each real phase (`vision_ocr`, `code_diagnosis`, `duplicate_check`, `developer_routing`, `file_locator`, `llm_analysis`) emits `started`, `completed`, `skipped`, or `failed` JSON progress events on `stderr` (`::PROGRESS::`), while the final triage payload is written to `stdout`.
+3. **Reverb Broadcast & Trace Persistence (`BugController::store`):** As `agent/triage.py` runs, `BugController` parses and sanitizes each progress line (stripping any raw code, screenshot bytes, or API secrets), broadcasts `App\Events\AgentProgressUpdated` over the project's private Reverb channel (`project.{projectId}`), and saves `progress_trace` inside `bugs.triage_result`.
+4. **Live UI & Audit Trail:** `ai_agent.blade.php` listens to `.agent.progress` on Laravel Echo to render the live execution timeline, and `bug_details.blade.php` displays the persisted **Agent Execution Trace** for post-triage inspection.
 
 ---
 
@@ -103,12 +97,14 @@ python agent/server.py --port 8001
 Run the test suites with:
 
 ```bash
-# Python AI Agents Suite (20 unit tests)
+# Python AI Agents Suite (unit + evaluation tests)
 python -m unittest discover -s tests/python -v
 
 # Laravel Feature & Backend Suite
 composer test
 ```
+
+For benchmark dataset details, precision/recall/F1 thresholds, and LLM nondeterminism notes, see **[AI_EVALUATION.md](docs/AI_EVALUATION.md)**.
 
 ---
 

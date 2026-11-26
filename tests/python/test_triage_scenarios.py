@@ -92,6 +92,96 @@ class TriageScenarioTests(unittest.TestCase):
         self.assertTrue(result["code_help"].get("suggested_fix_available"))
         self.assertGreater(len(result["code_help"].get("fix_suggestions", [])), 0)
 
+    def test_analyze_report_emits_real_progress_events(self):
+        events = []
+        result = analyze_report(
+            {
+                "title": "Repeated payment crash",
+                "description": "Billing invoice crashes during checkout",
+                "code_snippet": "print('secret_debug_code')",
+                "selected_language": "Python",
+                "developers": self.developers,
+                "past_bugs": [
+                    {"id": 42, "title": "Repeated payment crash", "description": "Billing invoice crashes during checkout"}
+                ],
+                "groq_api_key": "gsk_test_secret_key",
+            },
+            progress_callback=events.append,
+        )
+
+        self.assertTrue(result["is_duplicate"])
+        steps_seen = [(e["step"], e["status"]) for e in events]
+        self.assertIn(("vision_ocr", "skipped"), steps_seen)
+        self.assertIn(("report_analysis", "completed"), steps_seen)
+        self.assertIn(("code_diagnosis", "completed"), steps_seen)
+        self.assertIn(("duplicate_check", "completed"), steps_seen)
+        self.assertIn(("developer_routing", "completed"), steps_seen)
+        self.assertIn(("llm_analysis", "failed"), steps_seen)
+
+        dup_event = next(e for e in events if e["step"] == "duplicate_check" and e["status"] == "completed")
+        self.assertEqual(result["similarity_score"], dup_event["summary"]["similarity_score"])
+        self.assertTrue(dup_event["summary"]["is_duplicate"])
+
+        serialized = str(events)
+        self.assertNotIn("gsk_test_secret_key", serialized)
+        self.assertNotIn("secret_debug_code", serialized)
+
+    def test_missing_optional_inputs_are_reported_as_skipped(self):
+        events = []
+        result = analyze_report(
+            {
+                "title": "Checkout page fails",
+                "description": "Submitting the checkout form returns an error.",
+                "code_snippet": "",
+                "selected_language": "auto",
+                "developers": [],
+                "past_bugs": [],
+                "groq_api_key": "",
+            },
+            progress_callback=events.append,
+        )
+
+        statuses = {(event["step"], event["status"]) for event in events}
+        self.assertIn(("vision_ocr", "skipped"), statuses)
+        self.assertIn(("code_diagnosis", "skipped"), statuses)
+        self.assertIn(("file_locator", "skipped"), statuses)
+        self.assertIn(("llm_analysis", "skipped"), statuses)
+        self.assertIn(("report_analysis", "completed"), statuses)
+        self.assertIn("code_help", result)
+
+    def test_unavailable_api_and_github_emit_honest_statuses_and_explainability(self):
+        events = []
+        result = analyze_report(
+            {
+                "title": "Checkout fails on invalid repo",
+                "description": "No screenshot and no code snippet provided",
+                "code_snippet": "",
+                "selected_language": "auto",
+                "github_repo": "https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz",
+                "developers": [],
+                "past_bugs": [
+                    {"id": 1, "title": "Checkout error", "description": "Billing error on submit"}
+                ],
+                "groq_api_key": "",
+            },
+            progress_callback=events.append,
+        )
+
+        self.assertEqual("Unassigned", result["assigned_to"])
+        self.assertTrue(result["needs_review"])
+        self.assertIn("feature_evidence", result)
+        self.assertIn("priority_evidence", result)
+        self.assertIn("top_duplicate_matches", result)
+        self.assertIn("decision_citations", result)
+        sources = {c["source"] for c in result["decision_citations"]}
+        evidence_types = {c["evidence_type"] for c in result["decision_citations"]}
+        self.assertTrue(sources.issubset({"report_text", "OCR", "similarity", "GitHub", "assignment_matrix"}))
+        self.assertTrue(evidence_types.issubset({"Observed", "AI inference"}))
+
+        llm_event = next(e for e in events if e["step"] == "llm_analysis" and e["status"] in ("skipped", "failed", "completed"))
+        self.assertEqual("skipped", llm_event["status"])
+        self.assertIn("GROQ_API_KEY", llm_event["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

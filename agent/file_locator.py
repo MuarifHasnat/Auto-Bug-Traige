@@ -372,9 +372,31 @@ def detect_target_tech(selected_language="", project_stack="", source_file_name=
         if sfn.endswith(('.cpp', '.hpp', '.c', '.h', '.cc')):
             return 'cpp'
 
+    # 3. Check project_stack before free-form report/OCR text so UI words like "Activity"
+    #    never override a known PHP/Web/Python project into Kotlin.
+    if project_stack and project_stack.strip():
+        stack_probe = project_stack.lower()
+        stack_kotlin = bool(re.search(r'\b(kotlin|android|compose|kotlinc)\b', stack_probe))
+        stack_php = bool(re.search(r'\b(php|laravel|blade|symfony)\b', stack_probe))
+        stack_js = bool(re.search(r'\b(typescript|javascript|react|nextjs|vue|node|express|angular)\b', stack_probe))
+        stack_py = bool(re.search(r'\b(python|django|flask|fastapi)\b', stack_probe))
+        stack_java = bool(re.search(r'\b(java|spring|springboot)\b', stack_probe)) and not stack_js
+        if stack_kotlin:
+            return 'kotlin'
+        if sum([stack_php, stack_js, stack_py, stack_java]) > 1:
+            return 'auto'
+        if stack_php:
+            return 'php'
+        if stack_py:
+            return 'python'
+        if stack_js:
+            return 'typescript'
+        if stack_java:
+            return 'java'
+
     probe = f"{selected_language} {project_stack} {source_file_name} {text}".lower()
 
-    if re.search(r'\b(kotlin|android|compose|kotlinc|activity|viewmodel|fragment)\b', probe) or re.search(r'\.(kt|kts)\b', probe):
+    if re.search(r'\b(kotlin|android|compose|kotlinc|viewmodel)\b', probe) or re.search(r'\.(kt|kts)\b', probe):
         return 'kotlin'
 
     has_php = bool(re.search(r'\b(php|laravel|blade|artisan)\b', probe) or re.search(r'\.(php|blade\.php)\b', probe))

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\BugAssistantController;
 use App\Http\Controllers\BugController;
+use App\Http\Controllers\EvaluationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [BugController::class, 'landingPage'])->name('landing');
@@ -32,13 +34,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/team-members/{id}', [BugController::class, 'removeTeamMember'])->whereNumber('id')->name('team-members.remove');
 
     Route::get('/dashboard', [BugController::class, 'dashboardPage']);
+    Route::get('/evaluation-lab', [EvaluationController::class, 'index'])->name('evaluation-lab.index');
     Route::get('/workspace', [BugController::class, 'workspacePage']);
     Route::get('/my-reports', [BugController::class, 'myReportedBugsPage'])->name('my-reports.index');
     Route::get('/bugs/{id}', [BugController::class, 'showBug'])->whereNumber('id')->name('bugs.show');
     Route::get('/bugs/{id}/screenshot', [BugController::class, 'showScreenshot'])->whereNumber('id')->name('bugs.screenshot');
     Route::get('/bugs/{id}/report', [BugController::class, 'printableBugReport'])->whereNumber('id')->name('bugs.report');
-    Route::get('/workflow', [BugController::class, 'workflowPage'])->name('workflow.settings');
-    Route::post('/workflow', [BugController::class, 'saveWorkflow'])->name('workflow.save');
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
     Route::get('/notifications', [BugController::class, 'notificationsPage'])->name('notifications.index');
     Route::match(['get', 'post'], '/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
@@ -54,6 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bugs/clarifications', [BugController::class, 'requestClarification'])->name('bugs.clarifications.request');
     Route::post('/api/bugs/clarifications/answer', [BugController::class, 'answerClarification'])->name('bugs.clarifications.answer');
     Route::post('/api/bugs/watch', [BugController::class, 'toggleWatch'])->name('bugs.watch');
+    Route::post('/api/bugs/{id}/assistant-chat', [BugAssistantController::class, 'chat'])->whereNumber('id')->middleware('throttle:30,1')->name('bugs.assistant-chat');
+    Route::post('/api/bugs/{id}/assistant-follow-up', [BugAssistantController::class, 'followUp'])->whereNumber('id')->middleware('throttle:30,1')->name('bugs.assistant-follow-up');
+    Route::post('/api/bugs/{id}/assistant-test-plan', [BugAssistantController::class, 'testPlan'])->whereNumber('id')->middleware('throttle:30,1')->name('bugs.assistant-test-plan');
     Route::post('/api/bug-filters', [BugController::class, 'saveBugFilter'])->name('bug-filters.store');
     Route::delete('/api/bug-filters/{id}', [BugController::class, 'deleteBugFilter'])->whereNumber('id')->name('bug-filters.destroy');
     Route::get('/logout', [BugController::class, 'logout']);

@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import datetime
 from pathlib import Path
 
 # Ensure the agent directory is in sys.path for direct script execution
@@ -8,8 +9,13 @@ AGENT_DIR = Path(__file__).resolve().parent
 if str(AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(AGENT_DIR))
 
-from assignment import assign_developer
-from categorization import calculate_priority, detect_feature
+from assignment import assign_developer, assign_developer_with_breakdown
+from categorization import (
+    calculate_priority,
+    calculate_priority_with_evidence,
+    detect_feature,
+    detect_feature_with_evidence,
+)
 from diagnostics import check_code_error
 from similarity import detect_duplicates
 from sentiment import analyze_sentiment
@@ -18,8 +24,32 @@ from vision import analyze_screenshot
 from github_context import fetch_relevant_source
 from llm_analysis import analyze_with_groq, analyze_report_llm
 
+PROGRESS_PREFIX = "::PROGRESS::"
 
-def analyze_report(data):
+
+def _emit_progress(callback, step, label, status, message, summary=None):
+    if callback is None:
+        return
+    event = {
+        "step": step,
+        "label": label,
+        "status": status,
+        "message": str(message),
+        "summary": summary or {},
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    try:
+        callback(event)
+    except Exception:
+        pass
+
+
+def _stderr_progress_callback(event):
+    sys.stderr.write(f"{PROGRESS_PREFIX}{json.dumps(event)}\n")
+    sys.stderr.flush()
+
+
+def analyze_report(data, progress_callback=None):
     if data.get("github_token"):
         os.environ["GITHUB_TOKEN"] = str(data["github_token"])
     if data.get("groq_model"):
@@ -36,12 +66,63 @@ def analyze_report(data):
     screenshot_path = data.get("screenshot_path")
     groq_api_key = data.get("groq_api_key") or os.environ.get("GROQ_API_KEY")
 
+    _emit_progress(
+        progress_callback,
+        "report_analysis",
+        "Report Analysis",
+        "started",
+        "Analyzing report text and preparing feature and priority signals...",
+    )
+
     # 0. Vision & OCR Screenshot Intelligence Analysis
     screenshot_data = None
     if screenshot_path:
+        _emit_progress(
+            progress_callback,
+            "vision_ocr",
+            "Vision & OCR",
+            "started",
+            "Analyzing attached screenshot with Vision OCR...",
+        )
         screenshot_data = analyze_screenshot(
             screenshot_path,
             groq_api_key=groq_api_key
+        )
+        if screenshot_data and screenshot_data.get("success"):
+            _emit_progress(
+                progress_callback,
+                "vision_ocr",
+                "Vision & OCR",
+                "completed",
+                f"Extracted visual clues ({screenshot_data.get('method', 'vision')})",
+                {
+                    "method": screenshot_data.get("method"),
+                    "feature": screenshot_data.get("feature"),
+                    "page_type": screenshot_data.get("page_type"),
+                    "confidence": screenshot_data.get("confidence", 0),
+                    "error_name": screenshot_data.get("error_name"),
+                    "visual_summary": screenshot_data.get("visual_summary") or screenshot_data.get("summary") or "",
+                    "extracted_text": (screenshot_data.get("extracted_text") or "")[:300],
+                },
+            )
+        else:
+            _emit_progress(
+                progress_callback,
+                "vision_ocr",
+                "Vision & OCR",
+                "failed",
+                (screenshot_data or {}).get("error") or "Vision OCR could not extract text from screenshot.",
+                {
+                    "method": (screenshot_data or {}).get("method"),
+                },
+            )
+    else:
+        _emit_progress(
+            progress_callback,
+            "vision_ocr",
+            "Vision & OCR",
+            "skipped",
+            "No screenshot attached; continuing with text report.",
         )
 
     ss_text = screenshot_data.get("extracted_text", "") if (screenshot_data and screenshot_data.get("success")) else ""
@@ -53,18 +134,37 @@ def analyze_report(data):
         " ".join(str(clue) for clue in visual_clues if clue),
     ]).strip()
 
-    # 1. Code Diagnosis & Fix suggestion
+    # 1. Code diagnostics are only applicable when source was supplied.
     code_help = check_code_error(code_snippet, f"{description} {ss_text}", selected_language)
+    if code_snippet.strip():
+        _emit_progress(
+            progress_callback,
+            "code_diagnosis",
+            "Code Diagnostics",
+            "started",
+            "Running syntax diagnostics on the submitted code...",
+        )
+    else:
+        _emit_progress(
+            progress_callback,
+            "code_diagnosis",
+            "Code Diagnostics",
+            "skipped",
+            "No code was provided; code diagnostics were skipped.",
+        )
 
     # 2. Feature Categorization
     combined_text = f"{title} {description} {code_snippet} {ss_text} {visual_context}".lower()
-    feature = detect_feature(combined_text) or "General"
+    feature_ev = detect_feature_with_evidence(combined_text)
+    feature = feature_ev["feature"] or "General"
     vision_feature = screenshot_data.get("feature") if screenshot_data else None
     vision_confidence = int(screenshot_data.get("confidence", 0) or 0) if screenshot_data else 0
     if screenshot_data and screenshot_data.get("method") == "groq_vision" and vision_confidence >= 60 and vision_feature:
         # Strong visual evidence wins over a typo or misleading report title.
         feature = vision_feature
+        feature_ev["reason"] = f"Overridden by Groq Vision evidence ({vision_confidence}% visual confidence): {vision_feature}"
     code_help["feature"] = feature
+    code_help["feature_evidence"] = feature_ev
 
     if screenshot_data and screenshot_data.get("success"):
         method = screenshot_data.get("method")
@@ -96,42 +196,136 @@ def analyze_report(data):
     full_text = f"{combined_text} {feature.lower()}"
 
     # 3. Priority Estimation
-    priority = calculate_priority(full_text)
+    priority_ev = calculate_priority_with_evidence(full_text)
+    priority = priority_ev["priority"]
     sentiment = analyze_sentiment(f"{title} {description}")
     if screenshot_data and screenshot_data.get("method") == "groq_vision" and vision_confidence >= 60:
         if str(screenshot_data.get("severity", "")).lower() == "high":
             priority = "High"
+            priority_ev["reason"] = "Elevated to High based on Groq Vision severity classification."
     if sentiment["blocker_signal"] or (screenshot_data and screenshot_data.get("error_name") and "nullpointer" in str(screenshot_data.get("error_name")).lower()):
         priority = "High"
+        priority_ev["reason"] = "Elevated to High due to blocker/fatal signal."
+    code_help["priority_evidence"] = priority_ev
+
+    if code_snippet.strip():
+        syntax_status = code_help.get("syntax_status") or "not_run"
+        _emit_progress(
+            progress_callback,
+            "code_diagnosis",
+            "Code Diagnostics",
+            "completed",
+            f"Syntax diagnostics finished: {syntax_status}.",
+            {
+                "language": code_help.get("language"),
+                "syntax_status": syntax_status,
+                "syntax_checker": code_help.get("syntax_checker"),
+                "error_name": code_help.get("error_name"),
+            },
+        )
+    _emit_progress(
+        progress_callback,
+        "report_analysis",
+        "Report Analysis",
+        "completed",
+        f"Report analyzed: {feature} feature, {priority} priority.",
+        {
+            "feature": feature,
+            "feature_reason": feature_ev.get("reason"),
+            "priority": priority,
+            "priority_reason": priority_ev.get("reason"),
+            "blocker_signal": bool(sentiment.get("blocker_signal")),
+        },
+    )
 
     # 4. Duplicate Detection
+    _emit_progress(
+        progress_callback,
+        "duplicate_check",
+        "Duplicate Vector Check",
+        "started",
+        f"Comparing against {len(past_bugs)} existing project issues...",
+    )
     duplicate_info = detect_duplicates(title, description, past_bugs)
     is_duplicate = duplicate_info["is_duplicate"]
     duplicate_of = duplicate_info["duplicate_of"]
     similarity_percent = duplicate_info["similarity_score"]
+    top_dup_matches = duplicate_info.get("top_matches", [])
+    code_help["top_duplicate_matches"] = top_dup_matches
+    _emit_progress(
+        progress_callback,
+        "duplicate_check",
+        "Duplicate Vector Check",
+        "completed",
+        (
+            f"Possible duplicate of #ABT-{duplicate_of} ({similarity_percent}% similarity)"
+            if is_duplicate
+            else f"Unique issue ({similarity_percent}% max similarity across {len(past_bugs)} issues)"
+        ),
+        {
+            "similarity_score": similarity_percent,
+            "is_duplicate": is_duplicate,
+            "duplicate_of": duplicate_of,
+            "compared_count": len(past_bugs),
+            "top_matches_count": len(top_dup_matches),
+        },
+    )
 
     # 5. Developer Assignment (safely resolve target language)
+    _emit_progress(
+        progress_callback,
+        "developer_routing",
+        "Developer Routing",
+        "started",
+        f"Evaluating {len(developers)} developers by skills, fix history, and workload...",
+    )
     dev_language = selected_language
     if (not dev_language or dev_language == "auto") and screenshot_data:
         dev_language = screenshot_data.get("detected_language") or "auto"
     if not dev_language:
         dev_language = "auto"
 
-    assigned_to, assignment_reason = assign_developer(
+    assignment_result = assign_developer_with_breakdown(
         developers=developers,
         full_text=full_text,
         selected_language=dev_language,
         feature=feature,
         is_duplicate=is_duplicate,
     )
+    assigned_to = assignment_result["assigned_to"]
+    assignment_reason = assignment_result["reason"]
+    needs_review = bool(assignment_result.get("needs_review"))
+    assignment_breakdown = assignment_result.get("score_breakdown")
     if assignment_reason:
         code_help["assignment_reason"] = assignment_reason
+    if assignment_breakdown is not None:
+        code_help["assignment_breakdown"] = assignment_breakdown
+    _emit_progress(
+        progress_callback,
+        "developer_routing",
+        "Developer Routing",
+        "completed",
+        f"Routed to {assigned_to}" + (" (needs review)" if needs_review else ""),
+        {
+            "assigned_to": assigned_to,
+            "assignment_reason": assignment_reason or "",
+            "needs_review": needs_review,
+        },
+    )
 
     # 6. Locate Suspected Repository / GitHub Files
     github_repo = data.get("github_repo")
     project_stack = data.get("project_stack") or ""
     source_file_name = data.get("source_file_name") or ""
     req_branch = data.get("branch")
+    if github_repo:
+        _emit_progress(
+            progress_callback,
+            "file_locator",
+            "GitHub File Search",
+            "started",
+            "Searching the linked repository for files related to this report...",
+        )
     suspected_files = locate_suspected_files(
         title=title,
         description=description,
@@ -145,12 +339,55 @@ def analyze_report(data):
         groq_api_key=groq_api_key,
         branch=req_branch,
     )
-    if suspected_files:
+    if not github_repo:
+        _emit_progress(
+            progress_callback,
+            "file_locator",
+            "GitHub File Search",
+            "skipped",
+            "No repository is linked; GitHub file search was skipped.",
+        )
+    elif suspected_files:
         code_help["suspected_files"] = suspected_files
+        safe_files = [
+            {
+                "path": item.get("path") if isinstance(item, dict) else str(item),
+                "confidence": item.get("confidence") if isinstance(item, dict) else None,
+                "branch": item.get("branch") if isinstance(item, dict) else None,
+            }
+            for item in suspected_files[:5]
+        ]
+        _emit_progress(
+            progress_callback,
+            "file_locator",
+            "GitHub File Search",
+            "completed",
+            f"Located {len(suspected_files)} candidate file(s): {safe_files[0]['path']}",
+            {
+                "files_count": len(suspected_files),
+                "suspected_files": safe_files,
+            },
+        )
+    else:
+        _emit_progress(
+            progress_callback,
+            "file_locator",
+            "GitHub File Search",
+            "skipped",
+            "No repository files matched this report.",
+            {"files_count": 0, "suspected_files": []},
+        )
 
     # Provide actionable fix suggestions based on root cause analysis.
 
     # 7. Fetch bounded GitHub source context and add an evidence-grounded LLM analysis.
+    _emit_progress(
+        progress_callback,
+        "llm_analysis",
+        "Root-Cause & Fix Synthesis",
+        "started",
+        "Fetching bounded repository context and generating fix recommendations...",
+    )
     source_context = fetch_relevant_source(
         github_repo, suspected_files, token=data.get("github_token", "")
     ) if github_repo and suspected_files else []
@@ -223,12 +460,90 @@ def analyze_report(data):
             ]
         code_help["suggested_fix_available"] = True
 
+    llm_ok = llm_analysis is not None and not llm_analysis.get("error")
+    if not groq_api_key:
+        llm_status = "skipped"
+        llm_msg = "GROQ_API_KEY not configured; using heuristic/static fix guidance."
+    elif llm_analysis and llm_analysis.get("error"):
+        llm_status = "failed"
+        llm_msg = "The analysis provider failed; using available non-provider guidance."
+    elif llm_ok:
+        llm_status = "completed"
+        llm_msg = f"Provider synthesis complete; {len(source_context)} source file(s) inspected."
+    else:
+        llm_status = "failed" if groq_api_key else "skipped"
+        llm_msg = (
+            "The analysis provider did not return a result; non-provider guidance remains available."
+            if groq_api_key
+            else "No analysis provider is configured; non-provider guidance remains available."
+        )
+
+    _emit_progress(
+        progress_callback,
+        "llm_analysis",
+        "Root-Cause & Fix Synthesis",
+        llm_status,
+        llm_msg,
+        {
+            "llm_used": llm_ok,
+            "source_files_inspected": len(source_context),
+            "fix_suggestions_count": len(code_help.get("fix_suggestions", [])),
+        },
+    )
+
+    used_ocr = bool(screenshot_data and screenshot_data.get("success"))
+    ocr_high_severity = bool(screenshot_data and screenshot_data.get("success") and str(screenshot_data.get("severity", "")).lower() == "high")
+    decision_citations = [
+        {
+            "decision": "Module Classification",
+            "value": feature,
+            "source": "OCR" if (used_ocr and vision_confidence >= 60 and vision_feature) else "report_text",
+            "evidence_type": "AI inference" if (used_ocr and vision_confidence >= 60 and vision_feature) else "Observed",
+            "reference": feature_ev.get("reason") or f"Detected module: {feature}",
+        },
+        {
+            "decision": "Priority Estimation",
+            "value": priority,
+            "source": "OCR" if ocr_high_severity else "report_text",
+            "evidence_type": "AI inference" if ocr_high_severity else "Observed",
+            "reference": priority_ev.get("reason") or f"Priority: {priority}",
+        },
+        {
+            "decision": "Duplicate Detection",
+            "value": f"{similarity_percent}%",
+            "source": "similarity",
+            "evidence_type": "Observed",
+            "reference": f"TF-IDF cosine similarity {similarity_percent}% across {len(past_bugs)} issue(s)",
+        },
+        {
+            "decision": "File Localization",
+            "value": suspected_files[0]["path"] if suspected_files else "None",
+            "source": "GitHub" if github_repo else "report_text",
+            "evidence_type": "AI inference" if (llm_ok or (used_ocr and suspected_files)) else "Observed",
+            "reference": (suspected_files[0].get("reason") if suspected_files else "No repository file matched"),
+        },
+        {
+            "decision": "Developer Routing",
+            "value": assigned_to,
+            "source": "assignment_matrix",
+            "evidence_type": "Observed",
+            "reference": assignment_reason or "No eligible developer available",
+        },
+    ]
+    code_help["decision_citations"] = decision_citations
+
     # Assemble and return response
     result = {
         "is_duplicate": is_duplicate,
         "duplicate_of": duplicate_of,
         "similarity_score": similarity_percent,
+        "top_duplicate_matches": top_dup_matches,
         "assigned_to": assigned_to,
+        "needs_review": needs_review,
+        "assignment_breakdown": assignment_breakdown,
+        "feature_evidence": feature_ev,
+        "priority_evidence": priority_ev,
+        "decision_citations": decision_citations,
         "priority": priority,
         "feature": feature,
         "github_repo": github_repo,
@@ -258,7 +573,7 @@ def run_agent():
         traceback.print_exc(file=sys.stderr)
 
     try:
-        print(json.dumps(analyze_report(data)))
+        print(json.dumps(analyze_report(data, progress_callback=_stderr_progress_callback)))
     except Exception as e:
         import traceback
         import datetime
@@ -274,13 +589,20 @@ def run_agent():
         except Exception:
             pass
 
-        # Resilient fallback output with real culprit files and developer fix suggestions
+        # Resilient fallback output with honest Unassigned / needs_review status
         title = (data.get("title") or "Report") if isinstance(data, dict) else "Report"
         desc = (data.get("description") or "") if isinstance(data, dict) else ""
-        devs = data.get("developers", []) if isinstance(data, dict) else []
-        assignee = devs[0]["name"] if devs and isinstance(devs[0], dict) and "name" in devs[0] else "Alice Developer"
+        assignee = "Unassigned"
         gh_repo = data.get("github_repo") if isinstance(data, dict) else None
         feat = detect_feature(f"{title} {desc}") if isinstance(data, dict) else "General"
+        _emit_progress(
+            _stderr_progress_callback,
+            "triage_fallback",
+            "Resilient Fallback",
+            "failed",
+            f"Primary triage pipeline encountered an error ({str(e)[:120]}); left Unassigned for manager review.",
+            {"assigned_to": "Unassigned", "needs_review": True},
+        )
 
         fallback_files = []
         try:
@@ -314,6 +636,8 @@ def run_agent():
             "duplicate_of": None,
             "similarity_score": 0.0,
             "assigned_to": assignee,
+            "needs_review": True,
+            "fallback_reason": str(e)[:200],
             "priority": "Medium",
             "feature": feat,
             "github_repo": gh_repo,
@@ -325,20 +649,20 @@ def run_agent():
             "code_help": {
                 "language": data.get("selected_language") or "Unknown" if isinstance(data, dict) else "Unknown",
                 "syntax_checker": None,
-                "error_name": "Triage processed in resilient mode",
+                "error_name": "Triage fallback (needs manager review)",
                 "syntax_status": "not_run",
                 "steps": [
-                    f"Report processed successfully for {feat}.",
-                    "Review suspected files and verify runtime environment."
+                    f"Primary triage pipeline failed for {feat}.",
+                    "Review suspected files and manually assign an engineer."
                 ],
-                "analysis_scope": "Static keyword and repository scan.",
+                "analysis_scope": "Static keyword and repository scan (fallback).",
                 "fixed_code": "",
                 "fix_suggestions": fallback_suggestions,
                 "suggested_fix_available": True,
                 "feature": feat,
                 "suspected_files": fallback_files,
-                "attachment_note": "Triage completed with fallback resilience.",
-                "assignment_reason": f"{assignee} assigned based on queue availability."
+                "attachment_note": "Primary triage encountered an error; fallback guidance generated.",
+                "assignment_reason": "Automatic triage encountered an error; left Unassigned for manager review."
             }
         }))
 

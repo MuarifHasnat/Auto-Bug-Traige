@@ -29,7 +29,6 @@
             <a href="{{ $currentRole === 'manager' ? '/add-developers' : route('team.index') }}" @if($active === 'team') aria-current="page" @endif class="{{ $active === 'team' ? $activeClass : $linkClass }}"><span aria-hidden="true">♙</span><span>{{ $currentRole === 'manager' ? 'Team and skills' : 'Team' }}</span></a>
         @endif
         @if($currentRole === 'manager')
-            <a href="{{ route('workflow.settings') }}" @if($active === 'workflow') aria-current="page" @endif class="{{ $active === 'workflow' ? $activeClass : $linkClass }}"><span aria-hidden="true">⇄</span><span>Workflow settings</span></a>
             <a href="/create-project" @if($active === 'project') aria-current="page" @endif class="{{ $active === 'project' ? $activeClass : $linkClass }}"><span aria-hidden="true">＋</span><span>New project wizard</span></a>
         @endif
         <a href="{{ route('profile.show') }}" @if($active === 'profile') aria-current="page" @endif class="{{ $active === 'profile' ? $activeClass : $linkClass }}"><span aria-hidden="true">♙</span><span>My Profile</span></a>
