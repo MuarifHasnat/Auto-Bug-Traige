@@ -7,9 +7,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-MAX_FILES = 3
-MAX_FILE_BYTES = 48_000
-MAX_TOTAL_CHARS = 18_000
+MAX_FILES = 4
+MAX_FILE_BYTES = 350_000
+MAX_FILE_CHARS = 7_500
+MAX_TOTAL_CHARS = 22_000
 ALLOWED_EXTENSIONS = {
     ".php", ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".kts",
     ".go", ".rs", ".cs", ".cpp", ".c", ".h", ".hpp", ".dart", ".swift",
@@ -38,7 +39,73 @@ def _safe_path(path: str) -> bool:
     )
 
 
-def fetch_relevant_source(github_repo: str, candidates: list, token: str = "") -> list:
+_SYMBOL_PATTERN = re.compile(
+    r'^\s*(?:'
+    r'(?:public|protected|private|static|async|export|default|override|suspend|\s)*'
+    r'(?:function|def|fun|fn|func|class)\s+[A-Za-z_][A-Za-z0-9_]*'
+    r'|(?:const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*(?:async\s*)?\('
+    r'|Route::(?:get|post|put|patch|delete|any)\s*\('
+    r'|<form\b[^>]*'
+    r')',
+    re.IGNORECASE,
+)
+
+
+def _extract_relevant_excerpt(content: str, query_text: str, max_chars: int) -> str:
+    """Returns line-numbered code, prioritizing functions/handlers matching the bug report and listing symbols for large files."""
+    lines = content.splitlines()
+    if len(content) <= max_chars and len(lines) <= 180:
+        return "\n".join(f"L{idx}: {line}" for idx, line in enumerate(lines, 1))[:max_chars]
+
+    raw_tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]{2,}', (query_text or "").lower())
+    stop = {"the", "and", "for", "with", "that", "this", "from", "when", "page", "not", "kaj", "kore", "korar"}
+    keywords = [tok for tok in dict.fromkeys(raw_tokens) if tok not in stop][:14]
+    if any(k in raw_tokens for k in ("submit", "button", "btn", "click", "login", "form")):
+        for alias in ("onsubmit", "handlesubmit", "submit", "onclick", "action", "login"):
+            if alias not in keywords:
+                keywords.append(alias)
+
+    symbol_lines = []
+    scored_hits = []
+    for idx, line in enumerate(lines):
+        if _SYMBOL_PATTERN.search(line):
+            symbol_lines.append(f"L{idx + 1}: {line.strip()[:100]}")
+        low = line.lower()
+        score = sum(1 for kw in keywords if kw in low)
+        if score > 0:
+            if _SYMBOL_PATTERN.search(line):
+                score += 2
+            scored_hits.append((score, idx))
+
+    scored_hits.sort(key=lambda item: (-item[0], item[1]))
+    selected = set(range(0, min(30, len(lines))))  # Always include imports/header
+    for _, idx in scored_hits[:10]:
+        start = max(0, idx - 10)
+        end = min(len(lines), idx + 25)
+        selected.update(range(start, end))
+
+    ordered = sorted(selected)
+    out_lines = []
+    if symbol_lines:
+        out_lines.append(f"[File Outline ({len(lines)} lines total) — Key Symbols:]")
+        out_lines.extend(symbol_lines[:25])
+        out_lines.append("[Relevant Excerpts:]")
+
+    prev = -1
+    char_count = sum(len(x) + 1 for x in out_lines)
+    for idx in ordered:
+        if prev != -1 and idx > prev + 1:
+            out_lines.append("... [omitted] ...")
+        formatted = f"L{idx + 1}: {lines[idx]}"
+        if char_count + len(formatted) + 1 > max_chars:
+            break
+        out_lines.append(formatted)
+        char_count += len(formatted) + 1
+        prev = idx
+    return "\n".join(out_lines)
+
+
+def fetch_relevant_source(github_repo: str, candidates: list, token: str = "", query_text: str = "") -> list:
     repo = parse_repo(github_repo)
     if not repo:
         return []
@@ -82,7 +149,7 @@ def fetch_relevant_source(github_repo: str, candidates: list, token: str = "") -
         remaining = MAX_TOTAL_CHARS - total_chars
         if remaining <= 0:
             break
-        content = content[:remaining]
-        results.append({"path": path, "branch": branch, "content": content})
-        total_chars += len(content)
+        excerpt = _extract_relevant_excerpt(content, query_text, min(MAX_FILE_CHARS, remaining))
+        results.append({"path": path, "branch": branch, "content": excerpt})
+        total_chars += len(excerpt)
     return results

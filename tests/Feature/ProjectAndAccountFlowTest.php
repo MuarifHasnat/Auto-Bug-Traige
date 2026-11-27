@@ -137,6 +137,24 @@ class ProjectAndAccountFlowTest extends TestCase
         $loginResponse->assertSee('Welcome back');
     }
 
+    public function test_manager_can_store_encrypted_github_token_when_creating_project(): void
+    {
+        $manager = User::factory()->create(['name' => 'Token Manager', 'role' => 'manager']);
+
+        $this->actingAs($manager)->post('/create-project', [
+            'project_name' => 'Private App',
+            'project_stack' => 'PHP, React',
+            'github_token' => 'ghp_test_secret_token_12345',
+        ])->assertRedirect('/add-developers');
+
+        $projectId = (int) session('project_id');
+        $stored = DB::table('projects')->where('id', $projectId)->value('github_token');
+
+        $this->assertNotNull($stored);
+        $this->assertNotSame('ghp_test_secret_token_12345', $stored);
+        $this->assertSame('ghp_test_secret_token_12345', \Illuminate\Support\Facades\Crypt::decryptString($stored));
+    }
+
     private function createProject(User $manager, string $name): int
     {
         return (int) DB::table('projects')->insertGetId([

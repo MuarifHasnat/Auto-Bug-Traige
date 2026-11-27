@@ -70,6 +70,15 @@
                 </div>
             </div>
 
+            <div>
+                <div class="mb-1.5 flex items-center justify-between gap-2">
+                    <label for="githubToken" class="text-sm font-bold">🔑 GitHub Access Token</label>
+                    <span class="text-xs text-[#64748B]">Optional (only for private repositories)</span>
+                </div>
+                <input id="githubToken" type="password" name="github_token" autocomplete="off" placeholder="ghp_... or github_pat_... (stored encrypted)" class="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-3 font-mono text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10">
+                <p class="mt-1 text-xs text-[#64748B]">Encrypted before saving. Grants read-only access to fetch culprit files and line numbers from private repos.</p>
+            </div>
+
             <div class="border-t border-[#E2E8F0] pt-4">
                 <button type="submit" class="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-indigo-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Save &amp; Proceed to Team Setup →</button>
             </div>
@@ -78,6 +87,7 @@
 </main>
 <script>
     const githubRepoInput = document.getElementById('githubRepo');
+    const githubTokenInput = document.getElementById('githubToken');
     const scanGithubButton = document.getElementById('scanGithubRepo');
     const githubScanPanel = document.getElementById('githubScanStatus');
     const githubScanTitle = document.getElementById('githubScanTitle');
@@ -133,7 +143,10 @@
                 const response = await fetch('{{ route('projects.preview-github') }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: JSON.stringify({ github_repo: repoUrl }),
+                    body: JSON.stringify({
+                        github_repo: repoUrl,
+                        github_token: githubTokenInput ? githubTokenInput.value.trim() : '',
+                    }),
                 });
                 const result = await response.json();
                 if (!response.ok || !result.success) throw new Error(result.error || 'Could not scan this repository. Check the link and try again.');

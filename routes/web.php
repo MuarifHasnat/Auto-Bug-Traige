@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/bugs/{id}/screenshot', [BugController::class, 'showScreenshot'])->whereNumber('id')->name('bugs.screenshot');
     Route::get('/bugs/{id}/report', [BugController::class, 'printableBugReport'])->whereNumber('id')->name('bugs.report');
     Route::get('/ai-agent', [BugController::class, 'aiAgentPage']);
+    Route::get('/api/triage-progress/{runId}', [BugController::class, 'triageProgress'])->name('triage.progress');
     Route::get('/notifications', [BugController::class, 'notificationsPage'])->name('notifications.index');
     Route::match(['get', 'post'], '/notifications/{id}/open', [BugController::class, 'openNotification'])->name('notifications.open');
     Route::match(['get', 'post'], '/notifications/{id}/read', [BugController::class, 'markNotificationRead'])->name('notifications.read');

@@ -303,25 +303,6 @@
                     <p class="font-bold">Fix Suggestions & Recommendations:</p>
                     <ol id="drawerFixSuggestions" class="mt-2 space-y-2"></ol>
                 </div>
-
-                <!-- Steps Checklist -->
-                <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-[#64748B] mb-2">Step-by-Step Fix Checklist:</h4>
-                    <ul id="drawerStepsList" class="space-y-2 text-xs text-[#0F172A]"></ul>
-                </div>
-
-                <!-- Code Reference -->
-                <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2 shadow-2xs">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-800">Submitted Snippet</span>
-                        <button type="button" onclick="copyPatchCode()" id="copyPatchBtn" 
-                                class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-50 transition">
-                            📋 Copy Code
-                        </button>
-                    </div>
-                    <textarea id="drawerFixedCode" readonly spellcheck="false" 
-                              class="w-full min-h-[160px] rounded-xl bg-slate-950 p-3.5 font-mono-code text-xs leading-5 text-emerald-400 border border-slate-800 focus:outline-none"></textarea>
-                </div>
             </div>
 
             <div id="tabActivity" class="hidden space-y-3">
@@ -552,7 +533,6 @@
                     suspectedSection.classList.remove('hidden');
                 }
             }
-            document.getElementById('drawerFixedCode').value = data.getAttribute('data-fixed') || '// No submitted code provided.';
             const drawerDiff = document.getElementById('drawerDiff');
             if (drawerDiff) drawerDiff.value = data.getAttribute('data-diff') || '// No diff available.';
 
@@ -598,22 +578,6 @@
             pill.innerText = priority + ' Priority';
             pill.className = 'rounded px-2 py-0.5 text-[10px] font-bold ' + 
                 (priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200');
-
-            // Interactive Checklist
-            const stepsList = document.getElementById('drawerStepsList');
-            stepsList.innerHTML = '';
-            try {
-                const steps = JSON.parse(data.getAttribute('data-steps'));
-                steps.forEach((step, idx) => {
-                    const li = document.createElement('li');
-                    li.className = 'flex items-start gap-2.5 bg-[#F8FAFC] p-2 rounded-xl border border-[#E2E8F0]';
-                    li.innerHTML = `
-                        <input type="checkbox" id="step-${idx}" class="mt-0.5 h-4 w-4 rounded border-[#CBD5E1] text-indigo-600 focus:ring-indigo-500 cursor-pointer" onchange="this.parentElement.classList.toggle('opacity-50', this.checked)">
-                        <label for="step-${idx}" class="cursor-pointer font-medium leading-relaxed">${step}</label>
-                    `;
-                    stepsList.appendChild(li);
-                });
-            } catch(e) {}
 
             switchDrawerTab('tabAI');
             togglePatchView('final');
@@ -719,14 +683,6 @@
                 diffButton.className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200';
                 finalButton.className = 'px-2.5 py-1 rounded-lg border border-[#CBD5E1] text-[#64748B] hover:bg-slate-50';
             }
-        }
-
-        function copyPatchCode() {
-            const code = document.getElementById('drawerFixedCode').value;
-            navigator.clipboard.writeText(code);
-            const btn = document.getElementById('copyPatchBtn');
-            btn.innerText = '✓ Copied to Clipboard!';
-            setTimeout(() => btn.innerText = '📋 Copy Submitted Code', 2000);
         }
 
         // Live Filters

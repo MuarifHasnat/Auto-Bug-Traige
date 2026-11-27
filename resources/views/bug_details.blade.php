@@ -453,31 +453,96 @@
                         </section>
                     @endif
 
-                    <!-- 3. AI Code Diagnostics & Fix Recommendations (Shown only when code analysis actually ran) -->
+                    <!-- 3. AI Root Cause, Affected Lines & Fix Recommendations -->
                     @php
                         $codeHelp = $bug->triage['code_help'] ?? [];
-                        $hasCodeDiagnostics = !empty($codeHelp) && ((($codeHelp['syntax_status'] ?? 'not_run') !== 'not_run') || !empty($codeHelp['fixed_code']));
+                        $llmAnalysis = $codeHelp['llm_analysis'] ?? ($bug->triage['llm_analysis'] ?? []);
+                        $hasLlmAnalysis = !empty($llmAnalysis) && empty($llmAnalysis['error']);
+                        $affectedLocations = $hasLlmAnalysis ? ($llmAnalysis['affected_locations'] ?? []) : [];
+                        $fixSuggestions = $codeHelp['fix_suggestions'] ?? [];
+                        $hasSyntaxDiagnostics = (($codeHelp['syntax_status'] ?? 'not_run') !== 'not_run') || !empty($codeHelp['fixed_code']);
+                        $hasCodeDiagnostics = !empty($codeHelp) && ($hasSyntaxDiagnostics || $hasLlmAnalysis || !empty($fixSuggestions));
                     @endphp
                     @if($hasCodeDiagnostics)
                         <section class="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-4.5 shadow-xs space-y-3">
                             <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
                                 <h2 class="text-xs sm:text-sm font-bold text-[#0F172A] flex items-center gap-1.5">
                                     <span>🤖</span>
-                                    <span>AI Diagnostics & Fix Guidance</span>
+                                    <span>AI Root Cause &amp; Fix Guidance</span>
                                 </h2>
-                                <span class="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[10px] font-bold text-emerald-700 font-mono-code">
-                                    {{ ucfirst($codeHelp['syntax_status'] ?? 'Checked') }}
-                                </span>
-                            </div>
-
-                            <!-- Validation Status -->
-                            <div class="rounded-xl bg-indigo-50/60 border border-indigo-100 p-2.5 sm:p-3 text-xs space-y-0.5">
-                                <p class="font-bold text-indigo-950">Code Analysis Status:</p>
-                                <p class="font-mono-code text-indigo-900">{{ $codeHelp['error_name'] ?? 'Syntax check completed.' }}</p>
-                                @if(!empty($codeHelp['syntax_checker']))
-                                    <p class="text-indigo-700 text-[10px]">Checker Engine: {{ $codeHelp['syntax_checker'] }}</p>
+                                @if($hasSyntaxDiagnostics)
+                                    <span class="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[10px] font-bold text-emerald-700 font-mono-code">
+                                        {{ ucfirst($codeHelp['syntax_status'] ?? 'Checked') }}
+                                    </span>
+                                @elseif($hasLlmAnalysis)
+                                    <span class="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700">
+                                        Code &amp; OCR Analyzed
+                                    </span>
                                 @endif
                             </div>
+
+                            @if($hasSyntaxDiagnostics)
+                                <!-- Validation Status -->
+                                <div class="rounded-xl bg-indigo-50/60 border border-indigo-100 p-2.5 sm:p-3 text-xs space-y-0.5">
+                                    <p class="font-bold text-indigo-950">Code Analysis Status:</p>
+                                    <p class="font-mono-code text-indigo-900">{{ $codeHelp['error_name'] ?? 'Syntax check completed.' }}</p>
+                                    @if(!empty($codeHelp['syntax_checker']))
+                                        <p class="text-indigo-700 text-[10px]">Checker Engine: {{ $codeHelp['syntax_checker'] }}</p>
+                                    @endif
+                                </div>
+                            @endif
+
+                            @if($hasLlmAnalysis && !empty($llmAnalysis['root_cause']))
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs space-y-1">
+                                    <p class="font-bold text-slate-900">Root Cause Analysis:</p>
+                                    <p class="text-slate-700 leading-relaxed">{{ $llmAnalysis['root_cause'] }}</p>
+                                </div>
+                            @endif
+
+                            @if(!empty($affectedLocations))
+                                <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 space-y-2">
+                                    <p class="text-xs font-bold text-indigo-950">Affected Code Locations &amp; Line Numbers:</p>
+                                    <div class="space-y-1.5">
+                                        @foreach($affectedLocations as $loc)
+                                            @php
+                                                $locPath = $loc['path'] ?? '';
+                                                $locLine = $loc['line'] ?? null;
+                                                $locReason = $loc['reason'] ?? '';
+                                                $matchedCandidate = collect($suspectedFiles)->firstWhere('path', $locPath);
+                                                $locBaseSlug = !empty($projectRepo) ? preg_replace('#^https?://github\.com/#', '', rtrim($projectRepo, '/')) : 'MuarifHasnat/Auto-Bug-Traige';
+                                                $locBaseSlug = preg_replace('/\.git$/', '', $locBaseSlug);
+                                                $locBranch = is_array($matchedCandidate) && !empty($matchedCandidate['branch']) ? $matchedCandidate['branch'] : 'main';
+                                                $locClean = ltrim(str_replace('\\', '/', $locPath), '/');
+                                                $locEncoded = implode('/', array_map('rawurlencode', explode('/', $locClean)));
+                                                $locUrl = (is_array($matchedCandidate) && !empty($matchedCandidate['github_url']))
+                                                    ? $matchedCandidate['github_url']
+                                                    : ('https://github.com/' . $locBaseSlug . '/blob/' . rawurlencode($locBranch) . '/' . $locEncoded);
+                                                if ($locLine) {
+                                                    $locUrl .= '#L' . intval($locLine);
+                                                }
+                                            @endphp
+                                            <div class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-white border border-indigo-200 p-2.5 text-xs">
+                                                <div class="min-w-0 flex-1 space-y-0.5">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <span class="font-mono font-bold text-slate-900 break-all">📄 {{ $locPath }}</span>
+                                                        @if($locLine)
+                                                            <span class="rounded bg-indigo-100 text-indigo-800 px-1.5 py-0.5 text-[10px] font-bold font-mono-code">Line {{ $locLine }}</span>
+                                                        @endif
+                                                    </div>
+                                                    @if($locReason)
+                                                        <p class="text-slate-600 leading-relaxed">{{ $locReason }}</p>
+                                                    @endif
+                                                </div>
+                                                @if($locPath)
+                                                    <a href="{{ $locUrl }}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold px-2.5 py-1 transition shrink-0">
+                                                        <span>Jump to Line</span> ↗
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <!-- Fix Suggestions -->
                             @if(!empty($codeHelp['fix_suggestions']))
@@ -508,8 +573,8 @@
                                 </div>
                             @endif
 
-                            <!-- Step-by-Step Interactive Checklist -->
-                            @if(!empty($codeHelp['steps']))
+                            <!-- Step-by-Step Interactive Checklist (shown only when code syntax diagnostics ran) -->
+                            @if($hasSyntaxDiagnostics && !empty($codeHelp['steps']))
                                 <div>
                                     <h3 class="text-xs font-bold uppercase tracking-wider text-[#64748B] mb-1.5">Step-by-Step Resolution Checklist:</h3>
                                     <div class="space-y-1.5">

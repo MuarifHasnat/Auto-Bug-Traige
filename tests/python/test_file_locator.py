@@ -101,6 +101,41 @@ class FileLocatorTests(unittest.TestCase):
         self.assertTrue(len(results) > 0)
         self.assertFalse(any(r["path"].endswith(".kt") for r in results))
 
+    def test_github_context_extracts_matching_submit_handler_with_line_numbers(self):
+        from agent.github_context import _extract_relevant_excerpt
+
+        filler = "\n".join(f"// filler line {i}" for i in range(1, 240))
+        sample_code = (
+            "import React from 'react';\n"
+            + filler
+            + "\nfunction onSubmit(event) {\n  event.preventDefault();\n  return loginUser(email, password);\n}\n"
+        )
+        excerpt = _extract_relevant_excerpt(
+            sample_code,
+            "login page submit button not working",
+            max_chars=2000,
+        )
+        self.assertIn("function onSubmit(event)", excerpt)
+        self.assertIn("L241:", excerpt)
+        self.assertIn("Key Symbols:", excerpt)
+
+    def test_llm_analysis_preserves_and_infers_line_numbers_in_excerpts(self):
+        from agent.llm_analysis import _infer_affected_locations_from_source
+
+        source_context = [{
+            "path": "frontend/src/pages/RegisterPage.jsx",
+            "branch": "develop",
+            "content": "L1: import React from 'react';\n... [omitted] ...\nL215: <form onSubmit={handleSubmit}>\nL248: <button type=\"button\">Continue</button>",
+        }]
+        inferred = _infer_affected_locations_from_source(
+            {"root_cause": "onSubmit={handleSubmit} not triggered by button"},
+            source_context,
+            {"title": "Continue button not working", "description": "Register form"},
+        )
+        self.assertTrue(len(inferred) >= 1)
+        self.assertEqual(inferred[0]["path"], "frontend/src/pages/RegisterPage.jsx")
+        self.assertIn(inferred[0]["line"], (215, 248))
+
     def test_index_repository_structure_handles_invalid_slugs(self):
         invalid_res = index_repository_structure("invalid_slug_with_no_slash")
         self.assertFalse(invalid_res["success"])

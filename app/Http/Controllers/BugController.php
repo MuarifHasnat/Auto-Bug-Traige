@@ -6,6 +6,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Process;
@@ -203,24 +205,31 @@ class BugController extends Controller
                     $fail('Enter a valid GitHub repository link, such as https://github.com/owner/repository.');
                 }
             }],
+            'github_token' => ['nullable', 'string', 'max:500'],
         ]);
 
         $data['github_repo'] = filled($data['github_repo'] ?? null) ? trim($data['github_repo']) : null;
+        $plainGithubToken = filled($data['github_token'] ?? null) ? trim((string) $data['github_token']) : null;
+        $effectiveToken = $plainGithubToken ?: (config('services.github.token') ?: null);
 
         $githubRepo = $data['github_repo'];
         $repoMetadata = null;
         if ($githubRepo) {
             try {
                 $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-                $process = Process::timeout(25)->run([$python, base_path('agent/file_locator.py'), '--preview', $githubRepo]);
+                $procBuilder = Process::timeout(25);
+                if ($effectiveToken) {
+                    $procBuilder = $procBuilder->env(['GITHUB_TOKEN' => $effectiveToken]);
+                }
+                $process = $procBuilder->run([$python, base_path('agent/file_locator.py'), '--preview', $githubRepo]);
                 $repoMetadata = json_decode($process->output(), true);
                 if (!$process->successful() || !is_array($repoMetadata) || !($repoMetadata['success'] ?? false)) {
-                    return back()->withInput()->withErrors([
+                    return back()->withInput($request->except('github_token'))->withErrors([
                         'github_repo' => is_array($repoMetadata) ? ($repoMetadata['error'] ?? 'Could not read this GitHub repository. Check its access and try again.') : 'Could not complete the GitHub repository scan. Try again.',
                     ]);
                 }
             } catch (\Throwable) {
-                return back()->withInput()->withErrors([
+                return back()->withInput($request->except('github_token'))->withErrors([
                     'github_repo' => 'The repository scan took too long or GitHub could not be reached. Please try again.',
                 ]);
             }
@@ -231,6 +240,7 @@ class BugController extends Controller
             'name' => $data['project_name'],
             'stack' => $data['project_stack'],
             'github_repo' => $data['github_repo'] ?? null,
+            'github_token' => $plainGithubToken ? Crypt::encryptString($plainGithubToken) : null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -263,7 +273,12 @@ class BugController extends Controller
 
         try {
             $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $process = Process::timeout(25)->run([$python, base_path('agent/file_locator.py'), '--preview', $repoUrl]);
+            $previewToken = trim((string) $request->input('github_token', '')) ?: (config('services.github.token') ?: null);
+            $procBuilder = Process::timeout(25);
+            if ($previewToken) {
+                $procBuilder = $procBuilder->env(['GITHUB_TOKEN' => $previewToken]);
+            }
+            $process = $procBuilder->run([$python, base_path('agent/file_locator.py'), '--preview', $repoUrl]);
             $metadata = json_decode($process->output(), true);
 
             if (!$process->successful() || !is_array($metadata) || !($metadata['success'] ?? false)) {
@@ -306,6 +321,23 @@ class BugController extends Controller
         return (bool) preg_match('~^/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})/[A-Za-z0-9_.-]{1,100}(?:\.git)?/?$~', $parts['path'] ?? '');
     }
 
+    private function resolveProjectGithubToken(?int $projectId = null): ?string
+    {
+        if ($projectId) {
+            $encrypted = DB::table('projects')->where('id', $projectId)->value('github_token');
+            if (is_string($encrypted) && trim($encrypted) !== '') {
+                try {
+                    return Crypt::decryptString($encrypted);
+                } catch (\Throwable) {
+                    // Fall back to configured server token if decryption fails.
+                }
+            }
+        }
+
+        $configured = config('services.github.token');
+        return is_string($configured) && trim($configured) !== '' ? trim($configured) : null;
+    }
+
     public function syncGitHubRepo(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         abort_unless(Auth::user()?->role === 'manager', 403);
@@ -313,6 +345,7 @@ class BugController extends Controller
 
         $data = $request->validate([
             'github_repo' => ['nullable', 'string', 'max:255'],
+            'github_token' => ['nullable', 'string', 'max:500'],
         ]);
 
         if (array_key_exists('github_repo', $data) && $data['github_repo'] !== null) {
@@ -324,13 +357,25 @@ class BugController extends Controller
             session(['github_repo' => $cleaned ?: null]);
         }
 
+        if (filled($data['github_token'] ?? null)) {
+            DB::table('projects')->where('id', $projectId)->update([
+                'github_token' => Crypt::encryptString(trim((string) $data['github_token'])),
+                'updated_at' => now(),
+            ]);
+        }
+
         $repo = DB::table('projects')->where('id', $projectId)->value('github_repo') ?: session('github_repo');
         if (!$repo) {
             return back()->withErrors(['github' => 'No GitHub repository is linked. Please enter a valid repository URL.']);
         }
 
         $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-        $proc = Process::timeout(12)->run([$python, base_path('agent/file_locator.py'), '--index', $repo]);
+        $syncToken = $this->resolveProjectGithubToken($projectId);
+        $procBuilder = Process::timeout(12);
+        if ($syncToken) {
+            $procBuilder = $procBuilder->env(['GITHUB_TOKEN' => $syncToken]);
+        }
+        $proc = $procBuilder->run([$python, base_path('agent/file_locator.py'), '--index', $repo]);
         $meta = json_decode($proc->output(), true);
 
         if ($request->wantsJson()) {
@@ -1339,7 +1384,7 @@ class BugController extends Controller
                 'groq_api_key' => config('services.groq.key', env('GROQ_API_KEY')),
                 'groq_model' => config('services.groq.model', env('GROQ_MODEL', 'openai/gpt-oss-120b')),
                 'groq_vision_model' => config('services.groq.vision_model', env('GROQ_VISION_MODEL', 'qwen/qwen3.8-27b')),
-                'github_token' => config('services.github.token'),
+                'github_token' => $this->resolveProjectGithubToken($projectId),
                 'past_bugs' => $pastBugs,
                 'developers' => $developers,
                 'github_repo' => $effectiveRepo,
@@ -2198,11 +2243,26 @@ class BugController extends Controller
             'timestamp' => $timestamp,
         ];
 
+        Cache::put("triage_progress:{$projectId}:{$runId}", $progressTrace, now()->addMinutes(5));
+
         try {
             AgentProgressUpdated::dispatch($projectId, $runId, $step, $label, $status, $message, $summary, $timestamp);
         } catch (\Throwable) {
             // Do not fail bug triage if the websocket server is offline.
         }
+    }
+
+    public function triageProgress(string $runId): JsonResponse
+    {
+        $projectId = $this->currentProjectId();
+        $safeRunId = preg_replace('/[^A-Za-z0-9_-]/', '', $runId) ?: '';
+        if ($safeRunId === '') {
+            return response()->json(['events' => []]);
+        }
+
+        return response()->json([
+            'events' => Cache::get("triage_progress:{$projectId}:{$safeRunId}", []),
+        ]);
     }
 
     /**

@@ -389,7 +389,10 @@ def analyze_report(data, progress_callback=None):
         "Fetching bounded repository context and generating fix recommendations...",
     )
     source_context = fetch_relevant_source(
-        github_repo, suspected_files, token=data.get("github_token", "")
+        github_repo,
+        suspected_files,
+        token=data.get("github_token", ""),
+        query_text=f"{title} {description} {ss_text}",
     ) if github_repo and suspected_files else []
     code_help["github_source_context"] = [
         {"path": item["path"], "branch": item["branch"], "lines": len(item["content"].splitlines())}
@@ -403,6 +406,8 @@ def analyze_report(data, progress_callback=None):
             "reproduction_steps": data.get("reproduction_steps"),
             "code_snippet": code_snippet,
             "selected_language": selected_language,
+            "project_stack": project_stack,
+            "github_repo": github_repo,
         },
         diagnostics={
             "error_name": code_help.get("error_name"),
@@ -415,6 +420,7 @@ def analyze_report(data, progress_callback=None):
                 "error_message": screenshot_data.get("error_message"),
                 "visual_summary": screenshot_data.get("visual_summary"),
                 "visual_evidence": visual_clues,
+                "extracted_text": (ss_text or "")[:1000],
                 "fallback_reason": screenshot_data.get("fallback_reason") or screenshot_data.get("error"),
             } if screenshot_data else None,
             "syntax_status": code_help.get("syntax_status"),

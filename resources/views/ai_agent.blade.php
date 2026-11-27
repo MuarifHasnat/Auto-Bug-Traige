@@ -1475,7 +1475,7 @@
 
     function updateLiveScanner(stageNum, stageTitle, stageDesc, stageIcon, visionSensor, codeSensor, dupSensor, devSensor) {
         const pill = document.getElementById('liveStagePill');
-        if (pill) pill.innerText = `STAGE ${stageNum} / 5`;
+        if (pill) pill.innerText = `STAGE ${stageNum} / 4`;
         const title = document.getElementById('liveStageTitle');
         if (title) title.innerText = stageTitle;
         const desc = document.getElementById('liveStageDesc');
@@ -1561,24 +1561,13 @@
         const ghScore = document.getElementById('liveGhMatchScore');
         if (ghScore) ghScore.innerText = 'Pending scan';
 
-        // Reset Card 3 (AST)
-        const card3 = document.getElementById('liveCardAst');
+        // Reset Card 3 (Vector Sim)
+        const card3 = document.getElementById('liveCardVec');
         if (card3) card3.className = standbyCardClass;
-        const tag3 = document.getElementById('liveTagAst');
+        const tag3 = document.getElementById('liveTagVec');
         if (tag3) {
             tag3.className = 'rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold';
             tag3.innerText = 'Standby';
-        }
-        const astRes = document.getElementById('liveAstResult');
-        if (astRes) astRes.innerText = 'Awaiting parser...';
-
-        // Reset Card 4 (Vector Sim)
-        const card4 = document.getElementById('liveCardVec');
-        if (card4) card4.className = standbyCardClass;
-        const tag4 = document.getElementById('liveTagVec');
-        if (tag4) {
-            tag4.className = 'rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold';
-            tag4.innerText = 'Standby';
         }
         const vecBar = document.getElementById('liveVecBar');
         if (vecBar) vecBar.style.width = '0%';
@@ -1589,13 +1578,13 @@
         const vecVer = document.getElementById('liveVecVerdict');
         if (vecVer) vecVer.innerText = 'Pending';
 
-        // Reset Card 5 (Dev Routing)
-        const card5 = document.getElementById('liveCardDev');
-        if (card5) card5.className = standbyCardClass;
-        const tag5 = document.getElementById('liveTagDev');
-        if (tag5) {
-            tag5.className = 'rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold';
-            tag5.innerText = 'Standby';
+        // Reset Card 4 (Dev Routing)
+        const card4 = document.getElementById('liveCardDev');
+        if (card4) card4.className = standbyCardClass;
+        const tag4 = document.getElementById('liveTagDev');
+        if (tag4) {
+            tag4.className = 'rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold';
+            tag4.innerText = 'Standby';
         }
         const devSummary = document.getElementById('liveDevSummary');
         if (devSummary) devSummary.innerText = 'Awaiting skill & workload match...';
@@ -1607,14 +1596,14 @@
         const doneCardClass = 'rounded-xl border border-emerald-200 bg-white p-3.5 space-y-2 transition-all';
 
         if (stage === 1) {
-            if (badge) badge.innerText = 'STAGE 1 / 5: NLP & OCR ACTIVE';
+            if (badge) badge.innerText = 'STAGE 1 / 4: VISION & OCR ACTIVE';
             const tag = document.getElementById('liveTagNlp');
             if (tag) {
                 tag.className = 'rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold uppercase';
                 tag.innerText = 'PARSING TOKENS';
             }
         } else if (stage === 2) {
-            if (badge) badge.innerText = 'STAGE 2 / 5: GITHUB TREE SCAN ACTIVE';
+            if (badge) badge.innerText = 'STAGE 2 / 4: GITHUB TREE & CODE SCAN';
             const tag1 = document.getElementById('liveTagNlp');
             if (tag1) {
                 tag1.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
@@ -1633,7 +1622,7 @@
                 if (ghFiles) {
                     ghFiles.innerHTML = data.files.map(f => `
                         <div class="flex items-center justify-between text-[11px] text-slate-700 font-mono-code py-0.5 border-b border-slate-100 last:border-0">
-                            <span class="truncate max-w-[190px]">${escapeHtml(f.name)}</span>
+                            <span class="truncate max-w-[240px]">${escapeHtml(f.name)}</span>
                             <span class="text-indigo-600 font-semibold shrink-0 ml-1">${f.match}%</span>
                         </div>
                     `).join('');
@@ -1644,40 +1633,15 @@
                 if (ghScore) ghScore.innerText = data.matchScore;
             }
         } else if (stage === 3) {
-            if (badge) badge.innerText = 'STAGE 3 / 5: AST SYNTAX & DIAGNOSTICS';
+            if (badge) badge.innerText = 'STAGE 3 / 4: VECTOR SIM DEDUPLICATION';
             const card2 = document.getElementById('liveCardGh');
             if (card2) card2.className = doneCardClass;
-            const tag2 = document.getElementById('liveTagGh');
-            if (tag2) {
-                tag2.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
-                tag2.innerText = '✓ Isolated';
-            }
-            const card3 = document.getElementById('liveCardAst');
+            const card3 = document.getElementById('liveCardVec');
             if (card3) card3.className = activeCardClass;
-            const tag3 = document.getElementById('liveTagAst');
+            const tag3 = document.getElementById('liveTagVec');
             if (tag3) {
                 tag3.className = 'rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold';
-                tag3.innerText = 'Validating AST';
-            }
-
-            if (data.parser) document.getElementById('liveAstParser').innerText = data.parser;
-            if (data.pattern) document.getElementById('liveAstPattern').innerText = data.pattern;
-            if (data.result) document.getElementById('liveAstResult').innerText = data.result;
-        } else if (stage === 4) {
-            if (badge) badge.innerText = 'STAGE 4 / 5: VECTOR SIM DEDUPLICATION';
-            const card3 = document.getElementById('liveCardAst');
-            if (card3) card3.className = doneCardClass;
-            const tag3 = document.getElementById('liveTagAst');
-            if (tag3) {
-                tag3.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
-                tag3.innerText = '✓ Verified';
-            }
-            const card4 = document.getElementById('liveCardVec');
-            if (card4) card4.className = activeCardClass;
-            const tag4 = document.getElementById('liveTagVec');
-            if (tag4) {
-                tag4.className = 'rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold';
-                tag4.innerText = 'Computing Cosine';
+                tag3.innerText = 'Computing Cosine';
             }
 
             if (data.compared) document.getElementById('liveVecComparedBug').innerText = data.compared;
@@ -1687,27 +1651,27 @@
                 if (bar) bar.style.width = `${Math.min(100, Math.max(5, data.percent))}%`;
             }
             if (data.verdict) document.getElementById('liveVecVerdict').innerText = data.verdict;
-        } else if (stage === 5) {
-            if (badge) badge.innerText = 'STAGE 5 / 5: DEVELOPER DISPATCH COMPLETE';
-            const card4 = document.getElementById('liveCardVec');
-            if (card4) card4.className = doneCardClass;
-            const tag4 = document.getElementById('liveTagVec');
-            if (tag4) {
-                tag4.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
-                tag4.innerText = data.isDup ? 'Duplicate' : 'Unique Issue';
+        } else if (stage === 4) {
+            if (badge) badge.innerText = 'STAGE 4 / 4: DEVELOPER ROUTING & ROOT-CAUSE';
+            const card3 = document.getElementById('liveCardVec');
+            if (card3) card3.className = doneCardClass;
+            const tag3 = document.getElementById('liveTagVec');
+            if (tag3) {
+                tag3.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
+                tag3.innerText = data.isDup ? 'Duplicate' : 'Unique Issue';
             }
-            const card5 = document.getElementById('liveCardDev');
-            if (card5) card5.className = activeCardClass;
-            const tag5 = document.getElementById('liveTagDev');
-            if (tag5) {
-                tag5.className = 'rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold';
-                tag5.innerText = 'Routing';
+            const card4 = document.getElementById('liveCardDev');
+            if (card4) card4.className = activeCardClass;
+            const tag4 = document.getElementById('liveTagDev');
+            if (tag4) {
+                tag4.className = 'rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold';
+                tag4.innerText = 'Routing';
             }
         }
     }
 
     function focusLiveDetectionCard(num) {
-        const cardMap = { 1: 'liveCardNlp', 2: 'liveCardGh', 3: 'liveCardAst', 4: 'liveCardVec', 5: 'liveCardVec' };
+        const cardMap = { 1: 'liveCardNlp', 2: 'liveCardGh', 3: 'liveCardVec', 4: 'liveCardDev' };
         const targetId = cardMap[num];
         if (targetId) {
             const el = document.getElementById(targetId);
@@ -1759,7 +1723,7 @@
         resetLiveTelemetry(title, descVal, hasScreen, screenName);
         
         // Reset Steps
-        [1, 2, 3, 4, 5].forEach(i => {
+        [1, 2, 3, 4].forEach(i => {
             const step = document.getElementById(`step-pill-${i}`);
             if (step) {
                 step.className = 'cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2';
@@ -1897,10 +1861,9 @@
         const stepToPill = {
             vision_ocr: 1,
             file_locator: 2,
-            code_diagnosis: 3,
-            duplicate_check: 4,
-            developer_routing: 5,
-            llm_analysis: 5,
+            duplicate_check: 3,
+            developer_routing: 4,
+            llm_analysis: 4,
         };
         const pillNum = stepToPill[event.step];
         const status = event.status || 'started';
@@ -1914,12 +1877,11 @@
         }
 
         const progressMap = {
-            vision_ocr: status === 'started' ? 12 : 22,
-            code_diagnosis: status === 'started' ? 30 : 45,
-            duplicate_check: status === 'started' ? 55 : 68,
-            developer_routing: status === 'started' ? 74 : 82,
-            file_locator: status === 'started' ? 86 : 92,
-            llm_analysis: status === 'started' ? 94 : 98,
+            vision_ocr: status === 'started' ? 15 : 28,
+            duplicate_check: status === 'started' ? 38 : 52,
+            developer_routing: status === 'started' ? 60 : 72,
+            file_locator: status === 'started' ? 78 : 88,
+            llm_analysis: status === 'started' ? 92 : 98,
         };
         const bar = document.getElementById('triageProgressBar');
         if (bar && progressMap[event.step]) {
@@ -1959,22 +1921,12 @@
             }
             if (ocrLog) ocrLog.textContent = `[Status] ${summary.visual_summary || summary.extracted_text || event.message}`;
             if (visionSensor) visionSensor.textContent = summary.method || status;
-        } else if (event.step === 'code_diagnosis') {
-            updateLiveTelemetry(3, {
-                parser: summary.syntax_checker || (summary.language ? `${summary.language} Diagnostics` : 'Symptom & AST Diagnostics'),
-                pattern: summary.feature ? `Module: ${summary.feature} · Priority: ${summary.priority || 'Medium'}` : event.message,
-                result: status === 'completed' ? `✓ ${summary.syntax_status || 'analyzed'}` : event.message,
-            });
-            const tag3 = document.getElementById('liveTagAst');
-            if (tag3 && status !== 'started') {
-                tag3.innerText = status === 'completed' ? `✓ ${String(summary.syntax_status || 'Done')}` : status;
-            }
         } else if (event.step === 'duplicate_check') {
             const sim = Number(summary.similarity_score || 0);
             const isDup = Boolean(summary.is_duplicate);
-            updateLiveTelemetry(4, {
+            updateLiveTelemetry(3, {
                 compared: summary.compared_count !== undefined ? `Compared against ${summary.compared_count} project issues` : event.message,
-                cosineVal: summary.similarity_score !== undefined ? `${sim}%` : '0%',
+                cosineVal: summary.similarity_score !== undefined ? `${sim}%` : 'Computing...',
                 percent: sim,
                 verdict: status === 'completed' ? (isDup ? `Duplicate (#ABT-${summary.duplicate_of})` : `Unique (${sim}%)`) : event.message,
                 isDup,
@@ -2000,19 +1952,21 @@
             if (codeSensor && status !== 'started') {
                 codeSensor.textContent = files.length ? files[0].name.split('/').pop() : status;
             }
-        } else if (event.step === 'developer_routing') {
-            updateLiveTelemetry(5, {});
+        } else if (event.step === 'developer_routing' || event.step === 'llm_analysis') {
+            updateLiveTelemetry(4, {});
             const devSensor = document.getElementById('liveSensorDev');
             if (devSensor && summary.assigned_to) {
                 devSensor.textContent = summary.assigned_to;
             }
             const devSummary = document.getElementById('liveDevSummary');
             if (devSummary) {
-                devSummary.textContent = summary.assigned_to ? `Assigned to ${summary.assigned_to}` : (event.message || 'Routing complete');
+                devSummary.textContent = event.step === 'llm_analysis'
+                    ? (event.message || 'Analyzing GitHub code & root cause...')
+                    : (summary.assigned_to ? `Assigned to ${summary.assigned_to}` : (event.message || 'Routing complete'));
             }
-            const tag5 = document.getElementById('liveTagDev');
-            if (tag5 && status !== 'started') {
-                tag5.innerText = status === 'completed' ? '✓ Routed' : status;
+            const tag4 = document.getElementById('liveTagDev');
+            if (tag4 && status !== 'started') {
+                tag4.innerText = status === 'completed' ? '✓ Done' : status;
             }
         }
 
@@ -2237,8 +2191,23 @@
             xhr.send(formData);
         });
 
+        // Poll real backend progress every 400ms (works even without Reverb websocket server)
+        const progressPollTimer = window.setInterval(async () => {
+            try {
+                const resp = await fetch(`/api/triage-progress/${encodeURIComponent(runId)}`, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!resp.ok) return;
+                const payload = await resp.json();
+                if (Array.isArray(payload.events)) {
+                    payload.events.forEach(ev => applyAgentProgressEvent(ev));
+                }
+            } catch (_) {}
+        }, 400);
+
         try {
             const resData = await apiPromise;
+            window.clearInterval(progressPollTimer);
             clearInterval(triageTimer);
             submitButton.classList.remove('cursor-not-allowed', 'opacity-90');
             submitButton.innerHTML = '<span>✓ Triage Completed</span>';
@@ -2550,6 +2519,7 @@
             }
 
             document.getElementById('resIssueLink').href = `/bugs/${bugId}`;
+            await new Promise(resolve => setTimeout(resolve, 700));
             const liveScanner = document.getElementById('terminalLiveScanner');
             if (liveScanner) liveScanner.classList.add('hidden');
             document.getElementById('terminalResultCard').classList.remove('hidden');
@@ -2559,6 +2529,7 @@
             prependMyReport({ bug_id: bugId, title, status: resData.status || ai.status || 'Open', assigned_to: assignee, updated_at: new Date().toISOString(), triage_state: resData.triage_state || 'complete' });
 
         } catch (err) {
+            window.clearInterval(progressPollTimer);
             clearInterval(triageTimer);
             submitButton.classList.remove('cursor-not-allowed', 'opacity-90');
             appendTerminalLog('[ERROR]', err.message || 'Triage failed.', 'text-rose-400 font-bold');
@@ -2873,7 +2844,7 @@
         }
         @media (min-width: 640px) {
             #triageTerminalModal .abt-stepper-grid {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
             }
             #triageTerminalModal .abt-right-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2930,11 +2901,11 @@
                     <p id="terminalBugTitle" class="mt-0.5 text-lg sm:text-xl font-bold text-slate-900 leading-snug">Payment checkout 401 error</p>
                 </div>
                 <span class="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                    5-PHASE EXPLAINABLE AI
+                    4-PHASE EXPLAINABLE AI
                 </span>
             </div>
 
-            <!-- 5-Phase Stepper Tabs -->
+            <!-- 4-Phase Stepper Tabs -->
             <div class="abt-stepper-grid">
                 <button type="button" id="step-pill-1" data-name="Vision & OCR" onclick="focusLiveDetectionCard(1)" class="cursor-pointer rounded-xl border border-indigo-300 border-b-2 border-b-indigo-600 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 transition flex items-center justify-center gap-2 shadow-2xs">
                     <span>1. Vision &amp; OCR</span>
@@ -2943,14 +2914,11 @@
                 <button type="button" id="step-pill-2" data-name="GitHub Tree" onclick="focusLiveDetectionCard(2)" class="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
                     <span>2. GitHub Tree</span>
                 </button>
-                <button type="button" id="step-pill-3" data-name="AST Syntax" onclick="focusLiveDetectionCard(3)" class="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
-                    <span>3. AST Syntax</span>
+                <button type="button" id="step-pill-3" data-name="Vector Sim" onclick="focusLiveDetectionCard(3)" class="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
+                    <span>3. Vector Sim</span>
                 </button>
-                <button type="button" id="step-pill-4" data-name="Vector Sim" onclick="focusLiveDetectionCard(4)" class="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
-                    <span>4. Vector Sim</span>
-                </button>
-                <button type="button" id="step-pill-5" data-name="Dev Routing" onclick="focusLiveDetectionCard(5)" class="col-span-2 sm:col-span-1 cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
-                    <span>5. Dev Routing</span>
+                <button type="button" id="step-pill-4" data-name="Dev Routing" onclick="focusLiveDetectionCard(4)" class="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 flex items-center justify-center gap-2">
+                    <span>4. Dev Routing</span>
                 </button>
             </div>
 
@@ -2963,7 +2931,7 @@
             <div id="terminalLiveScanner" class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-5 shadow-xs">
                 <!-- Stage Header -->
                 <div>
-                    <span id="liveStagePill" class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">STAGE 1 / 5</span>
+                    <span id="liveStagePill" class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">STAGE 1 / 4</span>
                     <h3 id="liveStageTitle" class="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
                         Vision OCR &amp; Lexical NLP Parser Active
                     </h3>
@@ -3051,13 +3019,13 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: 2x2 Grid for GitHub, AST, Vector Sim & Routing -->
+                    <!-- Right Column: GitHub Code Scan + Vector Sim & Dev Routing -->
                     <div class="abt-right-grid min-w-0" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; min-width: 0;">
                         <!-- 2. GitHub Tree Traversal -->
-                        <div id="liveCardGh" class="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between space-y-2 transition-all">
+                        <div id="liveCardGh" style="grid-column: 1 / -1;" class="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between space-y-2 transition-all">
                             <div class="space-y-1.5 min-w-0">
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="text-xs font-bold text-slate-900">2. GitHub Tree Traversal</span>
+                                    <span class="text-xs font-bold text-slate-900">2. GitHub Tree &amp; Code Inspection</span>
                                     <span id="liveTagGh" class="shrink-0 rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">Standby</span>
                                 </div>
                                 <div id="liveGhScannedFile" class="text-xs text-slate-500 space-y-1">
@@ -3066,31 +3034,15 @@
                             </div>
                             <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                                 <span>Branch: <b class="text-slate-700 font-medium">main</b></span>
-                                <span id="liveGhMatchScore" class="font-medium text-slate-600 truncate max-w-[110px]">Pending scan</span>
+                                <span id="liveGhMatchScore" class="font-medium text-slate-600 truncate max-w-[160px]">Pending scan</span>
                             </div>
                         </div>
 
-                        <!-- 3. AST Syntax & Diagnostics -->
-                        <div id="liveCardAst" class="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between space-y-2 transition-all">
-                            <div class="space-y-1.5 min-w-0">
-                                <div class="flex items-center justify-between gap-2">
-                                    <span class="text-xs font-bold text-slate-900">3. AST Syntax &amp; Diagnostics</span>
-                                    <span id="liveTagAst" class="shrink-0 rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">Standby</span>
-                                </div>
-                                <p id="liveAstResult" class="text-xs text-slate-500">Awaiting parser...</p>
-                                <p id="liveAstPattern" class="text-[11px] text-slate-400 truncate">Exception trace &amp; route binding</p>
-                            </div>
-                            <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                                <span>Parser:</span>
-                                <span id="liveAstParser" class="font-medium text-slate-700 truncate">PHP 8.2 AST Engine</span>
-                            </div>
-                        </div>
-
-                        <!-- 4. Vector Sim Duplicate Radar -->
+                        <!-- 3. Vector Sim Duplicate Radar -->
                         <div id="liveCardVec" class="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between space-y-2 transition-all">
                             <div class="space-y-1.5 min-w-0">
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="text-xs font-bold text-slate-900">4. Vector Sim Duplicate Radar</span>
+                                    <span class="text-xs font-bold text-slate-900">3. Vector Sim Duplicate Radar</span>
                                     <span id="liveTagVec" class="shrink-0 rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">Standby</span>
                                 </div>
                                 <p id="liveVecComparedBug" class="text-xs text-slate-500 truncate">Awaiting vector matrix...</p>
@@ -3106,18 +3058,18 @@
                             </div>
                         </div>
 
-                        <!-- 5. Developer Routing -->
+                        <!-- 4. Developer Routing & Root Cause -->
                         <div id="liveCardDev" class="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between space-y-2 transition-all">
                             <div class="space-y-1.5 min-w-0">
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="text-xs font-bold text-slate-900">5. Developer Routing</span>
+                                    <span class="text-xs font-bold text-slate-900">4. Developer Routing &amp; Synthesis</span>
                                     <span id="liveTagDev" class="shrink-0 rounded-md bg-slate-200/80 text-slate-600 px-2 py-0.5 text-[10px] font-semibold">Standby</span>
                                 </div>
                                 <p id="liveDevSummary" class="text-xs text-slate-500">Awaiting skill &amp; workload match...</p>
                             </div>
                             <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                                 <span>Engine:</span>
-                                <span class="font-medium text-slate-700">Skill &amp; Capacity</span>
+                                <span class="font-medium text-slate-700">Skill &amp; LLM Code</span>
                             </div>
                         </div>
                     </div>
