@@ -11,7 +11,7 @@
     <a href="/" class="flex min-h-[64px] items-center border-b border-slate-200 px-5 text-lg font-extrabold tracking-tight text-slate-950">AutoBug<span class="text-indigo-600">Triage</span>@if($isTesterWorkspace)<span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-mono text-indigo-700">AI v1.0</span>@endif</a>
     <div class="mx-3 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
         <p class="text-xs font-bold text-slate-600">Current project</p>
-        <p class="mt-0.5 truncate text-base font-bold text-slate-900" title="{{ $hasAssignedProject ? ($activeWorkspaceProject?->name ?? session('project_name', 'Workspace')) : 'Not assigned yet' }}">{{ $hasAssignedProject ? ($activeWorkspaceProject?->name ?? session('project_name', 'Workspace')) : 'Not assigned yet' }}</p>
+        <p class="mt-0.5 truncate text-base font-bold text-slate-900" title="{{ $hasAssignedProject ? ($activeWorkspaceProject?->name ?? session('project_name', 'Workspace')) : 'Select Project' }}">{{ $hasAssignedProject ? ($activeWorkspaceProject?->name ?? session('project_name', 'Workspace')) : 'Select Project' }}</p>
         <p class="mt-0.5 line-clamp-2 text-xs font-medium leading-5 text-slate-700">{{ $hasAssignedProject ? ($activeWorkspaceProject?->stack ?: session('project_stack', $isTesterWorkspace ? 'Project issue tracking and QA' : 'Team issue tracking')) : 'No project has been assigned to this account.' }}</p>
     </div>
     @if(isset($projects) && isset($currentProjectId))

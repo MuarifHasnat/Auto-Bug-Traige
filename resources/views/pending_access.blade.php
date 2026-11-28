@@ -27,6 +27,8 @@
 
         <div class="mt-7 flex flex-col gap-3 sm:flex-row">
             <a href="/pending-access" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700">Check project access <span aria-hidden="true">↻</span></a>
+            <a href="/dashboard" class="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Command Center</a>
+            <a href="/profile" class="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">My profile</a>
             <form action="/logout" method="POST" class="flex-1">
                 @csrf
                 <button type="submit" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Sign out</button>

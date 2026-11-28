@@ -3,6 +3,7 @@
 Runs the deterministic triage pipeline on tests/fixtures/triage_cases.json
 and writes metrics + baseline comparison to storage/app/ai_evaluation_report.json.
 """
+from __future__ import annotations
 import datetime
 import json
 import sys

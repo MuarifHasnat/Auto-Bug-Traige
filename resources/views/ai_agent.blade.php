@@ -55,7 +55,11 @@
                 $studioCodeHelp = $studioTriage['code_help'] ?? [];
                 $studioFiles = $studioCodeHelp['suspected_files'] ?? $studioTriage['suspected_files'] ?? [];
                 $studioFixes = $studioCodeHelp['fix_suggestions'] ?? $studioCodeHelp['suggestions'] ?? [];
-                $cloneUrl = rtrim((string) ($projectGithubRepo ?? ''), '/');
+                $repositoryUrl = trim((string) ($projectGithubRepo ?? ''));
+                if ($repositoryUrl !== '' && !preg_match('/^[a-z][a-z0-9+.-]*:/i', $repositoryUrl)) {
+                    $repositoryUrl = 'https://' . $repositoryUrl;
+                }
+                $cloneUrl = rtrim($repositoryUrl, '/');
                 if ($cloneUrl !== '' && !str_ends_with($cloneUrl, '.git')) {
                     $cloneUrl .= '.git';
                 }
@@ -79,7 +83,7 @@
                                 <button class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500" {{ empty($projectGithubRepo) ? 'disabled' : '' }}>⟳ Scan repository</button>
                             </form>
                         @elseif(!empty($projectGithubRepo))
-                            <a href="{{ $projectGithubRepo }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500">↗ Open repository</a>
+                            <a href="{{ $repositoryUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500">↗ Open repository</a>
                         @endif
                         @if(auth()->user()->role !== 'developer')
                             <button type="button" onclick="openTriageForm()" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 text-sm font-bold text-indigo-700 hover:bg-indigo-50">＋ Report bug</button>

@@ -146,7 +146,15 @@ class BugController extends Controller
     {
         abort_unless(in_array(Auth::user()?->role, ['developer', 'tester'], true), 403);
 
-        return redirect('/dashboard');
+        if ($this->accessibleProjects()->isNotEmpty()) {
+            return redirect('/dashboard');
+        }
+
+        return $this->noProjectSelectedPage(
+            'Command Center',
+            'dashboard',
+            'Your workspace will appear here after a project manager assigns you to a project.'
+        );
     }
 
     public function loginPage(): View
@@ -420,8 +428,12 @@ class BugController extends Controller
     public function teamPage(): View
     {
         abort_unless(in_array(Auth::user()?->role, ['developer', 'tester'], true), 403);
-        $projectId = $this->currentProjectId();
         $projects = $this->accessibleProjects();
+        if ($projects->isEmpty()) {
+            return $this->noProjectSelectedPage('Team', 'team', 'The project team will appear here after you are assigned to a project.');
+        }
+
+        $projectId = $this->currentProjectId();
         $currentProject = $projects->firstWhere('id', $projectId);
         $members = \App\Models\User::query()->whereIn('id', $this->projectParticipantIds($projectId))
             ->orderByRaw("CASE role WHEN 'manager' THEN 0 WHEN 'developer' THEN 1 ELSE 2 END")
@@ -664,11 +676,14 @@ class BugController extends Controller
     public function workspacePage(Request $request): View
     {
         abort_unless(in_array(Auth::user()?->role, ['manager', 'developer', 'tester'], true), 403);
+        $projects = $this->accessibleProjects();
+        if ($projects->isEmpty()) {
+            return $this->noProjectSelectedPage('Kanban board', 'workspace', 'Your Kanban board will appear here once an active project is assigned.');
+        }
 
         $canMoveKanbanIssues = Auth::user()->role === 'developer';
 
         $projectId = $this->currentProjectId();
-        $projects = $this->accessibleProjects();
         if (Auth::user()->role === 'manager' && $request->filled('project_id')) {
             $projectSelection = $request->validate(['project_id' => ['required', 'integer']]);
             $selectedProject = $projects->firstWhere('id', (int) $projectSelection['project_id']);
@@ -777,9 +792,12 @@ class BugController extends Controller
     public function myReportedBugsPage(Request $request): View
     {
         abort_unless(Auth::user()?->role === 'tester', 403);
+        $projects = $this->accessibleProjects();
+        if ($projects->isEmpty()) {
+            return $this->noProjectSelectedPage('My reported bugs', 'my-reports', 'Your reported bugs will appear here once you are assigned to a project.');
+        }
 
         $projectId = $this->currentProjectId();
-        $projects = $this->accessibleProjects();
         $project = $projects->firstWhere('id', $projectId);
         $workflowStatuses = $this->ensureProjectWorkflow($projectId);
         $filters = $request->validate([
@@ -1210,6 +1228,10 @@ class BugController extends Controller
     public function aiAgentPage(Request $request): View
     {
         abort_unless(in_array(Auth::user()?->role, ['manager', 'tester', 'developer'], true), 403);
+        $projects = $this->accessibleProjects();
+        if ($projects->isEmpty()) {
+            return $this->noProjectSelectedPage('AI Triage Studio', 'ai-agent', 'AI triage tools will appear here once an active project is assigned.');
+        }
 
         $projectId = $this->currentProjectId();
         $this->ensureProjectWorkflow($projectId);
@@ -2145,6 +2167,18 @@ class BugController extends Controller
         $this->setCurrentProject(request(), $project);
 
         return (int) $project->id;
+    }
+
+    private function noProjectSelectedPage(string $pageTitle, string $active, string $message): View
+    {
+        return view('no_project_selected', [
+            'pageTitle' => $pageTitle,
+            'active' => $active,
+            'emptyStateMessage' => $message,
+            'projects' => collect(),
+            'currentProjectId' => null,
+            'unreadNotificationCount' => Auth::user()->unreadNotifications()->count(),
+        ]);
     }
 
     private function accessibleProjects()

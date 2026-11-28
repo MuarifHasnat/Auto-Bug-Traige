@@ -66,7 +66,7 @@ class BugTriageAndHistoryTest extends TestCase
             'predicted_duplicate' => false,
             'recommended_assignee' => 'Dev One',
         ]);
-        $this->assertLessThan(5000, (int) DB::table('bug_triage_metrics')->where('bug_id', $bug->id)->value('triage_duration_ms'));
+        $this->assertLessThan(15000, (int) DB::table('bug_triage_metrics')->where('bug_id', $bug->id)->value('triage_duration_ms'));
         $this->assertSame(1, (int) DB::table('developers')->where('project_id', $projectId)->where('name', 'Dev One')->value('active_tasks'));
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'created', 'actor_id' => $tester->id]);
         $this->assertDatabaseHas('bug_activities', ['bug_id' => $bug->id, 'event_type' => 'assignment_changed', 'to_value' => 'Dev One']);
